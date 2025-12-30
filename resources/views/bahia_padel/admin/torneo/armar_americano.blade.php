@@ -210,6 +210,25 @@
                     return;
                 }
                 
+                // VALIDACIÓN: Verificar que ninguno de los dos jugadores ya esté en otra pareja
+                let jugador1YaUsado = parejasLista.some(function(p) {
+                    return p.jugador1 == jugadorTemporal1.id || p.jugador2 == jugadorTemporal1.id;
+                });
+                
+                let jugador2YaUsado = parejasLista.some(function(p) {
+                    return p.jugador1 == jugadorId || p.jugador2 == jugadorId;
+                });
+                
+                if (jugador1YaUsado) {
+                    alert('El jugador "' + jugadorTemporal1.nombre + '" ya está en otra pareja');
+                    return;
+                }
+                
+                if (jugador2YaUsado) {
+                    alert('El jugador "' + jugador.nombre + ' ' + jugador.apellido + '" ya está en otra pareja');
+                    return;
+                }
+                
                 // Verificar que la pareja no esté ya en la lista
                 let parejaExiste = parejasLista.some(function(p) {
                     return (p.jugador1 == jugadorTemporal1.id && p.jugador2 == jugadorId) ||
