@@ -33,7 +33,7 @@
                     </button>
                 </div>
                 <div id="listado-parejas-seleccionadas" class="mb-4">
-                    <h5>Parejas Seleccionadas:</h5>
+                    <h5>Parejas Seleccionadas: <span id="contador-parejas" class="badge badge-primary">0</span></h5>
                     <div id="contenedor-parejas-lista" class="row">
                         <!-- Las parejas se mostrarán aquí -->
                     </div>
@@ -117,8 +117,9 @@
         }
     });
     
-    // Si hay grupos existentes, cargar parejas en la lista
+    // Si hay grupos existentes, cargarlos directamente sin mezclar
     if (Object.keys(gruposPorZona).length > 0) {
+        // Cargar parejas en la lista para referencia
         Object.keys(gruposPorZona).forEach(function(zona) {
             gruposPorZona[zona].forEach(function(pareja) {
                 let jugador1 = obtenerJugadorPorId(pareja.jugador1);
@@ -137,12 +138,42 @@
         });
         let cantidadGrupos = Object.keys(gruposPorZona).length;
         document.getElementById('cantidad_grupos').value = cantidadGrupos;
+        
+        // Cargar grupos existentes directamente sin mezclar
+        cargarGruposExistentes();
     }
     
     // Inicializar lista de parejas al cargar
     $(document).ready(function() {
         actualizarListaParejas();
     });
+    
+    // Función para cargar grupos existentes sin mezclar
+    function cargarGruposExistentes() {
+        gruposCreados = [];
+        parejasSeleccionadas = {};
+        
+        // Ordenar las zonas alfabéticamente
+        let zonasOrdenadas = Object.keys(gruposPorZona).sort();
+        
+        zonasOrdenadas.forEach(function(zona, index) {
+            let grupoId = index + 1;
+            gruposCreados.push({
+                id: grupoId,
+                letra: zona,
+                jugadores: []
+            });
+            parejasSeleccionadas[grupoId] = gruposPorZona[zona] || [];
+        });
+        
+        // Ocultar sección de selección y mostrar grupos finales directamente
+        $('#seccion-seleccion-parejas').hide();
+        $('#seccion-distribucion').hide();
+        $('#seccion-grupos-finales').show();
+        
+        // Renderizar grupos finales
+        mostrarGruposFinales();
+    }
     
     // Botón agregar pareja a la lista
     $('#btn-agregar-pareja-lista').on('click', function() {
@@ -211,6 +242,9 @@
     function actualizarListaParejas() {
         let contenedor = $('#contenedor-parejas-lista');
         contenedor.empty();
+        
+        // Actualizar contador dinámicamente
+        $('#contador-parejas').text(parejasLista.length);
         
         if (parejasLista.length === 0) {
             contenedor.append('<div class="col-12"><p class="text-muted">No hay parejas agregadas</p></div>');

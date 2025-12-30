@@ -68,9 +68,16 @@
 
             <!-- Partidos por zona -->
             @php
-                $zonas = array_keys($partidosPorZona);
+                $zonas = array_keys($partidosPorZona ?? []);
                 $zonaIndex = 0;
             @endphp
+            
+            @if(empty($partidosPorZona) || count($zonas) == 0)
+                <div class="alert alert-warning">
+                    <h5>No hay partidos creados</h5>
+                    <p>Debe crear los partidos primero. Vuelva a la pantalla anterior y haga clic en "Comenzar Torneo".</p>
+                </div>
+            @else
             
             @php
                 // Obtener todos los grupos para identificar el orden de las parejas en los partidos
@@ -269,17 +276,33 @@
                 </div>
                 @php $zonaIndex++; @endphp
             @endforeach
+            @endif
         </div>
     </div>
 </div>
 
 <script type="text/javascript">
-    let zonas = @json($zonas);
+    let zonas = @json($zonas ?? []);
     let zonaIndex = 0;
-    let partidosPorZona = @json($partidosPorZona);
-    let partidosConResultados = @json($partidosConResultados);
+    let partidosPorZona = @json($partidosPorZona ?? []);
+    let partidosConResultados = @json($partidosConResultados ?? []);
+    
+    // Inicializar zona si hay zonas disponibles
+    $(document).ready(function() {
+        if (zonas.length > 0) {
+            actualizarZona();
+        } else {
+            $('#zona-actual').text('No hay zonas disponibles');
+            $('#btn-zona-anterior').prop('disabled', true);
+            $('#btn-zona-siguiente').prop('disabled', true);
+        }
+    });
     
     function actualizarZona() {
+        if (zonas.length === 0 || !zonas[zonaIndex]) {
+            return;
+        }
+        
         $('.zona-container').hide();
         $('.zona-container[data-zona="' + zonas[zonaIndex] + '"]').show();
         $('#zona-actual').text('Zona ' + zonas[zonaIndex]);
