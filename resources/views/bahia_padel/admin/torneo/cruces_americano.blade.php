@@ -411,20 +411,180 @@
             
             <!-- Semifinales -->
             <div class="col-md-4">
-                <div class="bracket-round" id="semifinales-container" style="display:none;">
+                <div class="bracket-round" id="semifinales-container">
                     <div class="bracket-round-title">SEMIFINALES</div>
                     <div id="semifinales-content">
-                        <!-- Se llenará dinámicamente -->
+                        @foreach($cruces as $index => $cruce)
+                            @if($cruce['ronda'] == 'semifinales')
+                                @php
+                                    $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
+                                    $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
+                                    $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
+                                    $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
+                                @endphp
+                                <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="semifinales">
+                                    <!-- Pareja 1 -->
+                                    <div class="player-pair pareja-cruce" 
+                                         data-pareja="1"
+                                         data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
+                                         data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
+                                        <div class="player-pair-content">
+                                            <div class="player-images">
+                                                <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_1->nombre ?? '' }}">
+                                                <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_2->nombre ?? '' }}">
+                                            </div>
+                                            <div class="player-names">
+                                                <div class="player-name">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</div>
+                                                <div class="player-name">{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}</div>
+                                            </div>
+                                            @if(isset($cruce['pareja_1']['zona']) && isset($cruce['pareja_1']['posicion']))
+                                                <span class="badge badge-info">{{ $cruce['pareja_1']['zona'] }}{{ $cruce['pareja_1']['posicion'] }}º</span>
+                                            @endif
+                                        </div>
+                                        <div class="player-pair-input">
+                                            <input type="number" 
+                                                   class="form-control resultado-cruce" 
+                                                   data-cruce-id="{{ $cruce['id'] ?? $index }}"
+                                                   data-pareja="1"
+                                                   data-ronda="semifinales"
+                                                   min="0"
+                                                   max="99"
+                                                   placeholder="0">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Pareja 2 -->
+                                    <div class="player-pair pareja-cruce" 
+                                         data-pareja="2"
+                                         data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
+                                         data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
+                                        <div class="player-pair-content">
+                                            <div class="player-images">
+                                                <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_1->nombre ?? '' }}">
+                                                <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_2->nombre ?? '' }}">
+                                            </div>
+                                            <div class="player-names">
+                                                <div class="player-name">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
+                                                <div class="player-name">{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}</div>
+                                            </div>
+                                            @if(isset($cruce['pareja_2']['zona']) && isset($cruce['pareja_2']['posicion']))
+                                                <span class="badge badge-info">{{ $cruce['pareja_2']['zona'] }}{{ $cruce['pareja_2']['posicion'] }}º</span>
+                                            @endif
+                                        </div>
+                                        <div class="player-pair-input">
+                                            <input type="number" 
+                                                   class="form-control resultado-cruce" 
+                                                   data-cruce-id="{{ $cruce['id'] ?? $index }}"
+                                                   data-pareja="2"
+                                                   data-ronda="semifinales"
+                                                   min="0"
+                                                   max="99"
+                                                   placeholder="0">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Botón guardar -->
+                                    <div class="text-center mt-2">
+                                        <button type="button" 
+                                                class="btn btn-primary btn-sm guardar-cruce" 
+                                                data-cruce-id="{{ $cruce['id'] ?? $index }}"
+                                                data-ronda="semifinales">
+                                            Guardar
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
                     </div>
                 </div>
             </div>
             
             <!-- Final -->
             <div class="col-md-4">
-                <div class="bracket-round" id="final-container" style="display:none;">
+                <div class="bracket-round" id="final-container">
                     <div class="bracket-round-title">FINAL</div>
                     <div id="final-content">
-                        <!-- Se llenará dinámicamente -->
+                        @foreach($cruces as $index => $cruce)
+                            @if($cruce['ronda'] == 'final')
+                                @php
+                                    $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
+                                    $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
+                                    $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
+                                    $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
+                                @endphp
+                                <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="final">
+                                    <!-- Pareja 1 -->
+                                    <div class="player-pair pareja-cruce" 
+                                         data-pareja="1"
+                                         data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
+                                         data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
+                                        <div class="player-pair-content">
+                                            <div class="player-images">
+                                                <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_1->nombre ?? '' }}">
+                                                <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_2->nombre ?? '' }}">
+                                            </div>
+                                            <div class="player-names">
+                                                <div class="player-name">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</div>
+                                                <div class="player-name">{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}</div>
+                                            </div>
+                                            @if(isset($cruce['pareja_1']['zona']) && isset($cruce['pareja_1']['posicion']))
+                                                <span class="badge badge-info">{{ $cruce['pareja_1']['zona'] }}{{ $cruce['pareja_1']['posicion'] }}º</span>
+                                            @endif
+                                        </div>
+                                        <div class="player-pair-input">
+                                            <input type="number" 
+                                                   class="form-control resultado-cruce" 
+                                                   data-cruce-id="{{ $cruce['id'] ?? $index }}"
+                                                   data-pareja="1"
+                                                   data-ronda="final"
+                                                   min="0"
+                                                   max="99"
+                                                   placeholder="0">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Pareja 2 -->
+                                    <div class="player-pair pareja-cruce" 
+                                         data-pareja="2"
+                                         data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
+                                         data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
+                                        <div class="player-pair-content">
+                                            <div class="player-images">
+                                                <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_1->nombre ?? '' }}">
+                                                <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_2->nombre ?? '' }}">
+                                            </div>
+                                            <div class="player-names">
+                                                <div class="player-name">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
+                                                <div class="player-name">{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}</div>
+                                            </div>
+                                            @if(isset($cruce['pareja_2']['zona']) && isset($cruce['pareja_2']['posicion']))
+                                                <span class="badge badge-info">{{ $cruce['pareja_2']['zona'] }}{{ $cruce['pareja_2']['posicion'] }}º</span>
+                                            @endif
+                                        </div>
+                                        <div class="player-pair-input">
+                                            <input type="number" 
+                                                   class="form-control resultado-cruce" 
+                                                   data-cruce-id="{{ $cruce['id'] ?? $index }}"
+                                                   data-pareja="2"
+                                                   data-ronda="final"
+                                                   min="0"
+                                                   max="99"
+                                                   placeholder="0">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Botón guardar -->
+                                    <div class="text-center mt-2">
+                                        <button type="button" 
+                                                class="btn btn-primary btn-sm guardar-cruce" 
+                                                data-cruce-id="{{ $cruce['id'] ?? $index }}"
+                                                data-ronda="final">
+                                            Guardar
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -527,20 +687,49 @@
         setTimeout(function() {
             resultadosGuardados.forEach(function(resultado) {
                 if (resultado.ronda === 'semifinales' || resultado.ronda === 'final') {
-                    // Buscar el cruce que coincida
-                    let cruce = cruces.find(function(c) {
-                        if (c.ronda !== resultado.ronda) return false;
-                        if (!c.pareja_1 || !c.pareja_2) return false;
-                        let p1 = c.pareja_1;
-                        let p2 = c.pareja_2;
-                        return (p1.jugador_1 == resultado.pareja_1_jugador_1 && p1.jugador_2 == resultado.pareja_1_jugador_2 &&
-                                p2.jugador_1 == resultado.pareja_2_jugador_1 && p2.jugador_2 == resultado.pareja_2_jugador_2) ||
-                               (p1.jugador_1 == resultado.pareja_2_jugador_1 && p1.jugador_2 == resultado.pareja_2_jugador_2 &&
-                                p2.jugador_1 == resultado.pareja_1_jugador_1 && p2.jugador_2 == resultado.pareja_1_jugador_2);
-                    });
+                    // Buscar el cruce que coincida por parejas o por cruce_id
+                    let cruce = null;
+                    if (resultado.cruce_id) {
+                        // Si hay cruce_id, buscar por ID primero
+                        cruce = cruces.find(c => c.id === resultado.cruce_id && c.ronda === resultado.ronda);
+                    }
+                    
+                    // Si no se encontró por ID, buscar por parejas
+                    if (!cruce) {
+                        cruce = cruces.find(function(c) {
+                            if (c.ronda !== resultado.ronda) return false;
+                            if (!c.pareja_1 || !c.pareja_2) return false;
+                            let p1 = c.pareja_1;
+                            let p2 = c.pareja_2;
+                            return (p1.jugador_1 == resultado.pareja_1_jugador_1 && p1.jugador_2 == resultado.pareja_1_jugador_2 &&
+                                    p2.jugador_1 == resultado.pareja_2_jugador_1 && p2.jugador_2 == resultado.pareja_2_jugador_2) ||
+                                   (p1.jugador_1 == resultado.pareja_2_jugador_1 && p1.jugador_2 == resultado.pareja_2_jugador_2 &&
+                                    p2.jugador_1 == resultado.pareja_1_jugador_1 && p2.jugador_2 == resultado.pareja_1_jugador_2);
+                        });
+                    }
                     
                     if (cruce) {
                         let cruceId = cruce.id;
+                        // Buscar inputs por cruce_id o por parejas
+                        $(`.resultado-cruce[data-ronda="${resultado.ronda}"]`).each(function() {
+                            let inputCruceId = $(this).data('cruce-id');
+                            let pareja = $(this).data('pareja');
+                            
+                            // Si el cruce_id coincide o si no hay cruce_id pero las parejas coinciden
+                            if (inputCruceId === cruceId || (!inputCruceId && cruceId)) {
+                                // Verificar que las parejas del input coincidan con el resultado
+                                let matchCard = $(this).closest('.match-card');
+                                if (matchCard.length > 0) {
+                                    if (pareja == 1) {
+                                        $(this).val(resultado.pareja_1_set_1);
+                                    } else if (pareja == 2) {
+                                        $(this).val(resultado.pareja_2_set_1);
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // También buscar por atributo data-cruce-id específico
                         $(`.resultado-cruce[data-cruce-id="${cruceId}"][data-ronda="${resultado.ronda}"]`).each(function() {
                             let pareja = $(this).data('pareja');
                             if (pareja == 1) {
@@ -560,13 +749,13 @@
                                 score2: resultado.pareja_2_set_1
                             };
                             
-                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"], .match-card[data-ronda="semifinales"]`);
                             if (matchCard.length > 0) {
-                                matchCard.addClass('winner');
+                                matchCard.first().addClass('winner');
                                 if (resultado.pareja_1_set_1 > resultado.pareja_2_set_1) {
-                                    matchCard.find('.player-pair').first().addClass('winner');
+                                    matchCard.first().find('.player-pair').first().addClass('winner');
                                 } else {
-                                    matchCard.find('.player-pair').last().addClass('winner');
+                                    matchCard.first().find('.player-pair').last().addClass('winner');
                                 }
                             }
                         } else if (resultado.ronda === 'final') {
@@ -578,13 +767,13 @@
                                 score2: resultado.pareja_2_set_1
                             };
                             
-                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"], .match-card[data-ronda="final"]`);
                             if (matchCard.length > 0) {
-                                matchCard.addClass('winner');
+                                matchCard.first().addClass('winner');
                                 if (resultado.pareja_1_set_1 > resultado.pareja_2_set_1) {
-                                    matchCard.find('.player-pair').first().addClass('winner');
+                                    matchCard.first().find('.player-pair').first().addClass('winner');
                                 } else {
-                                    matchCard.find('.player-pair').last().addClass('winner');
+                                    matchCard.first().find('.player-pair').last().addClass('winner');
                                 }
                             }
                         }
@@ -594,7 +783,7 @@
             
             // Verificar avance después de cargar todos los resultados
             verificarAvance();
-        }, 500);
+        }, 1000);
     }
     
     // Convertir jugadores a objeto keyed por id
@@ -867,23 +1056,33 @@
                 
                 // Semifinal 1: Ganador QF1 vs Ganador QF3
                 if (sf1Pareja1) {
-                    let sf1Id = 'sf1';
-                    let sf1 = cruces.find(c => c.ronda === 'semifinales' && c.id === sf1Id);
+                    // Buscar si ya existe un cruce de semifinales con estas parejas (viene de la base de datos)
+                    let sf1 = cruces.find(c => {
+                        if (c.ronda !== 'semifinales') return false;
+                        if (!c.pareja_1 || !c.pareja_2) return false;
+                        // Verificar si coincide con las parejas esperadas
+                        let p1Match = (c.pareja_1.jugador_1 == sf1Pareja1.jugador_1 && c.pareja_1.jugador_2 == sf1Pareja1.jugador_2) ||
+                                     (c.pareja_2.jugador_1 == sf1Pareja1.jugador_1 && c.pareja_2.jugador_2 == sf1Pareja1.jugador_2);
+                        let p2Match = sf1Pareja2 ? ((c.pareja_1.jugador_1 == sf1Pareja2.jugador_1 && c.pareja_1.jugador_2 == sf1Pareja2.jugador_2) ||
+                                                   (c.pareja_2.jugador_1 == sf1Pareja2.jugador_1 && c.pareja_2.jugador_2 == sf1Pareja2.jugador_2)) : false;
+                        return p1Match && (sf1Pareja2 ? p2Match : true);
+                    });
+                    
+                    let sf1Id = sf1 ? sf1.id : 'sf1';
                     
                     if (!sf1) {
                         sf1 = {
                             id: sf1Id,
                             pareja_1: sf1Pareja1,
-                            pareja_2: null,
+                            pareja_2: sf1Pareja2 || null,
                             ronda: 'semifinales'
                         };
                         cruces.push(sf1);
                     } else {
                         sf1.pareja_1 = sf1Pareja1;
-                    }
-                    
-                    if (sf1Pareja2) {
-                        sf1.pareja_2 = sf1Pareja2;
+                        if (sf1Pareja2) {
+                            sf1.pareja_2 = sf1Pareja2;
+                        }
                     }
                     
                     let valor1 = valoresGuardados[sf1Id] && valoresGuardados[sf1Id][1] ? valoresGuardados[sf1Id][1] : '';
@@ -902,23 +1101,33 @@
                 
                 // Semifinal 2: Ganador QF2 vs Ganador QF4
                 if (sf2Pareja1) {
-                    let sf2Id = 'sf2';
-                    let sf2 = cruces.find(c => c.ronda === 'semifinales' && c.id === sf2Id);
+                    // Buscar si ya existe un cruce de semifinales con estas parejas (viene de la base de datos)
+                    let sf2 = cruces.find(c => {
+                        if (c.ronda !== 'semifinales') return false;
+                        if (!c.pareja_1 || !c.pareja_2) return false;
+                        // Verificar si coincide con las parejas esperadas
+                        let p1Match = (c.pareja_1.jugador_1 == sf2Pareja1.jugador_1 && c.pareja_1.jugador_2 == sf2Pareja1.jugador_2) ||
+                                     (c.pareja_2.jugador_1 == sf2Pareja1.jugador_1 && c.pareja_2.jugador_2 == sf2Pareja1.jugador_2);
+                        let p2Match = sf2Pareja2 ? ((c.pareja_1.jugador_1 == sf2Pareja2.jugador_1 && c.pareja_1.jugador_2 == sf2Pareja2.jugador_2) ||
+                                                   (c.pareja_2.jugador_1 == sf2Pareja2.jugador_1 && c.pareja_2.jugador_2 == sf2Pareja2.jugador_2)) : false;
+                        return p1Match && (sf2Pareja2 ? p2Match : true);
+                    });
+                    
+                    let sf2Id = sf2 ? sf2.id : 'sf2';
                     
                     if (!sf2) {
                         sf2 = {
                             id: sf2Id,
                             pareja_1: sf2Pareja1,
-                            pareja_2: null,
+                            pareja_2: sf2Pareja2 || null,
                             ronda: 'semifinales'
                         };
                         cruces.push(sf2);
                     } else {
                         sf2.pareja_1 = sf2Pareja1;
-                    }
-                    
-                    if (sf2Pareja2) {
-                        sf2.pareja_2 = sf2Pareja2;
+                        if (sf2Pareja2) {
+                            sf2.pareja_2 = sf2Pareja2;
+                        }
                     }
                     
                     let valor1 = valoresGuardados[sf2Id] && valoresGuardados[sf2Id][1] ? valoresGuardados[sf2Id][1] : '';
@@ -959,23 +1168,33 @@
         });
         
         if (ganadoresSemifinales.length >= 1) {
-            let finalId = 'final';
-            let final = cruces.find(c => c.ronda === 'final' && c.id === finalId);
+            // Buscar si ya existe un cruce de final con estas parejas (viene de la base de datos)
+            let final = cruces.find(c => {
+                if (c.ronda !== 'final') return false;
+                if (!c.pareja_1 || !c.pareja_2) return false;
+                // Verificar si coincide con las parejas esperadas
+                let p1Match = (c.pareja_1.jugador_1 == ganadoresSemifinales[0].jugador_1 && c.pareja_1.jugador_2 == ganadoresSemifinales[0].jugador_2) ||
+                             (c.pareja_2.jugador_1 == ganadoresSemifinales[0].jugador_1 && c.pareja_2.jugador_2 == ganadoresSemifinales[0].jugador_2);
+                let p2Match = ganadoresSemifinales[1] ? ((c.pareja_1.jugador_1 == ganadoresSemifinales[1].jugador_1 && c.pareja_1.jugador_2 == ganadoresSemifinales[1].jugador_2) ||
+                                                       (c.pareja_2.jugador_1 == ganadoresSemifinales[1].jugador_1 && c.pareja_2.jugador_2 == ganadoresSemifinales[1].jugador_2)) : false;
+                return p1Match && (ganadoresSemifinales[1] ? p2Match : true);
+            });
+            
+            let finalId = final ? final.id : 'final';
             
             if (!final) {
                 final = {
                     id: finalId,
                     pareja_1: ganadoresSemifinales[0],
-                    pareja_2: null,
+                    pareja_2: ganadoresSemifinales[1] || null,
                     ronda: 'final'
                 };
                 cruces.push(final);
             } else {
                 final.pareja_1 = ganadoresSemifinales[0];
-            }
-            
-            if (ganadoresSemifinales[1]) {
-                final.pareja_2 = ganadoresSemifinales[1];
+                if (ganadoresSemifinales[1]) {
+                    final.pareja_2 = ganadoresSemifinales[1];
+                }
             }
             
             let valor1 = valoresGuardados[finalId] && valoresGuardados[finalId][1] ? valoresGuardados[finalId][1] : '';
@@ -1062,6 +1281,78 @@
     
     // Inicializar al cargar la página
     $(document).ready(function() {
+        // Mostrar contenedores de semifinales y final si hay cruces existentes
+        let crucesSemifinales = cruces.filter(c => c.ronda === 'semifinales');
+        let crucesFinal = cruces.filter(c => c.ronda === 'final');
+        
+        // Renderizar cruces de semifinales que vienen de la base de datos
+        if (crucesSemifinales.length > 0) {
+            $('#semifinales-container').show();
+            let htmlSemifinales = '';
+            crucesSemifinales.forEach(function(sf) {
+                if (sf.pareja_1 && sf.pareja_2) {
+                    let sfId = sf.id;
+                    let valor1 = '';
+                    let valor2 = '';
+                    
+                    // Buscar resultados guardados para este cruce
+                    resultadosGuardados.forEach(function(resultado) {
+                        if (resultado.ronda === 'semifinales' && resultado.cruce_id === sfId) {
+                            valor1 = resultado.pareja_1_set_1 || '';
+                            valor2 = resultado.pareja_2_set_1 || '';
+                        }
+                    });
+                    
+                    htmlSemifinales += `
+                        <div class="match-card" data-cruce-id="${sfId}" data-ronda="semifinales">
+                            ${renderizarPareja(sf.pareja_1, false, sfId, 1, 'semifinales', valor1)}
+                            ${renderizarPareja(sf.pareja_2, false, sfId, 2, 'semifinales', valor2)}
+                            <div class="text-center mt-2">
+                                <button type="button" class="btn btn-primary btn-sm guardar-cruce" data-cruce-id="${sfId}" data-ronda="semifinales">Guardar</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            if (htmlSemifinales) {
+                $('#semifinales-content').html(htmlSemifinales);
+            }
+        }
+        
+        // Renderizar cruces de final que vienen de la base de datos
+        if (crucesFinal.length > 0) {
+            $('#final-container').show();
+            let htmlFinal = '';
+            crucesFinal.forEach(function(final) {
+                if (final.pareja_1 && final.pareja_2) {
+                    let finalId = final.id;
+                    let valor1 = '';
+                    let valor2 = '';
+                    
+                    // Buscar resultados guardados para este cruce
+                    resultadosGuardados.forEach(function(resultado) {
+                        if (resultado.ronda === 'final' && resultado.cruce_id === finalId) {
+                            valor1 = resultado.pareja_1_set_1 || '';
+                            valor2 = resultado.pareja_2_set_1 || '';
+                        }
+                    });
+                    
+                    htmlFinal += `
+                        <div class="match-card" data-cruce-id="${finalId}" data-ronda="final">
+                            ${renderizarPareja(final.pareja_1, false, finalId, 1, 'final', valor1)}
+                            ${renderizarPareja(final.pareja_2, false, finalId, 2, 'final', valor2)}
+                            <div class="text-center mt-2">
+                                <button type="button" class="btn btn-primary btn-sm guardar-cruce" data-cruce-id="${finalId}" data-ronda="final">Guardar</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            if (htmlFinal) {
+                $('#final-content').html(htmlFinal);
+            }
+        }
+        
         cargarResultadosGuardados();
     });
 </script>
