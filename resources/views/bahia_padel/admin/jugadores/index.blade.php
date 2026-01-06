@@ -203,7 +203,7 @@
         $.ajax({
             type: 'GET',
             dataType: 'JSON',
-            url: '/get_jugadores_home',
+            url: '{{ route("getjugadoreshome") }}',
             success: function(response) {
                 if (response.jugadores && response.jugadores.length > 0) {
                     todosJugadores = response.jugadores;
@@ -217,10 +217,14 @@
                     `);
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('Error al cargar jugadores:', xhr, status, error);
+                console.error('Response:', xhr.responseText);
                 $('#lista-jugadores').html(`
                     <div class="col-12 text-center">
                         <p class="text-danger">Error al cargar los jugadores.</p>
+                        <p class="text-muted small">Status: ${status} | Error: ${error}</p>
+                        <p class="text-muted small">¿Estás autenticado? Verifica que hayas iniciado sesión.</p>
                     </div>
                 `);
             }
@@ -232,8 +236,12 @@
         jugadores.forEach(function(jugador) {
             if (jugador.activo == 1) {
                 let foto = jugador.foto || '{{ asset('images/jugador_img.png') }}';
+                // Si la foto no empieza con http o /, construir la ruta completa
                 if (!foto.startsWith('http') && !foto.startsWith('/')) {
-                    foto = '/' + foto;
+                    foto = '{{ url('/') }}/' + foto;
+                } else if (foto.startsWith('/') && !foto.startsWith('{{ url('/') }}')) {
+                    // Si empieza con / pero no tiene el dominio completo, agregarlo
+                    foto = '{{ url('/') }}' + foto;
                 }
                 
                 html += `
@@ -310,7 +318,7 @@
         
         formData.append('_token', '{{ csrf_token() }}');
         
-        const url = esEdicion ? '/admin_editar_jugador' : '/admin_crear_jugador';
+        const url = esEdicion ? '{{ route("admineditarjugador") }}' : '{{ route("admincrearjugador") }}';
         const mensajeExito = esEdicion ? 'Jugador actualizado correctamente' : 'Jugador creado correctamente';
         
         $.ajax({

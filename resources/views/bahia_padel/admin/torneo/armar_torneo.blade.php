@@ -1049,7 +1049,7 @@
         $.ajax({
 	       type: 'POST',
 	       dataType: 'JSON',
-	       url: '/guardar_fecha_admin_torneo',
+	       url: '{{ route("guardarfechaadmintorneo") }}',
 	       data: datosEnvio,
 	       	success: function(data) {
                 alert('Torneo guardado correctamente');
@@ -1065,7 +1065,7 @@
             return;
         }
         // Redirigir a la pantalla de resultados
-        window.location.href = '/admin_torneo_resultados?torneo_id=' + torneo_id;
+        window.location.href = '{{ route("admintorneoresultados") }}?torneo_id=' + torneo_id;
     });
 </script>
 @endsection

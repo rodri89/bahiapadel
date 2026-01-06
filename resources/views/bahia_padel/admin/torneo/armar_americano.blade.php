@@ -554,7 +554,7 @@
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/guardar_torneo_americano',
+            url: '{{ route("guardartorneoamericano") }}',
             data: {
                 ...datos,
                 _token: '{{csrf_token()}}'
@@ -566,8 +566,14 @@
                     alert('Error al guardar: ' + (response.message || 'Error desconocido'));
                 }
             },
-            error: function() {
-                alert('Error al guardar el torneo');
+            error: function(xhr, status, error) {
+                console.error('Error al guardar torneo:', xhr, status, error);
+                console.error('Response:', xhr.responseText);
+                let errorMsg = 'Error al guardar el torneo';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
             }
         });
     });
@@ -609,7 +615,7 @@
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/guardar_torneo_americano',
+            url: '{{ route("guardartorneoamericano") }}',
             data: {
                 ...datos,
                 _token: '{{csrf_token()}}'
@@ -620,7 +626,7 @@
                     $.ajax({
                         type: 'POST',
                         dataType: 'JSON',
-                        url: '/crear_partidos_americano',
+                        url: '{{ route("crearpartidosamericano") }}',
                         data: {
                             torneo_id: torneoId,
                             _token: '{{csrf_token()}}'
@@ -628,13 +634,19 @@
                         success: function(response2) {
                             if (response2.success) {
                                 // Redirigir a la pantalla de partidos
-                                window.location.href = '/admin_torneo_americano_partidos?torneo_id=' + torneoId;
+                                window.location.href = '{{ route("admintorneoamericanopartidos") }}?torneo_id=' + torneoId;
                             } else {
                                 alert('Error al crear partidos: ' + (response2.message || 'Error desconocido'));
                             }
                         },
-                        error: function() {
-                            alert('Error al crear los partidos');
+                        error: function(xhr, status, error) {
+                            console.error('Error al crear partidos:', xhr, status, error);
+                            console.error('Response:', xhr.responseText);
+                            let errorMsg = 'Error al crear los partidos';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            alert(errorMsg);
                         }
                     });
                 } else {

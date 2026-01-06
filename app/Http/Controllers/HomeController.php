@@ -10,7 +10,7 @@ use App\Torneo;
 use App\Jugadore;
 use App\Partido;
 use App\Grupo;
-use Image;
+use Intervention\Image\Facades\Image;
 
 use Session;
 
@@ -66,63 +66,78 @@ class HomeController extends Controller
     }
 
     function registrarTorneo(Request $request) {
-        $id = $request->id_torneo;
-        if($id == 0){
-            $torneo = new Torneo;            
-            $torneo->activo = 1;
-        } else {
-            $torneo = Torneo::find($id);
+        try {
+            $id = $request->id_torneo;
+            if($id == 0){
+                $torneo = new Torneo;            
+                $torneo->activo = 1;
+            } else {
+                $torneo = Torneo::find($id);
+                if (!$torneo) {
+                    return response()->json([
+                        'torneo' => null,
+                        'error' => 'Torneo no encontrado'
+                    ], 404);
+                }
+            }
+            
+            if($request->nombre != null)        
+                $torneo->nombre = $request->nombre;
+            else
+                $torneo->nombre = '';                
+            
+            if($request->tipo != null)        
+                $torneo->tipo = $request->tipo;
+            else
+                $torneo->tipo = '';                
+            
+            if($request->fechaInicio != null)
+                $torneo->fecha_inicio = $request->fechaInicio;
+            else
+                $torneo->fecha_inicio = '2000-01-01';
+            
+            if($request->fechaFin != null)
+                $torneo->fecha_fin = $request->fechaFin;
+            else
+                $torneo->fecha_fin = '2000-01-01';
+                    
+            if($request->premio1 != null)
+                $torneo->premio_1 = $request->premio1;
+            else
+                $torneo->premio_1 = '';
+            
+            if($request->premio2 != null)
+                $torneo->premio_2 = $request->premio2;
+            else
+                $torneo->premio_2 = '';
+            
+            if($request->descripcion != null)
+                $torneo->descripcion = $request->descripcion;
+            else
+                $torneo->descripcion = '';
+            
+            $torneo->es_torneo_individual = $request->tipo_torneo ?? 2;        
+            $torneo->categoria = $request->categoria ?? 1;
+            $torneo->imagen = '';
+            
+            // Guardar tipo de torneo (americano, puntuable, suma)
+            if($request->tipo_torneo_formato != null) {
+                $torneo->tipo_torneo_formato = $request->tipo_torneo_formato;
+            } else {
+                $torneo->tipo_torneo_formato = 'puntuable'; // Por defecto
+            }
+
+            $torneo->save();
+
+            return response()->json(array('torneo'=>$torneo));
+        } catch (\Exception $e) {
+            \Log::error('Error al registrar torneo: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'torneo' => null,
+                'error' => 'Error al guardar el torneo: ' . $e->getMessage()
+            ], 500);
         }
-        
-        if($request->nombre != null)        
-            $torneo->nombre = $request->nombre;
-        else
-            $torneo->nombre = '';                
-
-        if($request->tipo != null)        
-            $torneo->tipo = $request->tipo;
-        else
-            $torneo->tipo = '';                
-        
-        if($request->fechaInicio != null)
-            $torneo->fecha_inicio = $request->fechaInicio;
-        else
-            $torneo->fecha_inicio = '2000-01-01';
-
-        if($request->fechaFin != null)
-            $torneo->fecha_fin = $request->fechaFin;
-        else
-            $torneo->fecha_fin = '2000-01-01';
-                
-        if($request->premio1 != null)
-            $torneo->premio_1 = $request->premio1;
-        else
-            $torneo->premio_1 = '';
-
-        if($request->premio2 != null)
-            $torneo->premio_2 = $request->premio2;
-        else
-            $torneo->premio_2 = '';
-
-        if($request->descripcion != null)
-            $torneo->descripcion = $request->descripcion;
-        else
-            $torneo->descripcion = '';
-
-        $torneo->es_torneo_individual = $request->tipo_torneo;        
-        $torneo->categoria = $request->categoria;
-        $torneo->imagen = '';
-        
-        // Guardar tipo de torneo (americano, puntuable, suma)
-        if($request->tipo_torneo_formato != null) {
-            $torneo->tipo_torneo_formato = $request->tipo_torneo_formato;
-        } else {
-            $torneo->tipo_torneo_formato = 'puntuable'; // Por defecto
-        }
-
-        $torneo->save();
-
-        return response()->json(array('torneo'=>$torneo));
     }
 
     function getTorneos(Request $request) {
@@ -244,39 +259,52 @@ class HomeController extends Controller
             }
     }
 
-    function adminCrearJugador(Request $request) {        
-        
-        $jugador = new Jugadore;
-        $jugador->activo = 1;                
-        $jugador->nombre = $request->nombre;
-        $jugador->apellido = $request->apellido;
-        $jugador->telefono = $request->telefono ?? 0;
-        $jugador->posicion = 0;
-        $jugador->foto = 'images/jugador_img.png';
-        
-        // Manejar subida de foto
-        if ($request->hasFile('foto')) {
-            $image = $request->file('foto');
-            $name = time() . '_' . $image->getClientOriginalName();
-            $path = 'images/jugadores/' . $name;
+    function adminCrearJugador(Request $request) {
+        try {
+            $jugador = new Jugadore;
+            $jugador->activo = 1;                
+            $jugador->nombre = $request->nombre;
+            $jugador->apellido = $request->apellido;
+            $jugador->telefono = $request->telefono ?? 0;
+            $jugador->posicion = 0;
+            $jugador->foto = 'images/jugador_img.png';
             
-            // Crear directorio si no existe
-            $directory = public_path('images/jugadores');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
+            // Manejar subida de foto
+            if ($request->hasFile('foto')) {
+                try {
+                    $image = $request->file('foto');
+                    $name = time() . '_' . $image->getClientOriginalName();
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Crear directorio si no existe
+                    $directory = public_path('images/jugadores');
+                    if (!file_exists($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    
+                    // Usar Image para procesar y guardar la imagen
+                    Image::make($image->getRealPath())->save(public_path($path));
+                    $jugador->foto = $path;
+                } catch (\Exception $e) {
+                    // Si falla la imagen, usar la imagen por defecto
+                    \Log::error('Error al procesar imagen: ' . $e->getMessage());
+                    $jugador->foto = 'images/jugador_img.png';
+                }
             }
             
-            // Usar Image para procesar y guardar la imagen
-            Image::make($image->getRealPath())->save(public_path($path));
-            $jugador->foto = $path;
-        }
-        
-        $jugador->save();
+            $jugador->save();
 
-        return response()->json([
-            'success' => true,
-            'jugador' => $jugador
-        ]);
+            return response()->json([
+                'success' => true,
+                'jugador' => $jugador
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al crear jugador: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear el jugador: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     function getJugadores(Request $request) {
@@ -311,43 +339,56 @@ class HomeController extends Controller
     }
 
     function adminEditarJugador(Request $request) {
-        $id = $request->id;
-        
-        $jugador = Jugadore::find($id);
-        if (!$jugador) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Jugador no encontrado'
-            ]);
-        }
-        
-        $jugador->nombre = $request->nombre;
-        $jugador->apellido = $request->apellido;
-        $jugador->telefono = $request->telefono ?? 0;
-        
-        // Manejar subida de foto solo si se envía una nueva
-        if ($request->hasFile('foto')) {
-            $image = $request->file('foto');
-            $name = time() . '_' . $image->getClientOriginalName();
-            $path = 'images/jugadores/' . $name;
+        try {
+            $id = $request->id;
             
-            // Crear directorio si no existe
-            $directory = public_path('images/jugadores');
-            if (!file_exists($directory)) {
-                mkdir($directory, 0755, true);
+            $jugador = Jugadore::find($id);
+            if (!$jugador) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jugador no encontrado'
+                ], 404);
             }
             
-            // Usar Image para procesar y guardar la imagen
-            Image::make($image->getRealPath())->save(public_path($path));
-            $jugador->foto = $path;
+            $jugador->nombre = $request->nombre;
+            $jugador->apellido = $request->apellido;
+            $jugador->telefono = $request->telefono ?? 0;
+            
+            // Manejar subida de foto solo si se envía una nueva
+            if ($request->hasFile('foto')) {
+                try {
+                    $image = $request->file('foto');
+                    $name = time() . '_' . $image->getClientOriginalName();
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Crear directorio si no existe
+                    $directory = public_path('images/jugadores');
+                    if (!file_exists($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    
+                    // Usar Image para procesar y guardar la imagen
+                    Image::make($image->getRealPath())->save(public_path($path));
+                    $jugador->foto = $path;
+                } catch (\Exception $e) {
+                    // Si falla la imagen, mantener la actual
+                    \Log::error('Error al procesar imagen: ' . $e->getMessage());
+                }
+            }
+            
+            $jugador->save();
+            
+            return response()->json([
+                'success' => true,
+                'jugador' => $jugador
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al editar jugador: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al editar el jugador: ' . $e->getMessage()
+            ], 500);
         }
-        
-        $jugador->save();
-        
-        return response()->json([
-            'success' => true,
-            'jugador' => $jugador
-        ]);
     }
 
     public function guardarFechaAdminTorneo(Request $request) {
@@ -638,28 +679,60 @@ class HomeController extends Controller
     }
 
     public function crearPartidosAmericano(Request $request) {
-        $torneoId = $request->torneo_id;
-        
-        $torneo = DB::table('torneos')
-                        ->where('torneos.id', $torneoId)
-                        ->where('torneos.activo', 1)
-                        ->first();
-        
-        if (!$torneo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Torneo no encontrado'
-            ]);
-        }
-        
-        // Obtener solo los grupos iniciales del torneo (sin partido_id)
-        // Estos son los grupos que se crearon al guardar el torneo, antes de crear los partidos
-        $grupos = DB::table('grupos')
-                        ->where('grupos.torneo_id', $torneoId)
-                        ->whereNull('grupos.partido_id') // Solo grupos iniciales, sin partido_id
-                        ->orderBy('grupos.zona')
-                        ->orderBy('grupos.id')
-                        ->get();
+        try {
+            $torneoId = $request->torneo_id;
+            
+            $torneo = DB::table('torneos')
+                            ->where('torneos.id', $torneoId)
+                            ->where('torneos.activo', 1)
+                            ->first();
+            
+            if (!$torneo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Torneo no encontrado'
+                ], 404);
+            }
+            
+            // Verificar si ya hay partidos creados y jugados
+            $partidosExistentes = DB::table('grupos')
+                                    ->where('grupos.torneo_id', $torneoId)
+                                    ->whereNotNull('grupos.partido_id')
+                                    ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                                    ->count();
+            
+            // Si ya hay partidos creados, solo verificar que no falten partidos
+            // No eliminar grupos iniciales si ya hay partidos jugados
+            if ($partidosExistentes > 0) {
+                // Verificar si hay grupos iniciales sin partido_id
+                $gruposIniciales = DB::table('grupos')
+                                    ->where('grupos.torneo_id', $torneoId)
+                                    ->whereNull('grupos.partido_id')
+                                    ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                                    ->count();
+                
+                // Si hay grupos iniciales, crear los partidos faltantes
+                if ($gruposIniciales > 0) {
+                    // Continuar con la lógica de creación de partidos
+                } else {
+                    // Ya están todos los partidos creados, solo retornar éxito
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Los partidos ya están creados',
+                        'partidos_existentes' => true
+                    ]);
+                }
+            }
+            
+            // Obtener solo los grupos iniciales del torneo (sin partido_id)
+            // Estos son los grupos que se crearon al guardar el torneo, antes de crear los partidos
+            $grupos = DB::table('grupos')
+                            ->where('grupos.torneo_id', $torneoId)
+                            ->whereNull('grupos.partido_id') // Solo grupos iniciales, sin partido_id
+                            ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final']) // Excluir grupos de eliminatoria
+                            ->orderBy('grupos.zona')
+                            ->orderBy('grupos.id')
+                            ->get();
         
         // Agrupar por zona y extraer parejas únicas
         $parejasPorZona = [];
@@ -790,18 +863,38 @@ class HomeController extends Controller
             }
         }
         
-        // Eliminar los grupos iniciales (con partido_id = null) después de crear los partidos
-        // Estos grupos ya no son necesarios porque se crearon nuevos grupos con partido_id asignado
-        DB::table('grupos')
-            ->where('torneo_id', $torneoId)
-            ->whereNull('partido_id')
-            ->whereNotIn('zona', ['cuartos final', 'semifinal', 'final']) // No eliminar grupos de eliminatoria
-            ->delete();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Partidos creados correctamente'
-        ]);
+            // Solo eliminar los grupos iniciales si no hay partidos jugados
+            // Si ya hay partidos jugados, mantener los grupos iniciales por seguridad
+            $partidosConResultados = DB::table('partidos')
+                                        ->join('grupos', 'partidos.id', '=', 'grupos.partido_id')
+                                        ->where('grupos.torneo_id', $torneoId)
+                                        ->where(function($query) {
+                                            $query->where('partidos.pareja_1_set_1', '>', 0)
+                                                  ->orWhere('partidos.pareja_2_set_1', '>', 0);
+                                        })
+                                        ->count();
+            
+            // Solo eliminar grupos iniciales si no hay partidos con resultados
+            if ($partidosConResultados == 0) {
+                DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->whereNull('partido_id')
+                    ->whereNotIn('zona', ['cuartos final', 'semifinal', 'final']) // No eliminar grupos de eliminatoria
+                    ->delete();
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Partidos creados correctamente'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al crear partidos americano: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear los partidos: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function adminTorneoAmericanoPartidos(Request $request) {

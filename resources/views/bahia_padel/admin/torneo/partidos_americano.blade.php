@@ -357,7 +357,7 @@
             $.ajax({
                 type: 'POST',
                 dataType: 'JSON',
-                url: '/guardar_resultado_americano',
+                url: '{{ route("guardarresultadoamericano") }}',
                 data: {
                     partido_id: partidoId || null,
                     torneo_id: torneoId,
@@ -418,7 +418,7 @@
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/calcular_posiciones_americano',
+            url: '{{ route("calcularposicionesamericano") }}',
             data: {
                 torneo_id: torneoId,
                 zona: zonaActual,
@@ -578,7 +578,7 @@
     // Botón cruces
     $('#btn-cruces').on('click', function() {
         let torneoId = $('#torneo_id').val();
-        window.location.href = '/admin_torneo_americano_cruces?torneo_id=' + torneoId;
+        window.location.href = '{{ route("admintorneoamericanocruces") }}?torneo_id=' + torneoId;
     });
     
     // Inicializar
