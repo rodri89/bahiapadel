@@ -78,12 +78,30 @@ class RegisterController extends Controller
         return $user;    
     }
 
+    /**
+     * Show the application registration form.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showRegistrationForm()
+    {
+        return view('auth.register');
+    }
+
     public function registrar(Request $request)
-    {            
-        $user = new user;         
+    {
+        // Validar los datos
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'usuario_tipo' => ['required', 'integer', 'in:1,2,3'],
+        ]);
+            
+        $user = new User;         
         $user->name = $request->get('name');
+        $user->lastname = $request->get('surname', '');
         $user->email = $request->get('email');
-        $user->lastname = '';
         $user->user_name = '';
         $user->pass = '';
         $user->password = Hash::make($request->get('password'));
@@ -92,8 +110,10 @@ class RegisterController extends Controller
         $user->save();        
         
         if ($request->get('usuario_tipo') == 2) { 
-            return View('padel.admin.home');            
+            return redirect()->route('home_admin')->with('success', 'Usuario registrado correctamente');
         }
+        
+        return redirect()->route('register')->with('success', 'Usuario registrado correctamente');
     }    
 
 }
