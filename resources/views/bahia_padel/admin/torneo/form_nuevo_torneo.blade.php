@@ -91,7 +91,7 @@
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/registrar_torneo_admin',
+            url: '{{ route("registrartorneoadmin") }}',
             data: { id_torneo: id_torneo, nombre: nombre, tipo_torneo: tipo_torneo, tipo_torneo_formato: tipo_torneo_formato, categoria:categoria, fechaInicio:fechaInicio,
                 fechaFin:fechaFin, premio1:premio1, premio2:premio2, descripcion:descripcion,tipo:tipo, _token: '{{csrf_token()}}' },
             success: function (data) {
@@ -99,7 +99,33 @@
                     document.getElementById('id_torneo').value = data.torneo.id
                     showSnackbar("¡Torneo registrado exitosamente!");
                     location.reload();
+                } else {
+                    let errorMsg = 'Error: No se pudo guardar el torneo';
+                    if (data.error) {
+                        errorMsg = data.error;
+                    }
+                    alert(errorMsg);
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error al guardar torneo:', xhr, status, error);
+                console.error('Response:', xhr.responseText);
+                let errorMsg = 'Error al guardar el torneo';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                } else if (xhr.responseText) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMsg = response.error || response.message || errorMsg;
+                    } catch (e) {
+                        errorMsg = xhr.responseText.substring(0, 100);
+                    }
+                }
+                alert(errorMsg);
             }
         });
     }

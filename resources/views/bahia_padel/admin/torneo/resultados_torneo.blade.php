@@ -404,7 +404,7 @@ $(document).ready(function() {
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/guardar_resultado_partido',
+            url: '{{ route("guardarresultadopartido") }}',
             data: datos,
             success: function(data) {
                 if (data.success) {
@@ -521,7 +521,7 @@ $(document).ready(function() {
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/verificar_partidos_completos',
+            url: '{{ route("verificarpartidoscompletos") }}',
             data: {
                 torneo_id: torneoId,
                 zona: zona,
@@ -551,7 +551,7 @@ $(document).ready(function() {
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/calcular_posiciones_zona',
+            url: '{{ route("calcularposicioneszona") }}',
             data: {
                 torneo_id: torneoId,
                 zona: zona,

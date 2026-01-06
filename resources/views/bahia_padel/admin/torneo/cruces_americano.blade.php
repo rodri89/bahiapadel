@@ -87,14 +87,15 @@
         border-color: #28a745;
     }
     
-    .player-pair.winner::after {
+    /* Check removido - solo se usa el color verde */
+    /* .player-pair.winner::after {
         content: '✓';
         position: absolute;
-        right: 85px; /* Ajustado para no interferir con el input */
+        right: 85px;
         color: #28a745;
         font-weight: bold;
         font-size: 1.2rem;
-    }
+    } */
     
     .player-images {
         display: flex;
@@ -618,7 +619,7 @@
     // Botón volver a clasificación
     $('#btn-volver-clasificacion').on('click', function() {
         let torneoId = $('#torneo_id').val();
-        window.location.href = '/admin_torneo_americano_partidos?torneo_id=' + torneoId;
+        window.location.href = '{{ route("admintorneoamericanopartidos") }}?torneo_id=' + torneoId;
     });
     
     let cruces = @json($cruces ?? []);
@@ -627,6 +628,7 @@
     let primerosClasificados = @json($primerosClasificados ?? []);
     let totalClasificados = {{ $totalClasificados ?? 0 }};
     let torneoId = $('#torneo_id').val();
+    let baseUrl = '{{ url("/") }}';
     let resultadosCuartos = {};
     let resultadosSemifinales = {};
     let resultadoFinal = null;
@@ -739,7 +741,7 @@
                             }
                         });
                         
-                        // Guardar resultado localmente
+                        // Guardar resultado localmente y aplicar estilo de ganador
                         if (resultado.ronda === 'semifinales') {
                             let ganador = resultado.pareja_1_set_1 > resultado.pareja_2_set_1 ? cruce.pareja_1 : cruce.pareja_2;
                             resultadosSemifinales[cruceId] = {
@@ -749,14 +751,34 @@
                                 score2: resultado.pareja_2_set_1
                             };
                             
-                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"], .match-card[data-ronda="semifinales"]`);
+                            // Buscar el match-card usando el cruceId y la ronda
+                            // Intentar múltiples formas de encontrar el match-card
+                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"][data-ronda="semifinales"]`);
+                            if (matchCard.length === 0) {
+                                matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                            }
+                            if (matchCard.length === 0) {
+                                // Buscar por ronda y luego verificar el cruceId
+                                $(`.match-card[data-ronda="semifinales"]`).each(function() {
+                                    if ($(this).data('cruce-id') == cruceId) {
+                                        matchCard = $(this);
+                                        return false; // break
+                                    }
+                                });
+                            }
+                            
                             if (matchCard.length > 0) {
-                                matchCard.first().addClass('winner');
+                                matchCard.addClass('winner');
+                                // Remover winner de todas las parejas primero
+                                matchCard.find('.player-pair').removeClass('winner');
+                                // Agregar winner a la pareja ganadora
                                 if (resultado.pareja_1_set_1 > resultado.pareja_2_set_1) {
-                                    matchCard.first().find('.player-pair').first().addClass('winner');
+                                    matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
                                 } else {
-                                    matchCard.first().find('.player-pair').last().addClass('winner');
+                                    matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
                                 }
+                            } else {
+                                console.warn('No se encontró match-card para semifinal con cruceId:', cruceId);
                             }
                         } else if (resultado.ronda === 'final') {
                             let ganador = resultado.pareja_1_set_1 > resultado.pareja_2_set_1 ? cruce.pareja_1 : cruce.pareja_2;
@@ -767,14 +789,34 @@
                                 score2: resultado.pareja_2_set_1
                             };
                             
-                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"], .match-card[data-ronda="final"]`);
+                            // Buscar el match-card usando el cruceId y la ronda
+                            // Intentar múltiples formas de encontrar el match-card
+                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"][data-ronda="final"]`);
+                            if (matchCard.length === 0) {
+                                matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                            }
+                            if (matchCard.length === 0) {
+                                // Buscar por ronda y luego verificar el cruceId
+                                $(`.match-card[data-ronda="final"]`).each(function() {
+                                    if ($(this).data('cruce-id') == cruceId) {
+                                        matchCard = $(this);
+                                        return false; // break
+                                    }
+                                });
+                            }
+                            
                             if (matchCard.length > 0) {
-                                matchCard.first().addClass('winner');
+                                matchCard.addClass('winner');
+                                // Remover winner de todas las parejas primero
+                                matchCard.find('.player-pair').removeClass('winner');
+                                // Agregar winner a la pareja ganadora
                                 if (resultado.pareja_1_set_1 > resultado.pareja_2_set_1) {
-                                    matchCard.first().find('.player-pair').first().addClass('winner');
+                                    matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
                                 } else {
-                                    matchCard.first().find('.player-pair').last().addClass('winner');
+                                    matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
                                 }
+                            } else {
+                                console.warn('No se encontró match-card para final con cruceId:', cruceId);
                             }
                         }
                     }
@@ -797,6 +839,10 @@
     }
     
     function renderizarPareja(pareja, esGanador = false, cruceId = null, parejaNum = null, ronda = null, valor = '') {
+        if (!pareja || !pareja.jugador_1 || !pareja.jugador_2) {
+            return '<div class="player-pair"><div class="player-pair-content"><div class="player-names">Esperando ganador...</div></div></div>';
+        }
+        
         let jugador1 = obtenerJugadorPorId(pareja.jugador_1);
         let jugador2 = obtenerJugadorPorId(pareja.jugador_2);
         let claseGanador = esGanador ? ' winner' : '';
@@ -823,16 +869,28 @@
             badgeHtml = `<span class="badge badge-info">${pareja.zona}${pareja.posicion}º</span>`;
         }
         
+        // Construir rutas de imágenes correctamente
+        let foto1 = jugador1 && jugador1.foto ? jugador1.foto : 'images/jugador_img.png';
+        let foto2 = jugador2 && jugador2.foto ? jugador2.foto : 'images/jugador_img.png';
+        
+        // Asegurar que la ruta no tenga doble barra
+        if (foto1.startsWith('/')) foto1 = foto1.substring(1);
+        if (foto2.startsWith('/')) foto2 = foto2.substring(1);
+        if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+        
         return `
-            <div class="player-pair${claseGanador}">
+            <div class="player-pair${claseGanador}" 
+                 data-pareja="${parejaNum || ''}"
+                 data-jugador-1="${pareja ? pareja.jugador_1 : ''}"
+                 data-jugador-2="${pareja ? pareja.jugador_2 : ''}">
                 <div class="player-pair-content">
                     <div class="player-images">
-                        <img src="/${jugador1 ? (jugador1.foto || 'images/jugador_img.png') : 'images/jugador_img.png'}" alt="${jugador1 ? jugador1.nombre : ''}">
-                        <img src="/${jugador2 ? (jugador2.foto || 'images/jugador_img.png') : 'images/jugador_img.png'}" alt="${jugador2 ? jugador2.nombre : ''}">
+                        <img src="${baseUrl}/${foto1}" alt="${jugador1 ? (jugador1.nombre || '') + ' ' + (jugador1.apellido || '') : ''}">
+                        <img src="${baseUrl}/${foto2}" alt="${jugador2 ? (jugador2.nombre || '') + ' ' + (jugador2.apellido || '') : ''}">
                     </div>
                     <div class="player-names">
-                        <div class="player-name">${jugador1 ? (jugador1.nombre + ' ' + jugador1.apellido) : ''}</div>
-                        <div class="player-name">${jugador2 ? (jugador2.nombre + ' ' + jugador2.apellido) : ''}</div>
+                        <div class="player-name">${jugador1 ? ((jugador1.nombre || '') + ' ' + (jugador1.apellido || '')) : ''}</div>
+                        <div class="player-name">${jugador2 ? ((jugador2.nombre || '') + ' ' + (jugador2.apellido || '')) : ''}</div>
                     </div>
                     ${badgeHtml}
                 </div>
@@ -856,43 +914,118 @@
             return;
         }
         
-        // Buscar el cruce correcto según la ronda
+        // Obtener información de las parejas directamente del DOM
+        let matchCard = $(this).closest('.match-card');
+        let pareja1Element = matchCard.find('.player-pair[data-pareja="1"]').first();
+        let pareja2Element = matchCard.find('.player-pair[data-pareja="2"]').first();
+        
+        // jQuery convierte data-jugador-1 a jugador1, así que usamos attr() directamente
+        let pareja1Jugador1 = pareja1Element.attr('data-jugador-1');
+        let pareja1Jugador2 = pareja1Element.attr('data-jugador-2');
+        let pareja2Jugador1 = pareja2Element.attr('data-jugador-1');
+        let pareja2Jugador2 = pareja2Element.attr('data-jugador-2');
+        
+        // Convertir a número si son strings
+        if (pareja1Jugador1) pareja1Jugador1 = parseInt(pareja1Jugador1);
+        if (pareja1Jugador2) pareja1Jugador2 = parseInt(pareja1Jugador2);
+        if (pareja2Jugador1) pareja2Jugador1 = parseInt(pareja2Jugador1);
+        if (pareja2Jugador2) pareja2Jugador2 = parseInt(pareja2Jugador2);
+        
+        // Si no se encontraron en el DOM, intentar buscar en el array de cruces
         let cruce = null;
-        if (ronda === 'cuartos') {
-            // Para cuartos, usar el índice numérico
-            cruce = cruces[cruceId];
-        } else if (ronda === 'semifinales' || ronda === 'final') {
-            // Para semifinales y final, buscar por ID
-            cruce = cruces.find(c => c.ronda === ronda && c.id === cruceId);
+        if (!pareja1Jugador1 || !pareja1Jugador2 || !pareja2Jugador1 || !pareja2Jugador2) {
+            if (ronda === 'cuartos') {
+                // Para cuartos, usar el índice numérico
+                cruce = cruces[cruceId];
+            } else if (ronda === 'semifinales' || ronda === 'final') {
+                // Para semifinales y final, buscar por ID primero
+                cruce = cruces.find(c => c.ronda === ronda && c.id === cruceId);
+                
+                // Si no se encuentra por ID, buscar en todos los cruces de esa ronda
+                if (!cruce) {
+                    let crucesRonda = cruces.filter(c => c.ronda === ronda);
+                    if (crucesRonda.length > 0) {
+                        // Si solo hay uno, usarlo
+                        if (crucesRonda.length === 1) {
+                            cruce = crucesRonda[0];
+                        } else {
+                            // Si hay múltiples, intentar buscar por el índice si cruceId es numérico
+                            let cruceIndex = parseInt(cruceId);
+                            if (!isNaN(cruceIndex) && crucesRonda[cruceIndex] !== undefined) {
+                                cruce = crucesRonda[cruceIndex];
+                            } else {
+                                // Si no se encuentra, usar el primero de la ronda
+                                cruce = crucesRonda[0];
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (cruce && cruce.pareja_1 && cruce.pareja_2) {
+                pareja1Jugador1 = cruce.pareja_1.jugador_1;
+                pareja1Jugador2 = cruce.pareja_1.jugador_2;
+                pareja2Jugador1 = cruce.pareja_2.jugador_1;
+                pareja2Jugador2 = cruce.pareja_2.jugador_2;
+            }
         }
         
-        if (!cruce || !cruce.pareja_1 || !cruce.pareja_2) {
-            alert('Error: No se encontró el cruce o falta información de las parejas');
+        // Validar que todos los valores sean números válidos
+        if (!pareja1Jugador1 || isNaN(pareja1Jugador1) || !pareja1Jugador2 || isNaN(pareja1Jugador2) || 
+            !pareja2Jugador1 || isNaN(pareja2Jugador1) || !pareja2Jugador2 || isNaN(pareja2Jugador2)) {
+            console.error('No se pudo obtener información de las parejas:', {
+                cruceId: cruceId,
+                ronda: ronda,
+                pareja1Jugador1: pareja1Jugador1,
+                pareja1Jugador2: pareja1Jugador2,
+                pareja2Jugador1: pareja2Jugador1,
+                pareja2Jugador2: pareja2Jugador2,
+                pareja1Element: pareja1Element.length,
+                pareja2Element: pareja2Element.length,
+                pareja1Attr1: pareja1Element.attr('data-jugador-1'),
+                pareja1Attr2: pareja1Element.attr('data-jugador-2'),
+                pareja2Attr1: pareja2Element.attr('data-jugador-1'),
+                pareja2Attr2: pareja2Element.attr('data-jugador-2'),
+                cruces: cruces,
+                crucesFinal: cruces.filter(c => c.ronda === 'final'),
+                matchCardHTML: matchCard[0] ? matchCard[0].outerHTML.substring(0, 500) : 'No encontrado'
+            });
+            alert('Error: No se encontró el cruce o falta información de las parejas. Ver consola para más detalles.');
             return;
         }
         
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/guardar_resultado_cruce_americano',
+            url: '{{ route("guardarresultadocruceamericano") }}',
             data: {
                 torneo_id: torneoId,
                 ronda: ronda,
-                pareja_1_jugador_1: cruce.pareja_1.jugador_1,
-                pareja_1_jugador_2: cruce.pareja_1.jugador_2,
-                pareja_2_jugador_1: cruce.pareja_2.jugador_1,
-                pareja_2_jugador_2: cruce.pareja_2.jugador_2,
+                pareja_1_jugador_1: pareja1Jugador1,
+                pareja_1_jugador_2: pareja1Jugador2,
+                pareja_2_jugador_1: pareja2Jugador1,
+                pareja_2_jugador_2: pareja2Jugador2,
                 pareja_1_set_1: pareja1Puntos,
                 pareja_2_set_1: pareja2Puntos,
                 _token: '{{csrf_token()}}'
             },
             success: function(response) {
                 if (response.success) {
+                    // Crear objetos de pareja para uso local
+                    let pareja1Obj = {
+                        jugador_1: pareja1Jugador1,
+                        jugador_2: pareja1Jugador2
+                    };
+                    let pareja2Obj = {
+                        jugador_1: pareja2Jugador1,
+                        jugador_2: pareja2Jugador2
+                    };
+                    
                     // Guardar resultado localmente
                     if (ronda === 'cuartos') {
                         resultadosCuartos[cruceId] = {
-                            ganador: pareja1Puntos > pareja2Puntos ? cruce.pareja_1 : cruce.pareja_2,
-                            perdedor: pareja1Puntos > pareja2Puntos ? cruce.pareja_2 : cruce.pareja_1,
+                            ganador: pareja1Puntos > pareja2Puntos ? pareja1Obj : pareja2Obj,
+                            perdedor: pareja1Puntos > pareja2Puntos ? pareja2Obj : pareja1Obj,
                             score1: pareja1Puntos,
                             score2: pareja2Puntos
                         };
@@ -912,42 +1045,58 @@
                         verificarAvance();
                     } else if (ronda === 'semifinales') {
                         resultadosSemifinales[cruceId] = {
-                            ganador: pareja1Puntos > pareja2Puntos ? cruce.pareja_1 : cruce.pareja_2,
-                            perdedor: pareja1Puntos > pareja2Puntos ? cruce.pareja_2 : cruce.pareja_1,
+                            ganador: pareja1Puntos > pareja2Puntos ? pareja1Obj : pareja2Obj,
+                            perdedor: pareja1Puntos > pareja2Puntos ? pareja2Obj : pareja1Obj,
                             score1: pareja1Puntos,
                             score2: pareja2Puntos
                         };
                         
-                        let matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                        // Buscar el match-card usando el cruceId y la ronda
+                        let matchCard = $(`.match-card[data-cruce-id="${cruceId}"][data-ronda="semifinales"]`);
+                        if (matchCard.length === 0) {
+                            // Si no se encuentra, buscar solo por cruceId
+                            matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                        }
+                        
                         matchCard.addClass('winner');
                         
+                        // Remover winner de todas las parejas primero
+                        matchCard.find('.player-pair').removeClass('winner');
+                        
+                        // Agregar winner a la pareja ganadora
                         if (pareja1Puntos > pareja2Puntos) {
-                            matchCard.find('.player-pair').first().addClass('winner');
-                            matchCard.find('.player-pair').last().removeClass('winner');
+                            matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
                         } else {
-                            matchCard.find('.player-pair').last().addClass('winner');
-                            matchCard.find('.player-pair').first().removeClass('winner');
+                            matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
                         }
                         
                         // Actualizar inmediatamente la final
                         verificarAvance();
                     } else if (ronda === 'final') {
                         resultadoFinal = {
-                            ganador: pareja1Puntos > pareja2Puntos ? cruce.pareja_1 : cruce.pareja_2,
-                            perdedor: pareja1Puntos > pareja2Puntos ? cruce.pareja_2 : cruce.pareja_1,
+                            ganador: pareja1Puntos > pareja2Puntos ? pareja1Obj : pareja2Obj,
+                            perdedor: pareja1Puntos > pareja2Puntos ? pareja2Obj : pareja1Obj,
                             score1: pareja1Puntos,
                             score2: pareja2Puntos
                         };
                         
-                        let matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                        // Buscar el match-card usando el cruceId y la ronda
+                        let matchCard = $(`.match-card[data-cruce-id="${cruceId}"][data-ronda="final"]`);
+                        if (matchCard.length === 0) {
+                            // Si no se encuentra, buscar solo por cruceId
+                            matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                        }
+                        
                         matchCard.addClass('winner');
                         
+                        // Remover winner de todas las parejas primero
+                        matchCard.find('.player-pair').removeClass('winner');
+                        
+                        // Agregar winner a la pareja ganadora
                         if (pareja1Puntos > pareja2Puntos) {
-                            matchCard.find('.player-pair').first().addClass('winner');
-                            matchCard.find('.player-pair').last().removeClass('winner');
+                            matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
                         } else {
-                            matchCard.find('.player-pair').last().addClass('winner');
-                            matchCard.find('.player-pair').first().removeClass('winner');
+                            matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
                         }
                         
                         // Mostrar modal de ganadores con confetti
@@ -1224,7 +1373,7 @@
         if (jugador1) {
             html += `
                 <div class="ganador-foto">
-                    <img src="/${jugador1.foto || 'images/jugador_img.png'}" alt="${jugador1.nombre}">
+                    <img src="${baseUrl}/${jugador1.foto || 'images/jugador_img.png'}" alt="${jugador1.nombre}">
                     <div class="nombre">${jugador1.nombre} ${jugador1.apellido}</div>
                 </div>
             `;
@@ -1232,7 +1381,7 @@
         if (jugador2) {
             html += `
                 <div class="ganador-foto">
-                    <img src="/${jugador2.foto || 'images/jugador_img.png'}" alt="${jugador2.nombre}">
+                    <img src="${baseUrl}/${jugador2.foto || 'images/jugador_img.png'}" alt="${jugador2.nombre}">
                     <div class="nombre">${jugador2.nombre} ${jugador2.apellido}</div>
                 </div>
             `;
@@ -1294,12 +1443,14 @@
                     let sfId = sf.id;
                     let valor1 = '';
                     let valor2 = '';
+                    let resultadoGuardado = null;
                     
                     // Buscar resultados guardados para este cruce
                     resultadosGuardados.forEach(function(resultado) {
                         if (resultado.ronda === 'semifinales' && resultado.cruce_id === sfId) {
                             valor1 = resultado.pareja_1_set_1 || '';
                             valor2 = resultado.pareja_2_set_1 || '';
+                            resultadoGuardado = resultado;
                         }
                     });
                     
@@ -1316,6 +1467,30 @@
             });
             if (htmlSemifinales) {
                 $('#semifinales-content').html(htmlSemifinales);
+                
+                // Aplicar estilo de ganador después de renderizar
+                crucesSemifinales.forEach(function(sf) {
+                    if (sf.pareja_1 && sf.pareja_2) {
+                        let sfId = sf.id;
+                        let resultadoGuardado = resultadosGuardados.find(function(r) {
+                            return r.ronda === 'semifinales' && r.cruce_id === sfId;
+                        });
+                        
+                        if (resultadoGuardado && resultadoGuardado.pareja_1_set_1 > 0 && resultadoGuardado.pareja_2_set_1 > 0) {
+                            let matchCard = $(`.match-card[data-cruce-id="${sfId}"][data-ronda="semifinales"]`);
+                            if (matchCard.length > 0) {
+                                matchCard.addClass('winner');
+                                matchCard.find('.player-pair').removeClass('winner');
+                                
+                                if (resultadoGuardado.pareja_1_set_1 > resultadoGuardado.pareja_2_set_1) {
+                                    matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
+                                } else {
+                                    matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
+                                }
+                            }
+                        }
+                    }
+                });
             }
         }
         
@@ -1328,12 +1503,14 @@
                     let finalId = final.id;
                     let valor1 = '';
                     let valor2 = '';
+                    let resultadoGuardado = null;
                     
                     // Buscar resultados guardados para este cruce
                     resultadosGuardados.forEach(function(resultado) {
                         if (resultado.ronda === 'final' && resultado.cruce_id === finalId) {
                             valor1 = resultado.pareja_1_set_1 || '';
                             valor2 = resultado.pareja_2_set_1 || '';
+                            resultadoGuardado = resultado;
                         }
                     });
                     
@@ -1350,6 +1527,30 @@
             });
             if (htmlFinal) {
                 $('#final-content').html(htmlFinal);
+                
+                // Aplicar estilo de ganador después de renderizar
+                crucesFinal.forEach(function(final) {
+                    if (final.pareja_1 && final.pareja_2) {
+                        let finalId = final.id;
+                        let resultadoGuardado = resultadosGuardados.find(function(r) {
+                            return r.ronda === 'final' && r.cruce_id === finalId;
+                        });
+                        
+                        if (resultadoGuardado && resultadoGuardado.pareja_1_set_1 > 0 && resultadoGuardado.pareja_2_set_1 > 0) {
+                            let matchCard = $(`.match-card[data-cruce-id="${finalId}"][data-ronda="final"]`);
+                            if (matchCard.length > 0) {
+                                matchCard.addClass('winner');
+                                matchCard.find('.player-pair').removeClass('winner');
+                                
+                                if (resultadoGuardado.pareja_1_set_1 > resultadoGuardado.pareja_2_set_1) {
+                                    matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
+                                } else {
+                                    matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
+                                }
+                            }
+                        }
+                    }
+                });
             }
         }
         

@@ -32,11 +32,16 @@
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
-            url: '/get_torneos',
+            url: '{{ route("gettorneos") }}',
             data: { _token: '{{csrf_token()}}' },
             success: function (data) {
                 torneos = data.torneos || [];
                 mostrarTorneosMes();
+            },
+            error: function(xhr, status, error) {
+                console.error('Error al cargar torneos:', xhr, status, error);
+                console.error('Response:', xhr.responseText);
+                $('#listado-torneos').html('<div class="col-12 text-center text-danger">Error al cargar los torneos. Por favor, recarga la página.</div>');
             }
         });
     }
@@ -120,10 +125,13 @@
             $.ajax({
                 type: 'POST',
                 dataType: 'JSON',
-                url: '/get_torneos',
+                url: '{{ route("gettorneos") }}',
                 data: {  _token: '{{csrf_token()}}' },
                 success: function (data) {                
                     //showSnackbar("¡Torneo registrado exitosamente!");                
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error al cargar torneos:', xhr, status, error);
                 }
             });
         }

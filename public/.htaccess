@@ -1,3 +1,6 @@
+# Use PHP 8.2 from MAMP
+# Note: Configure MAMP to use PHP 8.2.0 in Preferences → PHP
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
