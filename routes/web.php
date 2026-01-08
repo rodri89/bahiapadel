@@ -149,6 +149,6 @@ Route::get('password/reset/{token}', 'Auth\ResetPasswordController@showResetForm
 Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('password.update');
 
 // Webhook para despliegue automático desde GitHub
-Route::post('/deploy-webhook', 'DeployWebhookController@handle')->name('deploy.webhook');
+Route::post('/deploy-webhook', [\App\Http\Controllers\DeployWebhookController::class, 'handle'])->name('deploy.webhook');
 
 
