@@ -34,7 +34,7 @@ Route::get('/bahia_padel', 'HomeFreeController@bahiaPadelHome')->name('bahiapade
 
 Route::get('/bahia_padel_admin', 'HomeFreeController@bahiaPadelAdmin')->name('bahiapadeladmin');	
 
-Route::get('/index', 'Auth\LoginController@showLoginForm')->name('index');	
+Route::get('/index2', 'Auth\LoginController@showLoginForm')->name('index2');	
 
 // #################################################################################################
 
