@@ -73,3 +73,10 @@ The Laravel framework is open-source software licensed under the [MIT license](h
 # Test webhook completo
 # Test webhook completo
 # Test despliegue automático - Thu Jan  8 16:12:20 -03 2026
+
+## 🚀 Despliegue Automático
+
+Este proyecto tiene configurado despliegue automático mediante webhook de GitHub.
+Cada vez que se hace push a la rama `main`, el servidor actualiza automáticamente el código.
+
+**Última prueba de despliegue:** 2026-01-08 16:18:47
