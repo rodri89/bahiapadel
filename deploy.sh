@@ -10,6 +10,12 @@ set -e
 
 echo "🚀 Iniciando despliegue..."
 
+# Cambiar al directorio del proyecto
+cd /home/u895805914/domains/padelbb.com/public_html/bahiapadel2
+
+echo "📥 Actualizando código desde GitHub..."
+git pull origin main
+
 # CONFIGURACIÓN EXPLÍCITA PARA HOSTINGER PHP 8.3
 PHP_BIN="/opt/alt/php83/usr/bin/php"
 COMPOSER_CMD="$PHP_BIN /opt/alt/php83/usr/bin/composer"
