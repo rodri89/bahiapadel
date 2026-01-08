@@ -1,26 +1,48 @@
+cd /home/u895805914/domains/padelbb.com/public_html/bahiapadel2
+
+# 1. BORRA el deploy.sh viejo
+rm deploy.sh
+
+# 2. CREA el nuevo con rutas EXPLÍCITAS de PHP 8.3
+cat > deploy.sh << 'EOF'
 #!/bin/bash
-# Script de despliegue para Hostinger
-# Ejecutar después de cada git pull
+set -e
 
 echo "🚀 Iniciando despliegue..."
 
-# Instalar dependencias
+# CONFIGURACIÓN EXPLÍCITA PARA HOSTINGER PHP 8.3
+PHP_BIN="/opt/alt/php83/usr/bin/php"
+COMPOSER_CMD="$PHP_BIN /opt/alt/php83/usr/bin/composer"
+ARTISAN_CMD="$PHP_BIN artisan"
+
 echo "📦 Instalando dependencias..."
-composer install --no-dev --optimize-autoloader --no-interaction
+$COMPOSER_CMD install --no-dev --optimize-autoloader --ignore-platform-req=ext-sodium --no-interaction
 
-# Limpiar cachés
 echo "🧹 Limpiando cachés..."
-php artisan config:clear
-php artisan cache:clear
-php artisan view:clear
-php artisan route:clear
+$ARTISAN_CMD config:clear
+$ARTISAN_CMD cache:clear
+$ARTISAN_CMD view:clear
+$ARTISAN_CMD route:clear
 
-# Regenerar cachés
 echo "⚡ Regenerando cachés..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan optimize
+$ARTISAN_CMD config:cache
+$ARTISAN_CMD view:cache
+
+# Intentar cachear rutas (opcional)
+echo "🛣️  Cacheando rutas..."
+if $ARTISAN_CMD route:cache 2>/dev/null; then
+    echo "   ✅ Rutas cacheadas"
+else
+    echo "   ⚠️  Saltando cache de rutas"
+fi
+
+$ARTISAN_CMD optimize
 
 echo "✅ Despliegue completado!"
+EOF
 
+# 3. Dale permisos
+chmod +x deploy.sh
+
+# 4. Verifica que usa PHP 8.3
+head -20 deploy.sh
