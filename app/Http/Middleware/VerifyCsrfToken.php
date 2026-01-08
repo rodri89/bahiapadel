@@ -19,6 +19,6 @@ class VerifyCsrfToken extends Middleware
      * @var array
      */
     protected $except = [
-        //
+        'deploy-webhook', // Webhook de GitHub para despliegue automático
     ];
 }
