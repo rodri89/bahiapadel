@@ -11,13 +11,14 @@
   <link rel="icon" type="image/x-icon" href="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" />
 
 <!-- Custom fonts for this template-->
-  <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+  <link href="{{ asset('css/all.min.css') }}" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
   <!-- Para que funcione el datatable-->
   <link rel="stylesheet" type="text/css" href="{{asset('datatable/jquery.dataTables.min.css')}}">
   <!-- Custom styles for this template-->
-  <link href="css/sb-admin-2.min.css" rel="stylesheet">  
+  <link href="css/sb-admin-2.min.css" rel="stylesheet">
+  <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
 
   <!-- Para que funcione ajax-->
   <script src = "https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
@@ -63,6 +64,11 @@
         <li class="nav-item mx-1">
           <a class="nav-link header_btn" href="#">Vivo</a>
         </li>
+        <li class="nav-item mx-1">
+          <a class="nav-link header_btn" onclick="toggleDarkMode()" title="Toggle Dark Mode" style="cursor: pointer;">
+            <i class="fas fa-moon"></i>
+          </a>
+        </li>
       </ul>
     </div>
   </div>
@@ -93,13 +99,23 @@
       setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
   }
 
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+  }
+
+  // Mantener el modo oscuro al recargar la página
+  if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+
   </script>
   <!-- Bootstrap core JavaScript-->
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
   <!-- Core plugin JavaScript-->
-  <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
+  <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
 
   <!-- Custom scripts for all pages-->
   <script src="js/sb-admin-2.min.js"></script>

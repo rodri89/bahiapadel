@@ -19,4 +19,18 @@
 	<input type="file" id="np_imagen" name="np_imagen" class="form-control" placeholder="foto"  />
 </div>
 
+<button id="darkModeToggle" class="btn btn-primary">Toggle Dark Mode</button>
+
+<script>
+    document.getElementById('darkModeToggle').addEventListener('click', function () {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    });
+
+    // Mantener el modo oscuro al recargar la página
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+</script>
+
 @endsection

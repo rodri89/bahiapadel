@@ -13,7 +13,7 @@
   <link rel="icon" type="image/x-icon" href="images/iconos/logo_serrucho.png" />
 
 <!-- Custom fonts for this template-->
-  <link href="vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+  <link href="{{ asset('css/all.min.css') }}" rel="stylesheet" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
   <!-- Para que funcione el datatable-->
@@ -21,6 +21,7 @@
   <!-- Custom styles for this template-->
   <link href="css/sb-admin-2.min.css" rel="stylesheet">
   <link href="css/rodri_style.css" rel="stylesheet">
+  <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
 
   <!-- Para que funcione ajax-->
   <script src = "https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
@@ -164,9 +165,14 @@
 
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav ml-auto fondoNavMenu">
+              <li class="nav-item">
+                <a class="nav-link" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                  <i class="fas fa-moon"></i>
+                  <span class="sr-only">Dark Mode</span>
+                </a>
+              </li>
               <li class="nav-item active">
-                <a class="nav-link " onclick="showLogout()">Logout
-                  <span class="sr-only">(current)</span>
+                <a class="nav-link " onclick="showLogout()">Logout!ss
                 </a>
               </li>
             </ul>
@@ -239,6 +245,16 @@
   </div>
   <script type="text/javascript">
 
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    }
+
+    // Mantener el modo oscuro al recargar la página
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark-mode');
+    }
+
     function showLogout() {
       $("#logoutModal").modal();        
     }
@@ -256,7 +272,7 @@
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
   <!-- Core plugin JavaScript-->
-  <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
+  <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
 
   <!-- Custom scripts for all pages-->
   <script src="js/sb-admin-2.min.js"></script>
