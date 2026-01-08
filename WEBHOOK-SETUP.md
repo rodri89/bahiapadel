@@ -3,13 +3,13 @@
 ## 🎯 Dos Opciones Disponibles:
 
 ### Opción A: Ruta de Laravel (RECOMENDADO) ✅
-- URL: `https://padelbb.com/deploy-webhook`
+- URL: `https://bahiapadel2.padelbb.com/deploy-webhook`
 - Usa el controlador `DeployWebhookController`
 - Mejor integración con Laravel
 - Logging automático con Laravel
 
 ### Opción B: Archivo PHP Directo
-- URL: `https://padelbb.com/deploy-webhook.php`
+- URL: `https://bahiapadel2.padelbb.com/deploy-webhook.php`
 - Archivo en `public/deploy-webhook.php`
 - Funciona sin pasar por Laravel
 
@@ -29,8 +29,8 @@ Esta clave está configurada en:
 1. Ve a tu repositorio en GitHub: `https://github.com/rodri89/bahiapadel`
 2. Ve a **Settings** → **Webhooks** → **Add webhook**
 3. Configura:
-   - **Payload URL**: `https://padelbb.com/deploy-webhook` (Opción A - Recomendado)
-     - O: `https://padelbb.com/deploy-webhook.php` (Opción B)
+   - **Payload URL**: `https://bahiapadel2.padelbb.com/deploy-webhook` (Opción A - Recomendado)
+     - O: `https://bahiapadel2.padelbb.com/deploy-webhook.php` (Opción B)
    - **Content type**: `application/json`
    - **Secret**: `0e6ce09117155a7105a38e7355fe5356f03c19b03a4baa3d155fedd77d678296`
    - **Which events**: Selecciona **"Just the push event"**
@@ -66,7 +66,7 @@ Esta clave está configurada en:
 
 ```bash
 # Desde tu máquina local o servidor
-curl -X POST https://padelbb.com/deploy-webhook.php \
+curl -X POST https://bahiapadel2.padelbb.com/deploy-webhook.php \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature: sha1=TU_FIRMA" \
   -d '{"ref":"refs/heads/main"}'
