@@ -7,7 +7,19 @@ echo "🚀 Iniciando despliegue..."
 cd /home/u895805914/domains/padelbb.com/public_html/bahiapadel2
 
 echo "📥 Actualizando código desde GitHub..."
-git pull origin main
+echo "   Directorio actual: $(pwd)"
+echo "   Estado de Git antes del pull:"
+git status --short || echo "   ⚠️  Error al verificar estado de Git"
+echo "   Ejecutando git pull..."
+if git pull origin main; then
+    echo "   ✅ Git pull exitoso"
+    echo "   Estado de Git después del pull:"
+    git status --short || true
+else
+    echo "   ❌ Error en git pull"
+    echo "   Intentando con --no-edit..."
+    git pull origin main --no-edit || echo "   ❌ Error persistente en git pull"
+fi
 
 # CONFIGURACIÓN EXPLÍCITA PARA HOSTINGER PHP 8.3
 PHP_BIN="/opt/alt/php83/usr/bin/php"
