@@ -80,3 +80,5 @@ Este proyecto tiene configurado despliegue automático mediante webhook de GitHu
 Cada vez que se hace push a la rama `main`, el servidor actualiza automáticamente el código.
 
 **Última prueba de despliegue:** 2026-01-08 16:18:47
+
+**Prueba de despliegue automático:** 2026-01-08 16:25:12 - Verificando que git pull funciona correctamente
