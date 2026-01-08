@@ -12,7 +12,7 @@
 
 // Clave secreta - CAMBIA ESTO por una clave aleatoria única
 // Genera una nueva con: openssl rand -hex 32
-$secret = 'CAMBIAR_POR_CLAVE_SECRETA_GENERADA';
+$secret = '0e6ce09117155a7105a38e7355fe5356f03c19b03a4baa3d155fedd77d678296';
 
 // Ruta absoluta al proyecto
 $project_path = '/home/u895805914/domains/padelbb.com/public_html/bahiapadel2';
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $signature = $_SERVER['HTTP_X_HUB_SIGNATURE'] ?? $_SERVER['HTTP_X_GITHUB_SIGNATURE'] ?? '';
 $payload = file_get_contents('php://input');
 
-if ($secret && $secret !== 'CAMBIAR_POR_CLAVE_SECRETA_GENERADA') {
+if ($secret && $secret !== '0e6ce09117155a7105a38e7355fe5356f03c19b03a4baa3d155fedd77d678296') {
     if (!empty($signature)) {
         // GitHub usa sha1, otros servicios pueden usar sha256
         $hash = 'sha1=' . hash_hmac('sha1', $payload, $secret);
