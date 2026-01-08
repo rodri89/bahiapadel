@@ -1,10 +1,3 @@
-cd /home/u895805914/domains/padelbb.com/public_html/bahiapadel2
-
-# 1. BORRA el deploy.sh viejo
-rm deploy.sh
-
-# 2. CREA el nuevo con rutas EXPLÍCITAS de PHP 8.3
-cat > deploy.sh << 'EOF'
 #!/bin/bash
 set -e
 
@@ -45,10 +38,3 @@ fi
 $ARTISAN_CMD optimize
 
 echo "✅ Despliegue completado!"
-EOF
-
-# 3. Dale permisos
-chmod +x deploy.sh
-
-# 4. Verifica que usa PHP 8.3
-head -20 deploy.sh
