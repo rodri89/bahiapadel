@@ -66,7 +66,7 @@
         </li>
         <li class="nav-item mx-1">
           <a class="nav-link header_btn" onclick="toggleDarkMode()" title="Toggle Dark Mode" style="cursor: pointer;">
-            <i class="fas fa-moon"></i>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
           </a>
         </li>
       </ul>

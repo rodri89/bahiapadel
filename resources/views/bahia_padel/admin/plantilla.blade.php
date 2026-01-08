@@ -160,7 +160,7 @@
             <ul class="navbar-nav ml-auto fondoNavMenu">
               <li class="nav-item">
                 <a class="nav-link" onclick="toggleDarkMode()" title="Toggle Dark Mode">
-                  <i class="fas fa-moon"></i>
+                  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
                   <span class="sr-only">Dark Mode</span>
                 </a>
               </li>
