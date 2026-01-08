@@ -148,4 +148,7 @@ Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail'
 Route::get('password/reset/{token}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
 Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('password.update');
 
+// Webhook para despliegue automático desde GitHub
+Route::post('/deploy-webhook', 'DeployWebhookController@handle')->name('deploy.webhook');
+
 
