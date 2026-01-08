@@ -9,3 +9,7 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+# Archivos de ayuda para Composer
+.composer-helper.sh
+.composer-check.sh
+README-COMPOSER.md
