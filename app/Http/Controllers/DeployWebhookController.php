@@ -27,8 +27,21 @@ class DeployWebhookController extends Controller
      */
     public function handle(Request $request)
     {
+        // Registrar TODAS las peticiones al webhook
+        $logDir = $this->projectPath . '/storage/logs';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+        $logFile = $logDir . '/webhook-deploy.log';
+        
+        $logEntry = date('Y-m-d H:i:s') . " - Webhook llamado - Método: " . $request->method() . " - IP: " . $request->ip() . "\n";
+        file_put_contents($logFile, $logEntry, FILE_APPEND);
+
         // Solo permitir POST
         if (!$request->isMethod('post')) {
+            $logEntry = date('Y-m-d H:i:s') . " - ERROR: Método no permitido. Solo se acepta POST.\n";
+            file_put_contents($logFile, $logEntry, FILE_APPEND);
+            
             return response()->json([
                 'success' => false,
                 'error' => 'Método no permitido. Solo se acepta POST.'
@@ -38,8 +51,14 @@ class DeployWebhookController extends Controller
         // Verificar secreto
         $signature = $request->header('X-Hub-Signature') ?? $request->header('X-GitHub-Signature') ?? '';
         $payload = $request->getContent();
+        
+        $logEntry = date('Y-m-d H:i:s') . " - Verificando firma... Signature header: " . ($signature ? 'presente' : 'ausente') . "\n";
+        file_put_contents($logFile, $logEntry, FILE_APPEND);
 
         if (!$this->verifySignature($signature, $payload)) {
+            $logEntry = date('Y-m-d H:i:s') . " - ERROR: Firma inválida. Acceso denegado. IP: " . $request->ip() . "\n";
+            file_put_contents($logFile, $logEntry, FILE_APPEND);
+            
             Log::warning('Intento de acceso no autorizado al webhook de despliegue', [
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent()
@@ -55,7 +74,13 @@ class DeployWebhookController extends Controller
         $data = json_decode($payload, true);
         $ref = $data['ref'] ?? '';
         
+        $logEntry = date('Y-m-d H:i:s') . " - Ref recibido: " . $ref . "\n";
+        file_put_contents($logFile, $logEntry, FILE_APPEND);
+        
         if ($ref !== 'refs/heads/main') {
+            $logEntry = date('Y-m-d H:i:s') . " - INFO: Webhook recibido pero no es push a main. Ref: " . $ref . "\n";
+            file_put_contents($logFile, $logEntry, FILE_APPEND);
+            
             Log::info('Webhook recibido pero no es push a main', ['ref' => $ref]);
             return response()->json([
                 'success' => true,
@@ -66,11 +91,17 @@ class DeployWebhookController extends Controller
 
         // Ejecutar despliegue en segundo plano
         try {
+            $commitId = $data['head_commit']['id'] ?? 'unknown';
+            $commitMessage = $data['head_commit']['message'] ?? 'unknown';
+            
+            $logEntry = date('Y-m-d H:i:s') . " - ✅ Iniciando despliegue - Commit: " . $commitId . " - Mensaje: " . $commitMessage . "\n";
+            file_put_contents($logFile, $logEntry, FILE_APPEND);
+            
             $this->executeDeploy();
             
             Log::info('Despliegue iniciado desde webhook', [
-                'commit' => $data['head_commit']['id'] ?? 'unknown',
-                'message' => $data['head_commit']['message'] ?? 'unknown'
+                'commit' => $commitId,
+                'message' => $commitMessage
             ]);
 
             return response()->json([
@@ -80,6 +111,9 @@ class DeployWebhookController extends Controller
                 'log_file' => 'storage/logs/webhook-deploy.log'
             ]);
         } catch (\Exception $e) {
+            $logEntry = date('Y-m-d H:i:s') . " - ❌ ERROR al ejecutar despliegue: " . $e->getMessage() . "\n";
+            file_put_contents($logFile, $logEntry, FILE_APPEND);
+            
             Log::error('Error al ejecutar despliegue desde webhook', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
