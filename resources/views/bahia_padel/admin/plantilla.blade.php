@@ -12,7 +12,7 @@
   <link rel="icon" type="image/x-icon" href="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" />
 
 <!-- Custom fonts for this template-->
-  <link href="{{ asset('css/all.min.css') }}" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
   <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
   <!-- Para que funcione el datatable-->
@@ -160,7 +160,7 @@
             <ul class="navbar-nav ml-auto fondoNavMenu">
               <li class="nav-item">
                 <a class="nav-link" onclick="toggleDarkMode()" title="Toggle Dark Mode">
-                  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
+                  <i class="fas fa-moon"></i>
                   <span class="sr-only">Dark Mode</span>
                 </a>
               </li>
