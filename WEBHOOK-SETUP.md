@@ -1,43 +1,52 @@
 # 🔗 Configuración de Webhook para Despliegue Automático
 
+## 🎯 Dos Opciones Disponibles:
+
+### Opción A: Ruta de Laravel (RECOMENDADO) ✅
+- URL: `https://padelbb.com/deploy-webhook`
+- Usa el controlador `DeployWebhookController`
+- Mejor integración con Laravel
+- Logging automático con Laravel
+
+### Opción B: Archivo PHP Directo
+- URL: `https://padelbb.com/deploy-webhook.php`
+- Archivo en `public/deploy-webhook.php`
+- Funciona sin pasar por Laravel
+
 ## 📋 Paso 1: Generar Clave Secreta
 
-En tu máquina local o servidor, genera una clave secreta:
-
-```bash
-openssl rand -hex 32
+La clave secreta ya está generada:
+```
+0e6ce09117155a7105a38e7355fe5356f03c19b03a4baa3d155fedd77d678296
 ```
 
-**Copia la clave generada** - la necesitarás en los siguientes pasos.
+Esta clave está configurada en:
+- `app/Http/Controllers/DeployWebhookController.php` (línea 18)
+- `public/deploy-webhook.php` (línea 15)
 
-## 📝 Paso 2: Configurar el Webhook
-
-### En el Servidor (Hostinger):
-
-1. **Edita el archivo `public/deploy-webhook.php`**
-2. **Reemplaza** `'CAMBIAR_POR_CLAVE_SECRETA_GENERADA'` con la clave que generaste
-3. **Verifica** que la ruta del proyecto sea correcta:
-   ```php
-   $project_path = '/home/u895805914/domains/padelbb.com/public_html/bahiapadel2';
-   ```
-
-### Ejemplo:
-
-```php
-$secret = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6'; // Tu clave generada
-```
-
-## 🔒 Paso 3: Configurar el Webhook en GitHub
+## 📝 Paso 2: Configurar el Webhook en GitHub
 
 1. Ve a tu repositorio en GitHub: `https://github.com/rodri89/bahiapadel`
 2. Ve a **Settings** → **Webhooks** → **Add webhook**
 3. Configura:
-   - **Payload URL**: `https://padelbb.com/deploy-webhook.php`
+   - **Payload URL**: `https://padelbb.com/deploy-webhook` (Opción A - Recomendado)
+     - O: `https://padelbb.com/deploy-webhook.php` (Opción B)
    - **Content type**: `application/json`
-   - **Secret**: (Pega la clave que generaste)
-   - **Which events**: Selecciona **"Just the push event"** o **"Let me select individual events"** → Marca solo **"Pushes"**
+   - **Secret**: `0e6ce09117155a7105a38e7355fe5356f03c19b03a4baa3d155fedd77d678296`
+   - **Which events**: Selecciona **"Just the push event"**
    - **Active**: ✅ Marcado
 4. Haz clic en **"Add webhook"**
+
+## ⚙️ Paso 3: Verificar Configuración en el Servidor
+
+### Para Opción A (Ruta Laravel):
+- La ruta ya está configurada en `routes/web.php`
+- El controlador está en `app/Http/Controllers/DeployWebhookController.php`
+- Verifica que la ruta del proyecto sea correcta (línea 25 del controlador)
+
+### Para Opción B (Archivo PHP):
+- Edita `public/deploy-webhook.php` si es necesario
+- Verifica que la ruta del proyecto sea correcta
 
 ## 🧪 Paso 4: Probar el Webhook
 
