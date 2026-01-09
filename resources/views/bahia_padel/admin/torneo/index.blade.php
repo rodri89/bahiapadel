@@ -8,7 +8,7 @@
             display: none !important;
         }
         .seccion-visible {
-            display: block !important;
+            display: flex !important;
         }
         .btn-grande {
             font-size: 2rem;
@@ -81,13 +81,13 @@
 
     <!-- Sección del formulario de nuevo torneo -->
     <div id="seccion_form_nuevo_torneo" class="d-flex justify-content-center align-items-start seccion-oculta" style="min-height: 60vh; padding: 20px 0;">    
-        <div style="width: 100%; max-width: 1200px;">
+        <div style="width: 100%; max-width: 1200px; margin: 0 auto;">
             @include('bahia_padel.admin.torneo.form_nuevo_torneo')
         </div>
     </div>
 
     <!-- Sección de selección de torneo -->
-    <div id="seccion_seleccionar_torneo" class="seccion-oculta" style="min-height: 60vh; padding: 20px 0; overflow-y: auto; max-height: calc(100vh - 200px);">    
+    <div id="seccion_seleccionar_torneo" class="d-flex justify-content-center align-items-start seccion-oculta" style="min-height: 60vh; padding: 20px 0; overflow-y: auto; max-height: calc(100vh - 200px);">    
         <div style="width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 15px;">
             @include('bahia_padel.admin.torneo.seleccionar_torneo')
         </div>
@@ -103,7 +103,7 @@
             // Mostrar formulario de nuevo torneo
             document.getElementById('seccion_form_nuevo_torneo').className = 'd-flex justify-content-center align-items-start seccion-visible';
             // Ocultar sección de seleccionar torneo
-            document.getElementById('seccion_seleccionar_torneo').className = 'seccion-oculta';
+            document.getElementById('seccion_seleccionar_torneo').className = 'd-flex justify-content-center align-items-start seccion-oculta';
         }
 
         function mostrarSeleccionarTorneo() {    
@@ -112,7 +112,7 @@
             // Ocultar sección de botones
             document.getElementById('seccion_botones').className = 'd-flex justify-content-center align-items-center seccion-oculta';
             // Mostrar sección de seleccionar torneo
-            document.getElementById('seccion_seleccionar_torneo').className = 'seccion-visible';
+            document.getElementById('seccion_seleccionar_torneo').className = 'd-flex justify-content-center align-items-start seccion-visible';
             // Ocultar formulario de nuevo torneo
             document.getElementById('seccion_form_nuevo_torneo').className = 'd-flex justify-content-center align-items-start seccion-oculta';
         }
