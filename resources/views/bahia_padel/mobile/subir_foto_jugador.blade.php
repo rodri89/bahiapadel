@@ -130,7 +130,10 @@ $(document).ready(function() {
     
     // Función para manejar el preview de imagen (reutilizable)
     function manejarPreviewImagen(file) {
+        console.log('manejarPreviewImagen llamado con:', file);
+        
         if (!file) {
+            console.log('No hay archivo');
             return false;
         }
         
@@ -142,7 +145,7 @@ $(document).ready(function() {
         }
         
         // Validar tipo
-        if (!file.type.match('image.*')) {
+        if (!file.type || !file.type.match('image.*')) {
             mostrarMensaje('Por favor selecciona una imagen válida.', 'error');
             $('#input-foto').val('');
             return false;
@@ -156,22 +159,51 @@ $(document).ready(function() {
         }
         
         // Mostrar preview
+        console.log('Leyendo archivo para preview...');
         const reader = new FileReader();
+        
         reader.onload = function(e) {
+            console.log('Archivo leído, mostrando preview');
             $('#preview-foto').attr('src', e.target.result);
             $('#preview-container').show();
             $('#file-input-text').text(file.name + ' (' + sizeMessage + ')');
             $('#btn-subir-foto').prop('disabled', false);
         };
+        
+        reader.onerror = function(e) {
+            console.error('Error al leer el archivo:', e);
+            mostrarMensaje('Error al leer el archivo. Por favor intenta con otra imagen.', 'error');
+        };
+        
         reader.readAsDataURL(file);
         
         return true;
     }
     
-    // Preview de imagen antes de subir (usando delegación de eventos para que funcione después de resetear)
+    // Preview de imagen antes de subir
+    // Usar tanto delegación como evento directo para asegurar que funcione
+    function vincularEventoPreview() {
+        $('#input-foto').off('change.preview').on('change.preview', function(e) {
+            console.log('Input file cambió, archivo seleccionado:', e.target.files[0]);
+            const file = e.target.files[0];
+            if (file) {
+                manejarPreviewImagen(file);
+            } else {
+                console.log('No se seleccionó ningún archivo');
+            }
+        });
+    }
+    
+    // Vincular evento al cargar la página
+    vincularEventoPreview();
+    
+    // También usar delegación como respaldo
     $(document).on('change', '#input-foto', function(e) {
+        console.log('Delegación de eventos capturó el change');
         const file = e.target.files[0];
-        manejarPreviewImagen(file);
+        if (file) {
+            manejarPreviewImagen(file);
+        }
     });
     
     // Subir foto
@@ -387,6 +419,11 @@ function subirFoto(jugadorId, archivo) {
                 $('#preview-container').hide();
                 $('#file-input-text').text('Toca para seleccionar una imagen');
                 $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-upload"></i> Subir Foto');
+                
+                // Re-vincular el evento después de limpiar
+                setTimeout(function() {
+                    vincularEventoPreview();
+                }, 100);
                 
                 // No ocultar la sección, permitir subir otra foto o seleccionar otro jugador
             } else {
