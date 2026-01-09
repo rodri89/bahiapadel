@@ -589,13 +589,15 @@
 <script type="text/javascript">
     const cruces = @json($cruces ?? []);
     const jugadores = @json($jugadores ?? []);
-    const resultadosGuardados = @json($resultadosGuardados ?? []);
+    let resultadosGuardados = @json($resultadosGuardados ?? []);
     const baseUrl = '{{ url("/") }}';
     const jugadoresMap = new Map(jugadores.map(j => [Number(j.id), j]));
-    let torneoId = 0;
+    let torneoId = {{ $torneo->id ?? 0 }};
 
     document.addEventListener('DOMContentLoaded', () => {
-        torneoId = Number(document.getElementById('torneo_id')?.value || 0);
+        if (!torneoId) {
+            torneoId = Number(document.getElementById('torneo_id')?.value || 0);
+        }
         inicializarTema();
         inicializarBotonVolver();
         cargarResultadosGuardados();
@@ -603,6 +605,16 @@
         // Ajustar escala para que todo quepa en pantalla (sin scroll)
         setTimeout(ajustarEscalaBracket, 120);
         window.addEventListener('resize', () => setTimeout(ajustarEscalaBracket, 120));
+        
+        // Actualizar resultados cada 3 segundos
+        setInterval(function() {
+            actualizarResultadosCruces();
+        }, 3000);
+        
+        // Primera actualización después de 3 segundos
+        setTimeout(function() {
+            actualizarResultadosCruces();
+        }, 3000);
     });
 
     function inicializarTema() {
@@ -870,6 +882,38 @@
             });
             $('body').append(confetti);
         }
+    }
+    
+    // Función para actualizar resultados de cruces vía AJAX
+    function actualizarResultadosCruces() {
+        if (!torneoId) return;
+        
+        $.ajax({
+            type: 'POST',
+            url: '{{ route("tvtorneoamericanocrucesactualizar") }}',
+            data: {
+                torneo_id: torneoId,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success && response.resultadosGuardados) {
+                    // Actualizar los resultados guardados
+                    resultadosGuardados = response.resultadosGuardados;
+                    
+                    // Limpiar marcadores actuales antes de recargar
+                    $('.match-card').removeClass('winner');
+                    $('.player-pair').removeClass('winner');
+                    $('.score-display').text('0');
+                    
+                    // Recargar resultados
+                    window.__crucesResultadosRetries = 0;
+                    cargarResultadosGuardados();
+                }
+            },
+            error: function() {
+                // Silencioso, no mostrar error si falla
+            }
+        });
     }
 </script>
 

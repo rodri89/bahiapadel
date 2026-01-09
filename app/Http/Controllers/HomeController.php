@@ -2868,6 +2868,92 @@ class HomeController extends Controller
                     ->with('primerosClasificados', $primerosClasificados)
                     ->with('totalClasificados', count($clasificados));
     }
+    
+    public function tvTorneoAmericanoCrucesActualizar(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        $torneo = DB::table('torneos')
+                        ->where('torneos.id', $torneoId)
+                        ->where('torneos.activo', 1)
+                        ->first();
+        
+        if (!$torneo) {
+            return response()->json(['success' => false, 'message' => 'Torneo no encontrado'], 404);
+        }
+        
+        // Obtener todos los grupos eliminatorios con sus partidos
+        $gruposEliminatorios = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->whereIn('zona', ['cuartos final', 'semifinal', 'final'])
+            ->whereNotNull('partido_id')
+            ->orderBy('zona')
+            ->orderBy('partido_id')
+            ->orderBy('id')
+            ->get();
+        
+        // Agrupar por partido_id
+        $partidosAgrupados = [];
+        foreach ($gruposEliminatorios as $grupo) {
+            $partidoId = $grupo->partido_id;
+            if (!isset($partidosAgrupados[$partidoId])) {
+                $partidosAgrupados[$partidoId] = [
+                    'zona' => $grupo->zona,
+                    'partido_id' => $partidoId,
+                    'grupos' => []
+                ];
+            }
+            $partidosAgrupados[$partidoId]['grupos'][] = $grupo;
+        }
+        
+        // Obtener los datos de los partidos
+        $partidosIds = array_keys($partidosAgrupados);
+        $partidos = [];
+        if (count($partidosIds) > 0) {
+            $partidos = DB::table('partidos')
+                ->whereIn('id', $partidosIds)
+                ->get()
+                ->keyBy('id');
+        }
+        
+        // Construir resultados guardados
+        $resultadosGuardados = [];
+        foreach ($partidosAgrupados as $partidoId => $datosPartido) {
+            if (count($datosPartido['grupos']) >= 2 && isset($partidos[$partidoId])) {
+                $g1 = $datosPartido['grupos'][0];
+                $g2 = $datosPartido['grupos'][1];
+                $partido = $partidos[$partidoId];
+                
+                // Determinar la ronda según la zona
+                $ronda = 'cuartos';
+                if ($datosPartido['zona'] === 'semifinal') {
+                    $ronda = 'semifinales';
+                } else if ($datosPartido['zona'] === 'final') {
+                    $ronda = 'final';
+                }
+                
+                $cruceId = $ronda . '_' . $partidoId;
+                
+                if ($partido->pareja_1_set_1 > 0 || $partido->pareja_2_set_1 > 0) {
+                    $resultadosGuardados[] = [
+                        'partido_id' => $partidoId,
+                        'cruce_id' => $cruceId,
+                        'ronda' => $ronda,
+                        'pareja_1_jugador_1' => $g1->jugador_1,
+                        'pareja_1_jugador_2' => $g1->jugador_2,
+                        'pareja_2_jugador_1' => $g2->jugador_1,
+                        'pareja_2_jugador_2' => $g2->jugador_2,
+                        'pareja_1_set_1' => $partido->pareja_1_set_1 ?? 0,
+                        'pareja_2_set_1' => $partido->pareja_2_set_1 ?? 0,
+                    ];
+                }
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'resultadosGuardados' => $resultadosGuardados
+        ]);
+    }
 
     public function adminTorneoAmericanoCruces(Request $request) {
         $torneoId = $request->torneo_id;

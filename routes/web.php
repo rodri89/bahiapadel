@@ -25,6 +25,7 @@ Route::get('/migrate', function() {
 Route::get("/tv_torneo_americano", "HomeController@tvTorneoAmericano")->name("tvtorneoamericano");
 Route::get("/tv_torneo_americano_cruces", "HomeController@tvTorneoAmericanoCruces")->name("tvtorneoamericanocruces");
 Route::post("/tv_torneo_americano_actualizar", "HomeController@tvTorneoAmericanoActualizar")->name("tvtorneoamericanoactualizar");
+Route::post("/tv_torneo_americano_cruces_actualizar", "HomeController@tvTorneoAmericanoCrucesActualizar")->name("tvtorneoamericanocrucesactualizar");
 
 // ################################# estas rutas debo tocar para volver al mantenimiento ################
 /*Route::get('/home_test', function () {	
