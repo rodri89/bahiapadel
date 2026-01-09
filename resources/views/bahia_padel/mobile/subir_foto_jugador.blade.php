@@ -35,43 +35,59 @@
 
     <!-- Sección de subida de foto (fixed bottom) -->
     <div class="upload-section" id="upload-section" style="display: none;">
-        <div class="selected-jugador-info mb-3 p-3 bg-light rounded">
-            <div class="d-flex align-items-center">
-                <img id="selected-jugador-foto" src="" class="jugador-foto-mobile me-3" alt="Foto jugador">
-                <div>
-                    <h6 class="mb-0" id="selected-jugador-nombre"></h6>
-                    <small class="text-muted">ID: <span id="selected-jugador-id"></span></small>
+        <form method="POST" action="{{ route('subir.foto.jugador.publico') }}" enctype="multipart/form-data" id="form-subir-foto">
+            @csrf
+            <input type="hidden" name="id" id="input-jugador-id" value="">
+            
+            <div class="selected-jugador-info mb-3 p-3 bg-light rounded">
+                <div class="d-flex align-items-center">
+                    <img id="selected-jugador-foto" src="" class="jugador-foto-mobile me-3" alt="Foto jugador">
+                    <div>
+                        <h6 class="mb-0" id="selected-jugador-nombre"></h6>
+                        <small class="text-muted">ID: <span id="selected-jugador-id"></span></small>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="mb-3">
-            <label class="form-label fw-bold">Seleccionar nueva foto:</label>
-            <div class="file-input-wrapper">
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">Seleccionar nueva foto:</label>
                 <input type="file" 
                        id="input-foto" 
                        name="foto" 
                        accept="image/*" 
-                       class="form-control">
-                <div class="file-input-button">
-                    <i class="fas fa-cloud-upload-alt mb-2" style="font-size: 32px; display: block;"></i>
-                    <span id="file-input-text">Toca para seleccionar una imagen</span>
-                </div>
+                       class="form-control"
+                       required>
+                <small class="text-muted">Formatos: JPG, PNG, GIF, WEBP, BMP. Máximo 100MB (se comprimirá automáticamente a 5MB si es necesario)</small>
             </div>
-            <small class="text-muted">Formatos: JPG, PNG, GIF, WEBP, BMP. Máximo 100MB (se comprimirá automáticamente a 5MB si es necesario)</small>
-        </div>
-        
-        <div id="preview-container" style="display: none;" class="text-center mb-3">
-            <img id="preview-foto" src="" class="preview-foto" alt="Vista previa">
-        </div>
-        
-        <button type="button" 
-                class="btn btn-upload" 
-                id="btn-subir-foto" 
-                disabled>
-            <i class="fas fa-upload"></i> Subir Foto
-        </button>
+            
+            <div id="preview-container" style="display: none;" class="text-center mb-3">
+                <img id="preview-foto" src="" class="preview-foto" alt="Vista previa">
+            </div>
+            
+            <button type="submit" 
+                    class="btn btn-upload w-100" 
+                    id="btn-subir-foto">
+                <i class="fas fa-upload"></i> Subir Foto
+            </button>
+        </form>
     </div>
+    
+    <!-- Mensajes de sesión -->
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
+    
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
 </div>
 
 <!-- Toast para mensajes -->
@@ -128,195 +144,46 @@ $(document).ready(function() {
         seleccionarJugador(jugadorId);
     });
     
-    // Función para manejar el preview de imagen (reutilizable)
-    function manejarPreviewImagen(file) {
-        console.log('manejarPreviewImagen llamado con:', file);
-        
-        if (!file) {
-            console.log('No hay archivo');
-            return false;
-        }
-        
-        // Validar tamaño (100MB máximo - el servidor comprimirá si es necesario)
-        const maxSize = 100 * 1024 * 1024; // 100MB antes de comprimir
-        if (file.size > maxSize) {
-            mostrarMensaje('La imagen es demasiado grande. Máximo 100MB (se comprimirá a 5MB).', 'error');
-            $('#input-foto').val('');
-            return false;
-        }
-        
-        // Validar tipo - aceptar más formatos
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
-        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-        
-        let isValidType = false;
-        if (file.type) {
-            isValidType = validTypes.includes(file.type.toLowerCase());
-        }
-        
-        // Si no tiene tipo, verificar por extensión
-        if (!isValidType && file.name) {
-            const fileName = file.name.toLowerCase();
-            isValidType = validExtensions.some(ext => fileName.endsWith(ext));
-        }
-        
-        if (!isValidType) {
-            mostrarMensaje('Por favor selecciona una imagen válida (JPG, PNG, GIF, WEBP, BMP).', 'error');
-            $('#input-foto').val('');
-            return false;
-        }
-        
-        // Mostrar tamaño del archivo
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        let sizeMessage = fileSizeMB + ' MB';
-        if (fileSizeMB > 5) {
-            sizeMessage += ' (se comprimirá a máximo 5MB)';
-        }
-        
-        // Mostrar que está procesando
-        $('#file-input-text').text('Procesando imagen...');
-        $('#btn-subir-foto').prop('disabled', true);
-        
-        // Mostrar preview con mejor manejo de errores
-        console.log('Leyendo archivo para preview...');
-        const reader = new FileReader();
-        
-        // Timeout para evitar que se quede colgado
-        const timeout = setTimeout(function() {
-            if (reader.readyState !== FileReader.DONE) {
-                reader.abort();
-                mostrarMensaje('La imagen es demasiado grande para previsualizar. Se subirá directamente.', 'error');
-                // Permitir subir sin preview
-                $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
-                $('#preview-container').hide();
-                $('#btn-subir-foto').prop('disabled', false);
-            }
-        }, 30000); // 30 segundos timeout
-        
-        reader.onloadstart = function() {
-            console.log('Iniciando lectura del archivo...');
-        };
-        
-        reader.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const percentLoaded = Math.round((e.loaded / e.total) * 100);
-                console.log('Progreso:', percentLoaded + '%');
-            }
-        };
-        
-        reader.onload = function(e) {
-            clearTimeout(timeout);
-            console.log('Archivo leído exitosamente, mostrando preview');
-            try {
-                $('#preview-foto').attr('src', e.target.result);
-                $('#preview-container').show();
-                $('#file-input-text').text(file.name + ' (' + sizeMessage + ')');
-                $('#btn-subir-foto').prop('disabled', false);
-            } catch (err) {
-                console.error('Error al mostrar preview:', err);
-                // Permitir subir sin preview
-                $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
-                $('#preview-container').hide();
-                $('#btn-subir-foto').prop('disabled', false);
-            }
-        };
-        
-        reader.onerror = function(e) {
-            clearTimeout(timeout);
-            console.error('Error al leer el archivo:', e);
-            console.error('Tipo de error:', reader.error);
-            
-            let errorMsg = 'Error al leer el archivo. ';
-            if (reader.error) {
-                switch(reader.error.code) {
-                    case reader.error.NOT_FOUND_ERR:
-                        errorMsg += 'Archivo no encontrado.';
-                        break;
-                    case reader.error.NOT_READABLE_ERR:
-                        errorMsg += 'Archivo no se puede leer.';
-                        break;
-                    case reader.error.ABORT_ERR:
-                        errorMsg += 'Lectura cancelada.';
-                        break;
-                    default:
-                        errorMsg += 'Error desconocido.';
-                }
-            }
-            
-            // Intentar permitir subir sin preview
-            $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
-            $('#preview-container').hide();
-            $('#btn-subir-foto').prop('disabled', false);
-            
-            mostrarMensaje(errorMsg + ' Puedes intentar subirla directamente.', 'error');
-        };
-        
-        reader.onabort = function() {
-            clearTimeout(timeout);
-            console.log('Lectura del archivo cancelada');
-        };
-        
-        reader.onloadend = function() {
-            clearTimeout(timeout);
-            console.log('Lectura del archivo finalizada');
-        };
-        
-        // Leer el archivo
-        try {
-            reader.readAsDataURL(file);
-        } catch (err) {
-            clearTimeout(timeout);
-            console.error('Error al iniciar lectura:', err);
-            // Permitir subir sin preview
-            $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
-            $('#preview-container').hide();
-            $('#btn-subir-foto').prop('disabled', false);
-            mostrarMensaje('No se pudo previsualizar la imagen, pero puedes subirla directamente.', 'error');
-        }
-        
-        return true;
-    }
-    
-    // Preview de imagen antes de subir
-    // Usar tanto delegación como evento directo para asegurar que funcione
-    function vincularEventoPreview() {
-        $('#input-foto').off('change.preview').on('change.preview', function(e) {
-            console.log('Input file cambió, archivo seleccionado:', e.target.files[0]);
-            const file = e.target.files[0];
-            if (file) {
-                manejarPreviewImagen(file);
-            } else {
-                console.log('No se seleccionó ningún archivo');
-            }
-        });
-    }
-    
-    // Vincular evento al cargar la página
-    vincularEventoPreview();
-    
-    // También usar delegación como respaldo
+    // Preview simple de imagen (opcional, solo para mostrar)
     $(document).on('change', '#input-foto', function(e) {
-        console.log('Delegación de eventos capturó el change');
         const file = e.target.files[0];
         if (file) {
-            manejarPreviewImagen(file);
+            // Validar tamaño básico
+            const maxSize = 100 * 1024 * 1024; // 100MB
+            if (file.size > maxSize) {
+                alert('La imagen es demasiado grande. Máximo 100MB.');
+                $(this).val('');
+                return;
+            }
+            
+            // Mostrar preview si es posible
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#preview-foto').attr('src', e.target.result);
+                $('#preview-container').show();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            $('#preview-container').hide();
         }
     });
     
-    // Subir foto
-    $('#btn-subir-foto').on('click', function() {
-        if (!jugadorSeleccionado) {
-            mostrarMensaje('Por favor selecciona un jugador primero.', 'error');
-            return;
+    // Validar formulario antes de enviar
+    $('#form-subir-foto').on('submit', function(e) {
+        if (!$('#input-jugador-id').val()) {
+            e.preventDefault();
+            alert('Por favor selecciona un jugador primero.');
+            return false;
         }
         
-        const fileInput = $('#input-foto')[0];
-        if (!fileInput.files || !fileInput.files[0]) {
-            mostrarMensaje('Por favor selecciona una imagen.', 'error');
-            return;
+        if (!$('#input-foto')[0].files || !$('#input-foto')[0].files[0]) {
+            e.preventDefault();
+            alert('Por favor selecciona una imagen.');
+            return false;
         }
         
-        subirFoto(jugadorSeleccionado.id, fileInput.files[0]);
+        // Mostrar indicador de carga
+        $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
     });
     
     // Función para mostrar mensajes
@@ -454,6 +321,9 @@ function seleccionarJugador(jugadorId) {
     $('.jugador-item').removeClass('selected');
     jugadorItem.addClass('selected');
     
+    // Establecer ID en el formulario
+    $('#input-jugador-id').val(jugador.id);
+    
     // Mostrar sección de upload
     $('#selected-jugador-id').text(jugador.id);
     $('#selected-jugador-nombre').text(jugador.nombre);
@@ -470,131 +340,10 @@ function ocultarSeccionUpload() {
     $('#upload-section').slideUp();
     jugadorSeleccionado = null;
     $('.jugador-item').removeClass('selected');
+    $('#input-jugador-id').val('');
     $('#input-foto').val('');
     $('#preview-container').hide();
-    $('#btn-subir-foto').prop('disabled', true);
-    $('#file-input-text').text('Toca para seleccionar una imagen');
-}
-
-function subirFoto(jugadorId, archivo) {
-    // Validar que hay un archivo
-    if (!archivo) {
-        mostrarMensaje('Por favor selecciona una imagen primero.', 'error');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('id', jugadorId);
-    formData.append('foto', archivo);
-    formData.append('_token', '{{ csrf_token() }}');
-    
-    // Deshabilitar botón y mostrar estado de carga
-    const btnOriginal = $('#btn-subir-foto').html();
-    $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
-    
-    $.ajax({
-        type: 'POST',
-        url: '{{ route("subir.foto.jugador.publico") }}',
-        data: formData,
-        processData: false,
-        contentType: false,
-        timeout: 120000, // 2 minutos de timeout para imágenes grandes
-        xhr: function() {
-            const xhr = new window.XMLHttpRequest();
-            // Mostrar progreso de carga
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = Math.round((e.loaded / e.total) * 100);
-                    $('#btn-subir-foto').html('<i class="fas fa-spinner fa-spin"></i> Subiendo... ' + percentComplete + '%');
-                }
-            }, false);
-            return xhr;
-        },
-        success: function(response) {
-            if (response.success) {
-                const mensaje = response.file_size_mb 
-                    ? `¡Foto subida correctamente! (${response.file_size_mb} MB)`
-                    : '¡Foto subida correctamente!';
-                mostrarMensaje(mensaje, 'success');
-                
-                // Actualizar foto en la lista
-                const jugadorItem = $(`.jugador-item[data-id="${jugadorId}"]`);
-                jugadorItem.find('img').attr('src', response.foto_url + '?t=' + new Date().getTime());
-                $('#selected-jugador-foto').attr('src', response.foto_url + '?t=' + new Date().getTime());
-                
-                // Limpiar solo el formulario de foto (mantener jugador seleccionado)
-                // Resetear el input file
-                $('#input-foto').val('');
-                $('#preview-container').hide();
-                $('#file-input-text').text('Toca para seleccionar una imagen');
-                $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-upload"></i> Subir Foto');
-                
-                // Re-vincular el evento después de limpiar
-                setTimeout(function() {
-                    vincularEventoPreview();
-                }, 100);
-                
-                // No ocultar la sección, permitir subir otra foto o seleccionar otro jugador
-            } else {
-                mostrarMensaje(response.message || 'Error al subir la foto', 'error');
-                $('#btn-subir-foto').prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Foto');
-            }
-        },
-        error: function(xhr) {
-            console.error('Error completo:', xhr);
-            console.error('Status:', xhr.status);
-            console.error('Status Text:', xhr.statusText);
-            console.error('Response:', xhr.responseText);
-            
-            let mensaje = 'Error al subir la foto';
-            let detalles = '';
-            
-            if (xhr.responseJSON) {
-                if (xhr.responseJSON.message) {
-                    mensaje = xhr.responseJSON.message;
-                }
-                
-                // Agregar información de debug si está disponible
-                if (xhr.responseJSON.debug_info) {
-                    detalles = '\n';
-                    if (xhr.responseJSON.debug_info.file_name) {
-                        detalles += 'Archivo: ' + xhr.responseJSON.debug_info.file_name + '\n';
-                    }
-                    if (xhr.responseJSON.debug_info.file_size) {
-                        detalles += 'Tamaño: ' + xhr.responseJSON.debug_info.file_size + '\n';
-                    }
-                    if (xhr.responseJSON.debug_info.error_code !== null && xhr.responseJSON.debug_info.error_code !== undefined) {
-                        detalles += 'Código de error: ' + xhr.responseJSON.debug_info.error_code;
-                    }
-                }
-                
-                if (xhr.responseJSON.trace) {
-                    console.error('Trace del error:', xhr.responseJSON.trace);
-                }
-            } else if (xhr.responseText) {
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    mensaje = response.message || mensaje;
-                } catch (e) {
-                    mensaje = 'Error al procesar la respuesta del servidor (Status: ' + xhr.status + ')';
-                }
-            } else {
-                // Error de red o timeout
-                if (xhr.status === 0) {
-                    mensaje = 'Error de conexión. Verifica tu conexión a internet.';
-                } else if (xhr.status === 413) {
-                    mensaje = 'La imagen es demasiado grande. Intenta con una imagen más pequeña.';
-                } else if (xhr.status === 500) {
-                    mensaje = 'Error en el servidor. Por favor intenta más tarde.';
-                } else {
-                    mensaje = 'Error al subir la foto (Status: ' + xhr.status + ')';
-                }
-            }
-            
-            mostrarMensaje(mensaje + detalles, 'error');
-            $('#btn-subir-foto').prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Foto');
-        }
-    });
+    $('#btn-subir-foto').prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Foto');
 }
 </script>
 @endsection

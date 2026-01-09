@@ -344,34 +344,16 @@ class HomeController extends Controller
 
     function subirFotoJugadorPublico(Request $request) {
         try {
-            \Log::info('=== Inicio subida de foto pública ===');
-            \Log::info('Request recibido. Método: ' . $request->method());
-            \Log::info('Content-Type: ' . $request->header('Content-Type'));
-            \Log::info('Content-Length: ' . $request->header('Content-Length'));
-            
             $id = $request->input('id');
-            \Log::info('ID recibido: ' . $id);
             
             if (!$id) {
-                \Log::error('ID de jugador no proporcionado');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'ID de jugador requerido'
-                ], 400);
+                return redirect()->route('subir.foto.jugador')->with('error', 'ID de jugador requerido');
             }
             
             $jugador = Jugadore::find($id);
             if (!$jugador) {
-                \Log::error('Jugador no encontrado con ID: ' . $id);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Jugador no encontrado'
-                ], 404);
+                return redirect()->route('subir.foto.jugador')->with('error', 'Jugador no encontrado');
             }
-            
-            \Log::info('Jugador encontrado: ' . $jugador->nombre . ' ' . $jugador->apellido);
-            \Log::info('Verificando si hay archivo...');
-            \Log::info('hasFile(foto): ' . ($request->hasFile('foto') ? 'true' : 'false'));
             
             // Manejar subida de foto
             if ($request->hasFile('foto')) {
@@ -380,16 +362,8 @@ class HomeController extends Controller
                     
                     // Validar que sea una imagen
                     if (!$image->isValid()) {
-                        \Log::error('Archivo no válido. Error: ' . $image->getError());
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'El archivo enviado no es válido. Error: ' . $image->getError()
-                        ], 400);
+                        return redirect()->route('subir.foto.jugador')->with('error', 'El archivo enviado no es válido');
                     }
-                    
-                    // Verificar tamaño del archivo
-                    $fileSize = $image->getSize();
-                    \Log::info('Tamaño del archivo recibido: ' . round($fileSize / (1024 * 1024), 2) . ' MB');
                     
                     // Sanitizar nombre del archivo
                     $originalName = $image->getClientOriginalName();
@@ -402,23 +376,19 @@ class HomeController extends Controller
                     $directory = public_path('images/jugadores');
                     if (!file_exists($directory)) {
                         if (!mkdir($directory, 0755, true)) {
-                            throw new \Exception('No se pudo crear el directorio de imágenes: ' . $directory);
+                            throw new \Exception('No se pudo crear el directorio de imágenes');
                         }
                     }
                     
                     // Verificar permisos de escritura
                     if (!is_writable($directory)) {
-                        throw new \Exception('El directorio no tiene permisos de escritura: ' . $directory);
+                        throw new \Exception('El directorio no tiene permisos de escritura');
                     }
-                    
-                    \Log::info('Procesando imagen con Intervention Image...');
                     
                     // Cargar imagen con Intervention Image
                     try {
                         $img = Image::make($image->getRealPath());
-                        \Log::info('Imagen cargada. Dimensiones: ' . $img->width() . 'x' . $img->height());
                     } catch (\Exception $e) {
-                        \Log::error('Error al cargar imagen con Intervention Image: ' . $e->getMessage());
                         throw new \Exception('No se pudo procesar la imagen. Verifica que sea un formato válido (JPG, PNG, GIF).');
                     }
                     
@@ -428,7 +398,6 @@ class HomeController extends Controller
                     // Redimensionar si es muy grande (mantener aspecto, máximo 1920px)
                     $maxDimension = 1920;
                     if ($img->width() > $maxDimension || $img->height() > $maxDimension) {
-                        \Log::info('Redimensionando imagen de ' . $img->width() . 'x' . $img->height() . ' a máximo ' . $maxDimension);
                         $img->resize($maxDimension, $maxDimension, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
@@ -450,7 +419,6 @@ class HomeController extends Controller
                             }
                             
                             $fileSize = filesize($imgPath);
-                            \Log::info('Intento ' . ($attempt + 1) . ': Tamaño guardado: ' . round($fileSize / (1024 * 1024), 2) . ' MB (calidad: ' . $quality . ')');
                             
                             // Si el archivo es menor a 5MB, salir del bucle
                             if ($fileSize <= $maxSize) {
@@ -467,7 +435,6 @@ class HomeController extends Controller
                                 $currentHeight = $img->height();
                                 $newWidth = intval($currentWidth * 0.85);
                                 $newHeight = intval($currentHeight * 0.85);
-                                \Log::info('Reduciendo tamaño de ' . $currentWidth . 'x' . $currentHeight . ' a ' . $newWidth . 'x' . $newHeight);
                                 $img->resize($newWidth, $newHeight, function ($constraint) {
                                     $constraint->aspectRatio();
                                 });
@@ -475,7 +442,6 @@ class HomeController extends Controller
                             }
                             
                         } catch (\Exception $saveError) {
-                            \Log::error('Error al guardar imagen (intento ' . ($attempt + 1) . '): ' . $saveError->getMessage());
                             if ($attempt >= $maxAttempts - 1) {
                                 throw $saveError;
                             }
@@ -487,33 +453,15 @@ class HomeController extends Controller
                     
                     // Verificar que el archivo se guardó correctamente
                     if (!file_exists($imgPath)) {
-                        throw new \Exception('El archivo no se guardó correctamente en: ' . $imgPath);
+                        throw new \Exception('El archivo no se guardó correctamente');
                     }
-                    
-                    $finalSize = filesize($imgPath);
-                    \Log::info('Imagen guardada exitosamente. Tamaño final: ' . round($finalSize / (1024 * 1024), 2) . ' MB');
                     
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
-                    \Log::error('Error al procesar imagen: ' . $e->getMessage());
-                    \Log::error('Stack trace: ' . $e->getTraceAsString());
-                    \Log::error('Archivo: ' . ($request->hasFile('foto') ? $request->file('foto')->getClientOriginalName() : 'No hay archivo'));
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Error al procesar la imagen: ' . $e->getMessage(),
-                        'debug_info' => [
-                            'file_name' => $request->hasFile('foto') ? $request->file('foto')->getClientOriginalName() : null,
-                            'file_size' => $request->hasFile('foto') ? round($request->file('foto')->getSize() / (1024 * 1024), 2) . ' MB' : null,
-                            'error_code' => $request->hasFile('foto') ? $request->file('foto')->getError() : null
-                        ]
-                    ], 500);
+                    return redirect()->route('subir.foto.jugador')->with('error', 'Error al procesar la imagen: ' . $e->getMessage());
                 }
             } else {
-                \Log::error('No se recibió archivo en la petición');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se envió ninguna imagen. Verifica que hayas seleccionado un archivo.'
-                ], 400);
+                return redirect()->route('subir.foto.jugador')->with('error', 'No se envió ninguna imagen. Verifica que hayas seleccionado un archivo.');
             }
             
             $jugador->save();
@@ -526,21 +474,14 @@ class HomeController extends Controller
                 $fileSizeMB = round($fileSize / (1024 * 1024), 2);
             }
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Foto actualizada correctamente' . ($fileSizeMB > 0 ? ' (tamaño final: ' . $fileSizeMB . ' MB)' : ''),
-                'jugador' => $jugador,
-                'foto_url' => asset($jugador->foto),
-                'file_size_mb' => $fileSizeMB
-            ]);
+            $mensaje = 'Foto actualizada correctamente';
+            if ($fileSizeMB > 0) {
+                $mensaje .= ' (tamaño final: ' . $fileSizeMB . ' MB)';
+            }
+            
+            return redirect()->route('subir.foto.jugador')->with('success', $mensaje);
         } catch (\Exception $e) {
-            \Log::error('Error al subir foto: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al subir la foto: ' . $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null
-            ], 500);
+            return redirect()->route('subir.foto.jugador')->with('error', 'Error al subir la foto: ' . $e->getMessage());
         }
     }
 
