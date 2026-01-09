@@ -1631,7 +1631,8 @@ class HomeController extends Controller
                     'jugador_2' => $grupo->jugador_2,
                     'partidos_ganados' => 0,
                     'partidos_perdidos' => 0,
-                    'puntos_ganados' => 0, // Suma de games/sets ganados
+                    'puntos_ganados' => 0, // Suma de games ganados
+                    'puntos_perdidos' => 0, // Suma de games perdidos
                     'partidos_directos' => [] // Para almacenar resultados de partidos directos
                 ];
             }
@@ -1684,8 +1685,10 @@ class HomeController extends Controller
                 if ($puntosPareja1 > $puntosPareja2) {
                     $parejas[$key1]['partidos_ganados']++;
                     $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                    $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
                     $parejas[$key2]['partidos_perdidos']++;
                     $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                    $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
                     
                     // Guardar resultado del partido directo
                     $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => true, 'puntos' => $puntosPareja1 . '-' . $puntosPareja2];
@@ -1693,8 +1696,10 @@ class HomeController extends Controller
                 } else if ($puntosPareja2 > $puntosPareja1) {
                     $parejas[$key2]['partidos_ganados']++;
                     $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                    $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
                     $parejas[$key1]['partidos_perdidos']++;
                     $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                    $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
                     
                     // Guardar resultado del partido directo
                     $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => true, 'puntos' => $puntosPareja2 . '-' . $puntosPareja1];
@@ -1704,8 +1709,10 @@ class HomeController extends Controller
         }
         
         // Agregar keys a cada pareja para poder comparar partidos directos
+        // Calcular diferencia de games (ganados - perdidos)
         foreach ($parejas as $key => $pareja) {
             $parejas[$key]['key'] = $key;
+            $parejas[$key]['diferencia_games'] = $pareja['puntos_ganados'] - $pareja['puntos_perdidos'];
         }
         
         // Convertir a array y ordenar por posición
@@ -1718,9 +1725,9 @@ class HomeController extends Controller
                 return $b['partidos_ganados'] - $a['partidos_ganados'];
             }
             
-            // 2. Si tienen los mismos partidos ganados, por PUNTOS GANADOS (games)
-            if ($a['puntos_ganados'] != $b['puntos_ganados']) {
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
+            // 2. Si tienen los mismos partidos ganados, por DIFERENCIA DE GAMES (ganados - perdidos)
+            if ($a['diferencia_games'] != $b['diferencia_games']) {
+                return $b['diferencia_games'] - $a['diferencia_games'];
             }
             
             // 3. Si siguen empatando, por PARTIDO DIRECTO

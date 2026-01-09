@@ -255,10 +255,10 @@
                                     <table class="table table-bordered table-sm" style="font-size:0.85rem;">
                                         <thead class="thead-light">
                                             <tr>
-                                                <th style="width:20%;" class="text-center">Pos</th>
-                                                <th style="width:50%;">Pareja</th>
+                                                <th style="width:15%;" class="text-center">Pos</th>
+                                                <th style="width:45%;">Pareja</th>
                                                 <th style="width:15%;" class="text-center">PG</th>
-                                                <th style="width:15%;" class="text-center">Pts</th>
+                                                <th style="width:25%;" class="text-center">Dif Games</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tbody-posiciones-{{ $zona }}">
@@ -535,6 +535,11 @@
             let jugador1 = obtenerJugadorPorId(pareja.jugador_1);
             let jugador2 = obtenerJugadorPorId(pareja.jugador_2);
             
+            // Calcular diferencia de games (ganados - perdidos)
+            const diferenciaGames = (pareja.puntos_ganados || 0) - (pareja.puntos_perdidos || 0);
+            const diferenciaTexto = diferenciaGames >= 0 ? `+${diferenciaGames}` : `${diferenciaGames}`;
+            const diferenciaClass = diferenciaGames >= 0 ? 'text-success' : 'text-danger';
+            
             let fila = `
                 <tr>
                     <td class="text-center"><strong style="font-size:0.9rem;">${index + 1}º</strong></td>
@@ -553,7 +558,7 @@
                         </div>
                     </td>
                     <td class="text-center"><strong style="font-size:0.9rem;">${pareja.partidos_ganados}</strong></td>
-                    <td class="text-center"><strong style="font-size:0.9rem;">${pareja.puntos_ganados}</strong></td>
+                    <td class="text-center"><strong style="font-size:0.9rem;" class="${diferenciaClass}">${diferenciaTexto}</strong></td>
                 </tr>
             `;
             tbody.append(fila);
