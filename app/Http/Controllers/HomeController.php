@@ -344,9 +344,16 @@ class HomeController extends Controller
 
     function subirFotoJugadorPublico(Request $request) {
         try {
-            $id = $request->id;
+            \Log::info('=== Inicio subida de foto pública ===');
+            \Log::info('Request recibido. Método: ' . $request->method());
+            \Log::info('Content-Type: ' . $request->header('Content-Type'));
+            \Log::info('Content-Length: ' . $request->header('Content-Length'));
+            
+            $id = $request->input('id');
+            \Log::info('ID recibido: ' . $id);
             
             if (!$id) {
+                \Log::error('ID de jugador no proporcionado');
                 return response()->json([
                     'success' => false,
                     'message' => 'ID de jugador requerido'
@@ -355,11 +362,16 @@ class HomeController extends Controller
             
             $jugador = Jugadore::find($id);
             if (!$jugador) {
+                \Log::error('Jugador no encontrado con ID: ' . $id);
                 return response()->json([
                     'success' => false,
                     'message' => 'Jugador no encontrado'
                 ], 404);
             }
+            
+            \Log::info('Jugador encontrado: ' . $jugador->nombre . ' ' . $jugador->apellido);
+            \Log::info('Verificando si hay archivo...');
+            \Log::info('hasFile(foto): ' . ($request->hasFile('foto') ? 'true' : 'false'));
             
             // Manejar subida de foto
             if ($request->hasFile('foto')) {
