@@ -58,7 +58,7 @@
                     <span id="file-input-text">Toca para seleccionar una imagen</span>
                 </div>
             </div>
-            <small class="text-muted">Formatos: JPG, PNG, GIF. Tamaño máximo recomendado: 2MB</small>
+            <small class="text-muted">Formatos: JPG, PNG, GIF. Máximo 50MB (se comprimirá automáticamente a 5MB si es necesario)</small>
         </div>
         
         <div id="preview-container" style="display: none;" class="text-center mb-3">
@@ -132,9 +132,9 @@ $(document).ready(function() {
     $('#input-foto').on('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            // Validar tamaño (2MB máximo)
-            if (file.size > 2 * 1024 * 1024) {
-                mostrarMensaje('La imagen es demasiado grande. Máximo 2MB.', 'error');
+            // Validar tamaño (5MB máximo - el servidor comprimirá si es necesario)
+            if (file.size > 50 * 1024 * 1024) { // Máximo 50MB antes de comprimir
+                mostrarMensaje('La imagen es demasiado grande. Máximo 50MB (se comprimirá a 5MB).', 'error');
                 $(this).val('');
                 return;
             }
@@ -146,12 +146,19 @@ $(document).ready(function() {
                 return;
             }
             
+            // Mostrar tamaño del archivo
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            let sizeMessage = fileSizeMB + ' MB';
+            if (fileSizeMB > 5) {
+                sizeMessage += ' (se comprimirá a máximo 5MB)';
+            }
+            
             // Mostrar preview
             const reader = new FileReader();
             reader.onload = function(e) {
                 $('#preview-foto').attr('src', e.target.result);
                 $('#preview-container').show();
-                $('#file-input-text').text(file.name);
+                $('#file-input-text').text(file.name + ' (' + sizeMessage + ')');
                 $('#btn-subir-foto').prop('disabled', false);
             };
             reader.readAsDataURL(file);

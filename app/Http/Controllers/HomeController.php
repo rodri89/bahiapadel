@@ -374,8 +374,45 @@ class HomeController extends Controller
                         mkdir($directory, 0755, true);
                     }
                     
-                    // Usar Image para procesar y guardar la imagen
-                    Image::make($image->getRealPath())->save(public_path($path));
+                    // Cargar imagen con Intervention Image
+                    $img = Image::make($image->getRealPath());
+                    
+                    // Tamaño máximo en bytes (5MB)
+                    $maxSize = 5 * 1024 * 1024; // 5MB
+                    $currentSize = strlen($img->encode('jpg', 75)->__toString());
+                    
+                    // Si la imagen es muy grande, redimensionar y comprimir
+                    if ($currentSize > $maxSize) {
+                        // Redimensionar manteniendo aspecto (máximo 1920px en el lado más largo)
+                        $img->resize(1920, 1920, function ($constraint) {
+                            $constraint->aspectRatio();
+                            $constraint->upsize();
+                        });
+                        
+                        // Comprimir hasta que sea menor a 5MB
+                        $quality = 85;
+                        $imgPath = public_path($path);
+                        
+                        do {
+                            $img->save($imgPath, $quality);
+                            $fileSize = filesize($imgPath);
+                            $quality -= 5;
+                            
+                            // Si después de reducir calidad aún es grande, reducir más el tamaño
+                            if ($quality < 50 && $fileSize > $maxSize) {
+                                $currentWidth = $img->width();
+                                $currentHeight = $img->height();
+                                $newWidth = intval($currentWidth * 0.9);
+                                $newHeight = intval($currentHeight * 0.9);
+                                $img->resize($newWidth, $newHeight);
+                                $quality = 75; // Resetear calidad
+                            }
+                        } while ($fileSize > $maxSize && $quality >= 40);
+                    } else {
+                        // Si la imagen es menor a 5MB, solo guardar con calidad 85
+                        $img->save(public_path($path), 85);
+                    }
+                    
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
@@ -393,11 +430,15 @@ class HomeController extends Controller
             
             $jugador->save();
             
+            $fileSize = filesize(public_path($jugador->foto));
+            $fileSizeMB = round($fileSize / (1024 * 1024), 2);
+            
             return response()->json([
                 'success' => true,
-                'message' => 'Foto actualizada correctamente',
+                'message' => 'Foto actualizada correctamente (tamaño final: ' . $fileSizeMB . ' MB)',
                 'jugador' => $jugador,
-                'foto_url' => asset($jugador->foto)
+                'foto_url' => asset($jugador->foto),
+                'file_size_mb' => $fileSizeMB
             ]);
         } catch (\Exception $e) {
             \Log::error('Error al subir foto: ' . $e->getMessage());
