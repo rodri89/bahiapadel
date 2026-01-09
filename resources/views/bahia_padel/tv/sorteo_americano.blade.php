@@ -8,26 +8,18 @@
     <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
     <style>
         body { 
-            overflow: hidden; 
+            overflow-y: auto; 
             font-family: 'Nunito', sans-serif; 
             background-color: #1a1a1a;
             color: #e0e0e0;
+            padding: 20px;
         }
-        .zona-slide { 
-            display: none; 
-            height: 100vh; 
-            padding: 20px; 
-            box-sizing: border-box;
-        }
-        .zona-slide.active { 
-            display: block; 
-            animation: fadeIn 0.8s; 
-        }
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .tv-header { 
             font-size: 2.5rem; 
-            margin-bottom: 20px; 
+            margin-bottom: 30px; 
             text-align: center; 
             color: #fff; 
             text-transform: uppercase;
@@ -36,14 +28,24 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         
+        .grupos-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            max-width: 100%;
+        }
+        
         .tv-card { 
             background-color: #252525; 
             border: 1px solid #3d3d3d; 
             border-radius: 15px; 
             margin-bottom: 20px; 
-            height: calc(100vh - 120px); 
+            min-height: 300px;
+            max-height: calc(100vh - 200px);
             overflow-y: auto; 
             box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
         }
 
         .tv-card-header {
@@ -60,11 +62,12 @@
             margin: 0;
             color: #4e73df;
             font-weight: 700;
-            font-size: 2rem;
+            font-size: 1.8rem;
         }
         
         .grupo-container {
             padding: 20px;
+            flex: 1;
         }
         
         .pareja-item {
@@ -129,55 +132,55 @@
         {{ $torneo->nombre ?? 'Sorteo Torneo' }}
     </div>
     
-    @php
-        $zonas = array_keys($gruposPorZona ?? []);
-        $zonaIndex = 0;
-    @endphp
-    
-    @foreach($gruposPorZona ?? [] as $zona => $grupos)
-        <div class="zona-slide {{ $zonaIndex === 0 ? 'active' : '' }}" data-zona="{{ $zona }}">
-            <div class="tv-card">
-                <div class="tv-card-header">
-                    <h3>Grupo {{ $zona }}</h3>
-                </div>
-                <div class="grupo-container">
-                    @if(count($grupos) > 0)
-                        @foreach($grupos as $grupo)
-                            @php
-                                $jugador1 = $jugadores[$grupo->jugador_1] ?? null;
-                                $jugador2 = $jugadores[$grupo->jugador_2] ?? null;
-                            @endphp
-                            @if($jugador1 && $jugador2)
-                                <div class="pareja-item">
-                                    <img src="{{ asset($jugador1->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador1->nombre }} {{ $jugador1->apellido }}" 
-                                         class="player-img">
-                                    <div class="player-info">
-                                        <div class="player-name">{{ $jugador1->nombre }} {{ $jugador1->apellido }}</div>
+    <div class="grupos-container" id="grupos-container">
+        @php
+            $zonas = array_keys($gruposPorZona ?? []);
+            sort($zonas); // Ordenar zonas alfabéticamente
+        @endphp
+        
+        @if(!empty($gruposPorZona) && count($zonas) > 0)
+            @foreach($zonas as $zona)
+                @php
+                    $grupos = $gruposPorZona[$zona] ?? [];
+                @endphp
+                <div class="tv-card" data-zona="{{ $zona }}">
+                    <div class="tv-card-header">
+                        <h3>Grupo {{ $zona }}</h3>
+                    </div>
+                    <div class="grupo-container" id="grupo-container-{{ $zona }}">
+                        @if(count($grupos) > 0)
+                            @foreach($grupos as $grupo)
+                                @php
+                                    $jugador1 = $jugadores[$grupo->jugador_1] ?? null;
+                                    $jugador2 = $jugadores[$grupo->jugador_2] ?? null;
+                                @endphp
+                                @if($jugador1 && $jugador2)
+                                    <div class="pareja-item">
+                                        <img src="{{ asset($jugador1->foto ?? 'images/jugador_img.png') }}" 
+                                             alt="{{ $jugador1->nombre }} {{ $jugador1->apellido }}" 
+                                             class="player-img">
+                                        <div class="player-info">
+                                            <div class="player-name">{{ $jugador1->nombre }} {{ $jugador1->apellido }}</div>
+                                        </div>
+                                        <span class="player-plus">+</span>
+                                        <img src="{{ asset($jugador2->foto ?? 'images/jugador_img.png') }}" 
+                                             alt="{{ $jugador2->nombre }} {{ $jugador2->apellido }}" 
+                                             class="player-img">
+                                        <div class="player-info">
+                                            <div class="player-name">{{ $jugador2->nombre }} {{ $jugador2->apellido }}</div>
+                                        </div>
                                     </div>
-                                    <span class="player-plus">+</span>
-                                    <img src="{{ asset($jugador2->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2->nombre }} {{ $jugador2->apellido }}" 
-                                         class="player-img">
-                                    <div class="player-info">
-                                        <div class="player-name">{{ $jugador2->nombre }} {{ $jugador2->apellido }}</div>
-                                    </div>
-                                </div>
-                            @endif
-                        @endforeach
-                    @else
-                        <div class="grupo-vacio">
-                            Esperando parejas...
-                        </div>
-                    @endif
+                                @endif
+                            @endforeach
+                        @else
+                            <div class="grupo-vacio">
+                                Esperando parejas...
+                            </div>
+                        @endif
+                    </div>
                 </div>
-            </div>
-        </div>
-        @php $zonaIndex++; @endphp
-    @endforeach
-    
-    @if(empty($gruposPorZona) || count($zonas) == 0)
-        <div class="zona-slide active">
+            @endforeach
+        @else
             <div class="tv-card">
                 <div class="tv-card-header">
                     <h3>Sorteo</h3>
@@ -188,33 +191,16 @@
                     </div>
                 </div>
             </div>
-        </div>
-    @endif
+        @endif
+    </div>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
         $(document).ready(function() {
             const torneoId = {{ $torneo->id ?? 0 }};
-            const slides = $('.zona-slide');
-            let currentIndex = 0;
+            const jugadores = @json($jugadores ?? []);
             
-            // Función para cambiar de zona
-            function showSlide(index) {
-                slides.removeClass('active');
-                if (slides.length > 0) {
-                    $(slides[index]).addClass('active');
-                }
-            }
-            
-            // Cambiar de zona cada 10 segundos
-            if (slides.length > 1) {
-                setInterval(function() {
-                    currentIndex = (currentIndex + 1) % slides.length;
-                    showSlide(currentIndex);
-                }, 10000);
-            }
-            
-            // Actualizar grupos cada 500ms para ver los cambios en tiempo real
+            // Actualizar grupos cada 3 segundos
             function actualizarGrupos() {
                 if (!torneoId) return;
                 
@@ -227,46 +213,72 @@
                     },
                     success: function(response) {
                         if (response.success && response.gruposPorZona) {
-                            // Actualizar cada zona
-                            Object.keys(response.gruposPorZona).forEach(function(zona) {
-                                const slide = $(`.zona-slide[data-zona="${zona}"]`);
-                                if (slide.length) {
-                                    const container = slide.find('.grupo-container');
-                                    const grupos = response.gruposPorZona[zona];
-                                    const jugadores = @json($jugadores ?? []);
-                                    
-                                    if (grupos.length > 0) {
-                                        let html = '';
-                                        grupos.forEach(function(grupo) {
-                                            const jugador1 = jugadores[grupo.jugador_1];
-                                            const jugador2 = jugadores[grupo.jugador_2];
-                                            
-                                            if (jugador1 && jugador2) {
-                                                html += `
-                                                    <div class="pareja-item animate-fade-in">
-                                                        <img src="${jugador1.foto || '/images/jugador_img.png'}" 
-                                                             alt="${jugador1.nombre} ${jugador1.apellido}" 
-                                                             class="player-img">
-                                                        <div class="player-info">
-                                                            <div class="player-name">${jugador1.nombre} ${jugador1.apellido}</div>
-                                                        </div>
-                                                        <span class="player-plus">+</span>
-                                                        <img src="${jugador2.foto || '/images/jugador_img.png'}" 
-                                                             alt="${jugador2.nombre} ${jugador2.apellido}" 
-                                                             class="player-img">
-                                                        <div class="player-info">
-                                                            <div class="player-name">${jugador2.nombre} ${jugador2.apellido}</div>
-                                                        </div>
+                            const container = $('#grupos-container');
+                            let html = '';
+                            
+                            // Ordenar zonas alfabéticamente
+                            const zonas = Object.keys(response.gruposPorZona).sort();
+                            
+                            zonas.forEach(function(zona) {
+                                const grupos = response.gruposPorZona[zona];
+                                
+                                html += `
+                                    <div class="tv-card" data-zona="${zona}">
+                                        <div class="tv-card-header">
+                                            <h3>Grupo ${zona}</h3>
+                                        </div>
+                                        <div class="grupo-container" id="grupo-container-${zona}">
+                                `;
+                                
+                                if (grupos.length > 0) {
+                                    grupos.forEach(function(grupo) {
+                                        const jugador1 = jugadores[grupo.jugador_1];
+                                        const jugador2 = jugadores[grupo.jugador_2];
+                                        
+                                        if (jugador1 && jugador2) {
+                                            html += `
+                                                <div class="pareja-item animate-fade-in">
+                                                    <img src="${jugador1.foto || '/images/jugador_img.png'}" 
+                                                         alt="${jugador1.nombre} ${jugador1.apellido}" 
+                                                         class="player-img">
+                                                    <div class="player-info">
+                                                        <div class="player-name">${jugador1.nombre} ${jugador1.apellido}</div>
                                                     </div>
-                                                `;
-                                            }
-                                        });
-                                        container.html(html);
-                                    } else {
-                                        container.html('<div class="grupo-vacio">Esperando parejas...</div>');
-                                    }
+                                                    <span class="player-plus">+</span>
+                                                    <img src="${jugador2.foto || '/images/jugador_img.png'}" 
+                                                         alt="${jugador2.nombre} ${jugador2.apellido}" 
+                                                         class="player-img">
+                                                    <div class="player-info">
+                                                        <div class="player-name">${jugador2.nombre} ${jugador2.apellido}</div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+                                    });
+                                } else {
+                                    html += '<div class="grupo-vacio">Esperando parejas...</div>';
                                 }
+                                
+                                html += `
+                                        </div>
+                                    </div>
+                                `;
                             });
+                            
+                            if (zonas.length === 0) {
+                                html = `
+                                    <div class="tv-card">
+                                        <div class="tv-card-header">
+                                            <h3>Sorteo</h3>
+                                        </div>
+                                        <div class="grupo-container">
+                                            <div class="grupo-vacio">No hay grupos configurados aún</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            
+                            container.html(html);
                         }
                     },
                     error: function() {
@@ -275,10 +287,10 @@
                 });
             }
             
-            // Actualizar cada 500ms para ver los cambios en tiempo real durante el sorteo
-            setInterval(actualizarGrupos, 500);
-            // Primera actualización inmediata
-            actualizarGrupos();
+            // Actualizar cada 3 segundos
+            setInterval(actualizarGrupos, 3000);
+            // Primera actualización después de 3 segundos
+            setTimeout(actualizarGrupos, 3000);
         });
     </script>
 </body>
