@@ -1251,7 +1251,8 @@ class HomeController extends Controller
                         'jugador_2' => $grupo->jugador_2,
                         'partidos_ganados' => 0,
                         'partidos_perdidos' => 0,
-                        'puntos_ganados' => 0, 
+                        'puntos_ganados' => 0,
+                        'puntos_perdidos' => 0,
                         'partidos_directos' => []
                     ];
                 }
