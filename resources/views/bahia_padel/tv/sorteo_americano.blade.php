@@ -214,7 +214,7 @@
                 }, 10000);
             }
             
-            // Actualizar grupos cada 2 segundos
+            // Actualizar grupos cada 500ms para ver los cambios en tiempo real
             function actualizarGrupos() {
                 if (!torneoId) return;
                 
@@ -275,10 +275,10 @@
                 });
             }
             
-            // Actualizar cada 2 segundos
-            setInterval(actualizarGrupos, 2000);
-            // Primera actualización después de 2 segundos
-            setTimeout(actualizarGrupos, 2000);
+            // Actualizar cada 500ms para ver los cambios en tiempo real durante el sorteo
+            setInterval(actualizarGrupos, 500);
+            // Primera actualización inmediata
+            actualizarGrupos();
         });
     </script>
 </body>

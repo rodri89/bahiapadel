@@ -499,6 +499,44 @@
                 contenedor.append(parejaHtml);
             }
         });
+        
+        // Guardar el estado actual en la base de datos para que la pantalla TV se actualice
+        guardarEstadoGruposTemporal();
+    }
+    
+    // Función para guardar el estado temporal de los grupos mientras se mezclan
+    function guardarEstadoGruposTemporal() {
+        if (gruposCreados.length === 0) return;
+        
+        let datos = {
+            torneo_id: torneoId,
+            grupos: []
+        };
+        
+        gruposCreados.forEach(function(grupo) {
+            let parejas = parejasSeleccionadas[grupo.id] || [];
+            datos.grupos.push({
+                zona: grupo.letra,
+                parejas: parejas
+            });
+        });
+        
+        // Guardar en la base de datos (sin mostrar alertas)
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '{{ route("guardartorneoamericano") }}',
+            data: {
+                ...datos,
+                _token: '{{csrf_token()}}'
+            },
+            success: function(response) {
+                // Silencioso, solo para actualizar la pantalla TV
+            },
+            error: function() {
+                // Silencioso, no mostrar error
+            }
+        });
     }
     
     function mostrarGruposFinales() {
