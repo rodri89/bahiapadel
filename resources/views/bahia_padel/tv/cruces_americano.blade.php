@@ -792,18 +792,11 @@
             const cruce = encontrarCruce(resultado);
             if (!cruce) return;
 
-            const matchCard = obtenerMatchCard(cruce, resultado.ronda, resultado);
-            if (!matchCard || !matchCard.length) return;
-
-            const parejaGanadora = actualizarMarcador(matchCard, resultado, cruce);
-
-            // Mostrar sets numéricos en caso de que estén definidos
-            const score1 = Number(resultado.pareja_1_set_1) || 0;
-            const score2 = Number(resultado.pareja_2_set_1) || 0;
-            matchCard.find(`.score-display[data-pareja="1"]`).text(score1);
-            matchCard.find(`.score-display[data-pareja="2"]`).text(score2);
-
-            aplicados++;
+            const parejaGanadora = actualizarMarcadores(resultado, cruce);
+            
+            if (parejaGanadora) {
+                aplicados++;
+            }
 
             if (resultado.ronda === 'final' && parejaGanadora) {
                 parejaGanadoraFinal = parejaGanadora;
@@ -897,17 +890,33 @@
             },
             success: function(response) {
                 if (response.success && response.resultadosGuardados) {
-                    // Actualizar los resultados guardados
-                    resultadosGuardados = response.resultadosGuardados;
-                    
-                    // Limpiar marcadores actuales antes de recargar
+                    // Limpiar clases de ganador antes de actualizar
                     $('.match-card').removeClass('winner');
                     $('.player-pair').removeClass('winner');
-                    $('.score-display').text('0');
                     
-                    // Recargar resultados
-                    window.__crucesResultadosRetries = 0;
-                    cargarResultadosGuardados();
+                    // Actualizar cada resultado
+                    let parejaGanadoraFinal = null;
+                    response.resultadosGuardados.forEach(function(resultado) {
+                        const cruce = encontrarCruce(resultado);
+                        if (!cruce) return;
+                        
+                        const matchCard = obtenerMatchCard(cruce, resultado.ronda, resultado);
+                        if (!matchCard || !matchCard.length) return;
+                        
+                        const parejaGanadora = actualizarMarcador(matchCard, resultado, cruce);
+                        
+                        if (resultado.ronda === 'final' && parejaGanadora) {
+                            parejaGanadoraFinal = parejaGanadora;
+                        }
+                    });
+                    
+                    // Mostrar modal de ganadores si hay final completa
+                    if (parejaGanadoraFinal) {
+                        mostrarModalGanadores(parejaGanadoraFinal);
+                    }
+                    
+                    // Actualizar variable global
+                    resultadosGuardados = response.resultadosGuardados;
                 }
             },
             error: function() {
