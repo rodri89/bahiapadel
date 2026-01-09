@@ -324,7 +324,9 @@ class HomeController extends Controller
         $query = DB::table('jugadores')
                    ->where('jugadores.activo', 1);
         
-        if (!empty($busqueda)) {
+        // Si hay búsqueda con al menos 2 caracteres, filtrar
+        if (!empty($busqueda) && strlen(trim($busqueda)) >= 2) {
+            $busqueda = trim($busqueda);
             $query->where(function($q) use ($busqueda) {
                 $q->where('jugadores.nombre', 'LIKE', '%' . $busqueda . '%')
                   ->orWhere('jugadores.apellido', 'LIKE', '%' . $busqueda . '%')
@@ -334,7 +336,7 @@ class HomeController extends Controller
         
         $jugadores = $query->orderBy('jugadores.nombre')
                           ->orderBy('jugadores.apellido')
-                          ->limit(50) // Limitar resultados para mejor rendimiento
+                          ->limit(100) // Limitar resultados para mejor rendimiento
                           ->get();
         
         return response()->json(['jugadores' => $jugadores]);

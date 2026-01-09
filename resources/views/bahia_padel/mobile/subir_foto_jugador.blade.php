@@ -25,9 +25,11 @@
 
     <!-- Lista de jugadores -->
     <div id="lista-jugadores">
-        <div class="empty-state">
-            <i class="fas fa-search"></i>
-            <p>Busca un jugador para comenzar</p>
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-muted">Cargando jugadores...</p>
         </div>
     </div>
 
@@ -91,6 +93,9 @@ let jugadorSeleccionado = null;
 let timeoutBusqueda = null;
 
 $(document).ready(function() {
+    // Cargar todos los jugadores al inicio
+    cargarTodosJugadores();
+    
     // Buscador en tiempo real
     $('#buscador-jugadores').on('input', function() {
         const busqueda = $(this).val().trim();
@@ -113,12 +118,7 @@ $(document).ready(function() {
     $('#btn-limpiar-busqueda').on('click', function() {
         $('#buscador-jugadores').val('');
         $(this).hide();
-        $('#lista-jugadores').html(`
-            <div class="empty-state">
-                <i class="fas fa-search"></i>
-                <p>Busca un jugador para comenzar</p>
-            </div>
-        `);
+        cargarTodosJugadores();
         ocultarSeccionUpload();
     });
     
@@ -200,17 +200,20 @@ $(document).ready(function() {
     };
 });
 
+function cargarTodosJugadores() {
+    buscarJugadores(''); // Cargar todos sin búsqueda
+}
+
 function buscarJugadores(busqueda) {
-    if (busqueda.length < 2) {
-        return;
-    }
+    // Si la búsqueda es muy corta (menos de 2 caracteres), mostrar todos
+    // El servidor ya maneja esto, así que siempre hacemos la petición
     
     $('#lista-jugadores').html(`
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Buscando...</span>
+                <span class="visually-hidden">Cargando...</span>
             </div>
-            <p class="mt-3 text-muted">Buscando jugadores...</p>
+            <p class="mt-3 text-muted">${busqueda ? 'Buscando jugadores...' : 'Cargando jugadores...'}</p>
         </div>
     `);
     
@@ -218,29 +221,33 @@ function buscarJugadores(busqueda) {
         type: 'POST',
         url: '{{ route("buscar.jugadores.publico") }}',
         data: {
-            busqueda: busqueda,
+            busqueda: busqueda || '',
             _token: '{{ csrf_token() }}'
         },
         success: function(response) {
+            console.log('Respuesta del servidor:', response); // Debug
             if (response.jugadores && response.jugadores.length > 0) {
                 mostrarJugadores(response.jugadores);
             } else {
                 $('#lista-jugadores').html(`
                     <div class="empty-state">
                         <i class="fas fa-user-slash"></i>
-                        <p>No se encontraron jugadores</p>
-                        <small class="text-muted">Intenta con otro nombre</small>
+                        <p>${busqueda ? 'No se encontraron jugadores' : 'No hay jugadores registrados'}</p>
+                        <small class="text-muted">${busqueda ? 'Intenta con otro nombre' : 'Contacta al administrador'}</small>
                     </div>
                 `);
             }
         },
         error: function(xhr) {
             console.error('Error al buscar jugadores:', xhr);
+            console.error('Status:', xhr.status);
+            console.error('Response:', xhr.responseText);
             mostrarMensaje('Error al buscar jugadores. Por favor intenta de nuevo.', 'error');
             $('#lista-jugadores').html(`
                 <div class="empty-state">
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>Error al buscar jugadores</p>
+                    <small class="text-muted">Status: ${xhr.status}</small>
                 </div>
             `);
         }
