@@ -22,6 +22,7 @@ Route::get('/migrate', function() {
    // return what you want
 });
 
+Route::get("/tv_torneo_americano", "HomeController@tvTorneoAmericano")->name("tvtorneoamericano");
 
 // ################################# estas rutas debo tocar para volver al mantenimiento ################
 /*Route::get('/home_test', function () {	
