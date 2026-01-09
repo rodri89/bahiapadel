@@ -68,6 +68,9 @@
                 <div class="card shadow bg-white p-4 mb-4">
                     <h4 class="mb-3">Grupos del Torneo</h4>
                     <div class="text-center mb-3">
+                        <a href="{{ route('tvtorneoamericanosorteo') }}?torneo_id={{ $torneo->id ?? 0 }}" target="_blank" class="btn btn-info btn-lg mr-2" id="btn-proyectar-sorteo-tv-distribucion">
+                            <i class="fa fa-desktop"></i> Proyectar Pantalla Sorteo TV
+                        </a>
                         <button type="button" class="btn btn-primary btn-lg" id="btn-mezclar-grupos">
                             <i class="fa fa-random"></i> Mezclar Grupos
                         </button>
@@ -451,9 +454,9 @@
                 if (index === parejasMezcladas.length - 1) {
                     setTimeout(function() {
                         mostrarGruposFinales();
-                    }, 1000);
+                    }, 1500);
                 }
-            }, index * 500); // Delay de 500ms entre cada pareja (más rápido)
+            }, index * 1500); // Delay de 1500ms (1.5 segundos) entre cada pareja
         });
     }
     
