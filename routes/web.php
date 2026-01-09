@@ -147,8 +147,8 @@ Route::post('logout', 'Auth\LoginController@logout')->name('logout');
 Route::get('/subir-foto-jugador', function() {
     return View('bahia_padel.mobile.subir_foto_jugador');
 })->name('subir.foto.jugador');
-Route::post('/buscar-jugadores-publico', 'HomeController@buscarJugadoresPublico')->name('buscar.jugadores.publico');
-Route::post('/subir-foto-jugador-publico', 'HomeController@subirFotoJugadorPublico')->name('subir.foto.jugador.publico');
+Route::post('/buscar-jugadores-publico', [App\Http\Controllers\HomeController::class, 'buscarJugadoresPublico'])->name('buscar.jugadores.publico');
+Route::post('/subir-foto-jugador-publico', [App\Http\Controllers\HomeController::class, 'subirFotoJugadorPublico'])->name('subir.foto.jugador.publico');
 
 Route::get('password/reset', 'Auth\ForgotPasswordController@showLinkRequestForm')->name('password.request');
 Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')->name('password.email');
