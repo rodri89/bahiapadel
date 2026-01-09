@@ -58,7 +58,7 @@
                     <span id="file-input-text">Toca para seleccionar una imagen</span>
                 </div>
             </div>
-            <small class="text-muted">Formatos: JPG, PNG, GIF. Máximo 50MB (se comprimirá automáticamente a 5MB si es necesario)</small>
+            <small class="text-muted">Formatos: JPG, PNG, GIF, WEBP, BMP. Máximo 100MB (se comprimirá automáticamente a 5MB si es necesario)</small>
         </div>
         
         <div id="preview-container" style="display: none;" class="text-center mb-3">
@@ -137,16 +137,31 @@ $(document).ready(function() {
             return false;
         }
         
-        // Validar tamaño (5MB máximo - el servidor comprimirá si es necesario)
-        if (file.size > 50 * 1024 * 1024) { // Máximo 50MB antes de comprimir
-            mostrarMensaje('La imagen es demasiado grande. Máximo 50MB (se comprimirá a 5MB).', 'error');
+        // Validar tamaño (100MB máximo - el servidor comprimirá si es necesario)
+        const maxSize = 100 * 1024 * 1024; // 100MB antes de comprimir
+        if (file.size > maxSize) {
+            mostrarMensaje('La imagen es demasiado grande. Máximo 100MB (se comprimirá a 5MB).', 'error');
             $('#input-foto').val('');
             return false;
         }
         
-        // Validar tipo
-        if (!file.type || !file.type.match('image.*')) {
-            mostrarMensaje('Por favor selecciona una imagen válida.', 'error');
+        // Validar tipo - aceptar más formatos
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+        
+        let isValidType = false;
+        if (file.type) {
+            isValidType = validTypes.includes(file.type.toLowerCase());
+        }
+        
+        // Si no tiene tipo, verificar por extensión
+        if (!isValidType && file.name) {
+            const fileName = file.name.toLowerCase();
+            isValidType = validExtensions.some(ext => fileName.endsWith(ext));
+        }
+        
+        if (!isValidType) {
+            mostrarMensaje('Por favor selecciona una imagen válida (JPG, PNG, GIF, WEBP, BMP).', 'error');
             $('#input-foto').val('');
             return false;
         }
@@ -158,24 +173,106 @@ $(document).ready(function() {
             sizeMessage += ' (se comprimirá a máximo 5MB)';
         }
         
-        // Mostrar preview
+        // Mostrar que está procesando
+        $('#file-input-text').text('Procesando imagen...');
+        $('#btn-subir-foto').prop('disabled', true);
+        
+        // Mostrar preview con mejor manejo de errores
         console.log('Leyendo archivo para preview...');
         const reader = new FileReader();
         
+        // Timeout para evitar que se quede colgado
+        const timeout = setTimeout(function() {
+            if (reader.readyState !== FileReader.DONE) {
+                reader.abort();
+                mostrarMensaje('La imagen es demasiado grande para previsualizar. Se subirá directamente.', 'error');
+                // Permitir subir sin preview
+                $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
+                $('#preview-container').hide();
+                $('#btn-subir-foto').prop('disabled', false);
+            }
+        }, 30000); // 30 segundos timeout
+        
+        reader.onloadstart = function() {
+            console.log('Iniciando lectura del archivo...');
+        };
+        
+        reader.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentLoaded = Math.round((e.loaded / e.total) * 100);
+                console.log('Progreso:', percentLoaded + '%');
+            }
+        };
+        
         reader.onload = function(e) {
-            console.log('Archivo leído, mostrando preview');
-            $('#preview-foto').attr('src', e.target.result);
-            $('#preview-container').show();
-            $('#file-input-text').text(file.name + ' (' + sizeMessage + ')');
-            $('#btn-subir-foto').prop('disabled', false);
+            clearTimeout(timeout);
+            console.log('Archivo leído exitosamente, mostrando preview');
+            try {
+                $('#preview-foto').attr('src', e.target.result);
+                $('#preview-container').show();
+                $('#file-input-text').text(file.name + ' (' + sizeMessage + ')');
+                $('#btn-subir-foto').prop('disabled', false);
+            } catch (err) {
+                console.error('Error al mostrar preview:', err);
+                // Permitir subir sin preview
+                $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
+                $('#preview-container').hide();
+                $('#btn-subir-foto').prop('disabled', false);
+            }
         };
         
         reader.onerror = function(e) {
+            clearTimeout(timeout);
             console.error('Error al leer el archivo:', e);
-            mostrarMensaje('Error al leer el archivo. Por favor intenta con otra imagen.', 'error');
+            console.error('Tipo de error:', reader.error);
+            
+            let errorMsg = 'Error al leer el archivo. ';
+            if (reader.error) {
+                switch(reader.error.code) {
+                    case reader.error.NOT_FOUND_ERR:
+                        errorMsg += 'Archivo no encontrado.';
+                        break;
+                    case reader.error.NOT_READABLE_ERR:
+                        errorMsg += 'Archivo no se puede leer.';
+                        break;
+                    case reader.error.ABORT_ERR:
+                        errorMsg += 'Lectura cancelada.';
+                        break;
+                    default:
+                        errorMsg += 'Error desconocido.';
+                }
+            }
+            
+            // Intentar permitir subir sin preview
+            $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
+            $('#preview-container').hide();
+            $('#btn-subir-foto').prop('disabled', false);
+            
+            mostrarMensaje(errorMsg + ' Puedes intentar subirla directamente.', 'error');
         };
         
-        reader.readAsDataURL(file);
+        reader.onabort = function() {
+            clearTimeout(timeout);
+            console.log('Lectura del archivo cancelada');
+        };
+        
+        reader.onloadend = function() {
+            clearTimeout(timeout);
+            console.log('Lectura del archivo finalizada');
+        };
+        
+        // Leer el archivo
+        try {
+            reader.readAsDataURL(file);
+        } catch (err) {
+            clearTimeout(timeout);
+            console.error('Error al iniciar lectura:', err);
+            // Permitir subir sin preview
+            $('#file-input-text').text(file.name + ' (' + sizeMessage + ') - Sin preview');
+            $('#preview-container').hide();
+            $('#btn-subir-foto').prop('disabled', false);
+            mostrarMensaje('No se pudo previsualizar la imagen, pero puedes subirla directamente.', 'error');
+        }
         
         return true;
     }
