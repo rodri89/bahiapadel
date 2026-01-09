@@ -368,11 +368,16 @@ class HomeController extends Controller
                     
                     // Validar que sea una imagen
                     if (!$image->isValid()) {
+                        \Log::error('Archivo no válido. Error: ' . $image->getError());
                         return response()->json([
                             'success' => false,
-                            'message' => 'El archivo enviado no es válido'
+                            'message' => 'El archivo enviado no es válido. Error: ' . $image->getError()
                         ], 400);
                     }
+                    
+                    // Verificar tamaño del archivo
+                    $fileSize = $image->getSize();
+                    \Log::info('Tamaño del archivo recibido: ' . round($fileSize / (1024 * 1024), 2) . ' MB');
                     
                     // Sanitizar nombre del archivo
                     $originalName = $image->getClientOriginalName();
@@ -385,17 +390,25 @@ class HomeController extends Controller
                     $directory = public_path('images/jugadores');
                     if (!file_exists($directory)) {
                         if (!mkdir($directory, 0755, true)) {
-                            throw new \Exception('No se pudo crear el directorio de imágenes');
+                            throw new \Exception('No se pudo crear el directorio de imágenes: ' . $directory);
                         }
                     }
                     
                     // Verificar permisos de escritura
                     if (!is_writable($directory)) {
-                        throw new \Exception('El directorio no tiene permisos de escritura');
+                        throw new \Exception('El directorio no tiene permisos de escritura: ' . $directory);
                     }
                     
+                    \Log::info('Procesando imagen con Intervention Image...');
+                    
                     // Cargar imagen con Intervention Image
-                    $img = Image::make($image->getRealPath());
+                    try {
+                        $img = Image::make($image->getRealPath());
+                        \Log::info('Imagen cargada. Dimensiones: ' . $img->width() . 'x' . $img->height());
+                    } catch (\Exception $e) {
+                        \Log::error('Error al cargar imagen con Intervention Image: ' . $e->getMessage());
+                        throw new \Exception('No se pudo procesar la imagen. Verifica que sea un formato válido (JPG, PNG, GIF).');
+                    }
                     
                     // Tamaño máximo en bytes (5MB)
                     $maxSize = 5 * 1024 * 1024; // 5MB
@@ -403,68 +416,91 @@ class HomeController extends Controller
                     // Redimensionar si es muy grande (mantener aspecto, máximo 1920px)
                     $maxDimension = 1920;
                     if ($img->width() > $maxDimension || $img->height() > $maxDimension) {
+                        \Log::info('Redimensionando imagen de ' . $img->width() . 'x' . $img->height() . ' a máximo ' . $maxDimension);
                         $img->resize($maxDimension, $maxDimension, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
                         });
                     }
                     
-                    // Comprimir y guardar con calidad ajustable
-                    $quality = 85;
-                    $maxAttempts = 10;
+                    // Guardar imagen con compresión progresiva si es necesario
+                    $quality = 90;
+                    $maxAttempts = 8;
                     $attempt = 0;
+                    $fileSize = 0;
                     
                     do {
-                        $img->save($imgPath, $quality);
-                        
-                        if (!file_exists($imgPath)) {
-                            throw new \Exception('No se pudo guardar el archivo');
-                        }
-                        
-                        $fileSize = filesize($imgPath);
-                        
-                        // Si el archivo es menor a 5MB, salir del bucle
-                        if ($fileSize <= $maxSize) {
-                            break;
-                        }
-                        
-                        // Reducir calidad
-                        $quality -= 10;
-                        $attempt++;
-                        
-                        // Si la calidad es muy baja y aún es grande, reducir tamaño
-                        if ($quality < 60 && $fileSize > $maxSize && $attempt < $maxAttempts) {
-                            $currentWidth = $img->width();
-                            $currentHeight = $img->height();
-                            $newWidth = intval($currentWidth * 0.85);
-                            $newHeight = intval($currentHeight * 0.85);
-                            $img->resize($newWidth, $newHeight, function ($constraint) {
-                                $constraint->aspectRatio();
-                            });
-                            $quality = 70; // Resetear calidad después de redimensionar
+                        try {
+                            $img->save($imgPath, $quality);
+                            
+                            if (!file_exists($imgPath)) {
+                                throw new \Exception('No se pudo guardar el archivo en: ' . $imgPath);
+                            }
+                            
+                            $fileSize = filesize($imgPath);
+                            \Log::info('Intento ' . ($attempt + 1) . ': Tamaño guardado: ' . round($fileSize / (1024 * 1024), 2) . ' MB (calidad: ' . $quality . ')');
+                            
+                            // Si el archivo es menor a 5MB, salir del bucle
+                            if ($fileSize <= $maxSize) {
+                                break;
+                            }
+                            
+                            // Reducir calidad
+                            $quality -= 10;
+                            $attempt++;
+                            
+                            // Si la calidad es muy baja y aún es grande, reducir tamaño
+                            if ($quality < 60 && $fileSize > $maxSize && $attempt < $maxAttempts) {
+                                $currentWidth = $img->width();
+                                $currentHeight = $img->height();
+                                $newWidth = intval($currentWidth * 0.85);
+                                $newHeight = intval($currentHeight * 0.85);
+                                \Log::info('Reduciendo tamaño de ' . $currentWidth . 'x' . $currentHeight . ' a ' . $newWidth . 'x' . $newHeight);
+                                $img->resize($newWidth, $newHeight, function ($constraint) {
+                                    $constraint->aspectRatio();
+                                });
+                                $quality = 75; // Resetear calidad después de redimensionar
+                            }
+                            
+                        } catch (\Exception $saveError) {
+                            \Log::error('Error al guardar imagen (intento ' . ($attempt + 1) . '): ' . $saveError->getMessage());
+                            if ($attempt >= $maxAttempts - 1) {
+                                throw $saveError;
+                            }
+                            $quality -= 10;
+                            $attempt++;
                         }
                         
                     } while ($fileSize > $maxSize && $quality >= 40 && $attempt < $maxAttempts);
                     
                     // Verificar que el archivo se guardó correctamente
                     if (!file_exists($imgPath)) {
-                        throw new \Exception('El archivo no se guardó correctamente');
+                        throw new \Exception('El archivo no se guardó correctamente en: ' . $imgPath);
                     }
+                    
+                    $finalSize = filesize($imgPath);
+                    \Log::info('Imagen guardada exitosamente. Tamaño final: ' . round($finalSize / (1024 * 1024), 2) . ' MB');
                     
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
                     \Log::error('Stack trace: ' . $e->getTraceAsString());
+                    \Log::error('Archivo: ' . ($request->hasFile('foto') ? $request->file('foto')->getClientOriginalName() : 'No hay archivo'));
                     return response()->json([
                         'success' => false,
                         'message' => 'Error al procesar la imagen: ' . $e->getMessage(),
-                        'trace' => config('app.debug') ? $e->getTraceAsString() : null
+                        'debug_info' => [
+                            'file_name' => $request->hasFile('foto') ? $request->file('foto')->getClientOriginalName() : null,
+                            'file_size' => $request->hasFile('foto') ? round($request->file('foto')->getSize() / (1024 * 1024), 2) . ' MB' : null,
+                            'error_code' => $request->hasFile('foto') ? $request->file('foto')->getError() : null
+                        ]
                     ], 500);
                 }
             } else {
+                \Log::error('No se recibió archivo en la petición');
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se envió ninguna imagen'
+                    'message' => 'No se envió ninguna imagen. Verifica que hayas seleccionado un archivo.'
                 ], 400);
             }
             

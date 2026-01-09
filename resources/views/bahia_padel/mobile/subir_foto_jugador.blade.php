@@ -530,12 +530,32 @@ function subirFoto(jugadorId, archivo) {
         },
         error: function(xhr) {
             console.error('Error completo:', xhr);
+            console.error('Status:', xhr.status);
+            console.error('Status Text:', xhr.statusText);
+            console.error('Response:', xhr.responseText);
+            
             let mensaje = 'Error al subir la foto';
+            let detalles = '';
             
             if (xhr.responseJSON) {
                 if (xhr.responseJSON.message) {
                     mensaje = xhr.responseJSON.message;
                 }
+                
+                // Agregar información de debug si está disponible
+                if (xhr.responseJSON.debug_info) {
+                    detalles = '\n';
+                    if (xhr.responseJSON.debug_info.file_name) {
+                        detalles += 'Archivo: ' + xhr.responseJSON.debug_info.file_name + '\n';
+                    }
+                    if (xhr.responseJSON.debug_info.file_size) {
+                        detalles += 'Tamaño: ' + xhr.responseJSON.debug_info.file_size + '\n';
+                    }
+                    if (xhr.responseJSON.debug_info.error_code !== null && xhr.responseJSON.debug_info.error_code !== undefined) {
+                        detalles += 'Código de error: ' + xhr.responseJSON.debug_info.error_code;
+                    }
+                }
+                
                 if (xhr.responseJSON.trace) {
                     console.error('Trace del error:', xhr.responseJSON.trace);
                 }
@@ -544,11 +564,22 @@ function subirFoto(jugadorId, archivo) {
                     const response = JSON.parse(xhr.responseText);
                     mensaje = response.message || mensaje;
                 } catch (e) {
-                    mensaje = 'Error al procesar la respuesta del servidor';
+                    mensaje = 'Error al procesar la respuesta del servidor (Status: ' + xhr.status + ')';
+                }
+            } else {
+                // Error de red o timeout
+                if (xhr.status === 0) {
+                    mensaje = 'Error de conexión. Verifica tu conexión a internet.';
+                } else if (xhr.status === 413) {
+                    mensaje = 'La imagen es demasiado grande. Intenta con una imagen más pequeña.';
+                } else if (xhr.status === 500) {
+                    mensaje = 'Error en el servidor. Por favor intenta más tarde.';
+                } else {
+                    mensaje = 'Error al subir la foto (Status: ' + xhr.status + ')';
                 }
             }
             
-            mostrarMensaje(mensaje + ' (Revisa la consola para más detalles)', 'error');
+            mostrarMensaje(mensaje + detalles, 'error');
             $('#btn-subir-foto').prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Foto');
         }
     });
