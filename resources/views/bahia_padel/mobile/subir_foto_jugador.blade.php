@@ -339,12 +339,19 @@ function ocultarSeccionUpload() {
 }
 
 function subirFoto(jugadorId, archivo) {
+    // Validar que hay un archivo
+    if (!archivo) {
+        mostrarMensaje('Por favor selecciona una imagen primero.', 'error');
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('id', jugadorId);
     formData.append('foto', archivo);
     formData.append('_token', '{{ csrf_token() }}');
     
-    // Deshabilitar botón
+    // Deshabilitar botón y mostrar estado de carga
+    const btnOriginal = $('#btn-subir-foto').html();
     $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
     
     $.ajax({
@@ -355,30 +362,64 @@ function subirFoto(jugadorId, archivo) {
         contentType: false,
         success: function(response) {
             if (response.success) {
-                mostrarMensaje('¡Foto subida correctamente!', 'success');
+                const mensaje = response.file_size_mb 
+                    ? `¡Foto subida correctamente! (${response.file_size_mb} MB)`
+                    : '¡Foto subida correctamente!';
+                mostrarMensaje(mensaje, 'success');
                 
                 // Actualizar foto en la lista
                 const jugadorItem = $(`.jugador-item[data-id="${jugadorId}"]`);
                 jugadorItem.find('img').attr('src', response.foto_url + '?t=' + new Date().getTime());
                 $('#selected-jugador-foto').attr('src', response.foto_url + '?t=' + new Date().getTime());
                 
-                // Limpiar formulario
-                $('#input-foto').val('');
+                // Limpiar solo el formulario de foto (mantener jugador seleccionado)
+                // Resetear el input file completamente
+                const inputFile = $('#input-foto');
+                inputFile.val('');
+                inputFile.replaceWith(inputFile.clone(true));
+                
                 $('#preview-container').hide();
                 $('#file-input-text').text('Toca para seleccionar una imagen');
+                $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-upload"></i> Subir Foto');
                 
-                setTimeout(function() {
-                    ocultarSeccionUpload();
-                    $('#buscador-jugadores').val('');
-                    $('#btn-limpiar-busqueda').hide();
-                    $('#lista-jugadores').html(`
-                        <div class="empty-state">
-                            <i class="fas fa-check-circle text-success"></i>
-                            <p class="text-success">Foto subida exitosamente</p>
-                            <small class="text-muted">Busca otro jugador si deseas</small>
-                        </div>
-                    `);
-                }, 1500);
+                // Re-vincular el evento change al nuevo input
+                $('#input-foto').on('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Validar tamaño (5MB máximo - el servidor comprimirá si es necesario)
+                        if (file.size > 50 * 1024 * 1024) { // Máximo 50MB antes de comprimir
+                            mostrarMensaje('La imagen es demasiado grande. Máximo 50MB (se comprimirá a 5MB).', 'error');
+                            $(this).val('');
+                            return;
+                        }
+                        
+                        // Validar tipo
+                        if (!file.type.match('image.*')) {
+                            mostrarMensaje('Por favor selecciona una imagen válida.', 'error');
+                            $(this).val('');
+                            return;
+                        }
+                        
+                        // Mostrar tamaño del archivo
+                        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                        let sizeMessage = fileSizeMB + ' MB';
+                        if (fileSizeMB > 5) {
+                            sizeMessage += ' (se comprimirá a máximo 5MB)';
+                        }
+                        
+                        // Mostrar preview
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            $('#preview-foto').attr('src', e.target.result);
+                            $('#preview-container').show();
+                            $('#file-input-text').text(file.name + ' (' + sizeMessage + ')');
+                            $('#btn-subir-foto').prop('disabled', false);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // No ocultar la sección, permitir subir otra foto o seleccionar otro jugador
             } else {
                 mostrarMensaje(response.message || 'Error al subir la foto', 'error');
                 $('#btn-subir-foto').prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Foto');
