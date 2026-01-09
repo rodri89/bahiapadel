@@ -318,6 +318,11 @@ class HomeController extends Controller
     }
 
     // Métodos públicos para subir fotos (sin autenticación)
+    function mostrarSubirFotoJugador(Request $request) {
+        $jugadorId = $request->query('jugador_id');
+        return view('bahia_padel.mobile.subir_foto_jugador', ['jugador_id_seleccionado' => $jugadorId]);
+    }
+    
     function buscarJugadoresPublico(Request $request) {
         $busqueda = $request->input('busqueda', '');
         
