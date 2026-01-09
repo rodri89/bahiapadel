@@ -98,18 +98,106 @@ body.dark-mode .sidebar {
   border-right: 1px solid #3d3d3d;
 }
 
-body.dark-mode .sidebar .nav-link {
-  color: #c0c0c0;
+/* Bracket Dark Mode */
+body.dark-mode .bracket-container {
+    background: #1a1a1a;
 }
 
-body.dark-mode .sidebar .nav-link:hover,
-body.dark-mode .sidebar .nav-link.active {
-  color: #ffffff;
-  background-color: #2d2d2d;
+body.dark-mode .bracket-round-title {
+    color: #e0e0e0;
 }
 
-body.dark-mode .sidebar-divider {
-  border-top: 1px solid #3d3d3d;
+body.dark-mode .match-card {
+    background: #2d2d2d;
+    border-color: #3d3d3d;
+}
+
+body.dark-mode .match-card.winner {
+    border-color: #38a169;
+}
+
+body.dark-mode .player-pair {
+    background: #4a5568;
+    border-color: #718096;
+}
+
+body.dark-mode .player-pair.winner {
+    background: #2f855a;
+    border-color: #38a169;
+}
+
+body.dark-mode .player-names {
+    color: #f7fafc;
+}
+
+body.dark-mode .player-images img {
+    border-color: #a0aec0;
+}
+
+body.dark-mode .player-pair-input input {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border-color: #3d3d3d;
+}
+
+body.dark-mode .modal-content-ganadores {
+    background-color: #2d2d2d;
+}
+
+body.dark-mode .modal-ganadores h2 {
+    color: #38a169;
+}
+
+body.dark-mode .ganador-foto .nombre {
+    color: #e0e0e0;
+}
+
+body.dark-mode .ganador-foto img {
+    border-color: #38a169;
+}
+
+body.dark-mode .torneo-title {
+  color: rgba(226, 232, 240, 0.92);
+}
+
+body.dark-mode .bracket-round-title {
+  color: rgba(226, 232, 240, 0.75);
+}
+
+body.dark-mode .match-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(59, 130, 246, 0.35);
+  box-shadow: 0 1vw 2.4vw rgba(15, 23, 42, 0.55);
+}
+
+
+body.dark-mode .player-pair {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+body.dark-mode .player-pair.winner {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: inset 0 0 0.8vw rgba(16, 185, 129, 0.3);
+}
+
+body.dark-mode .score-display {
+  color: #f8fafc;
+}
+
+body.dark-mode .badge {
+  background-color: rgba(59, 130, 246, 0.25);
+  color: rgba(226, 232, 240, 0.85);
+}
+
+body.dark-mode .match-card.placeholder {
+  background: rgba(17, 24, 39, 0.55);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+body.dark-mode .match-card.placeholder .player-names {
+  color: rgba(226, 232, 240, 0.7);
 }
 
 body.dark-mode .topbar {

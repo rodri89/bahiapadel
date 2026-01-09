@@ -318,11 +318,6 @@ class HomeController extends Controller
     }
 
     // Métodos públicos para subir fotos (sin autenticación)
-    function mostrarSubirFotoJugador(Request $request) {
-        $jugadorId = $request->query('jugador_id');
-        return view('bahia_padel.mobile.subir_foto_jugador', ['jugador_id_seleccionado' => $jugadorId]);
-    }
-    
     function buscarJugadoresPublico(Request $request) {
         $busqueda = $request->input('busqueda', '');
         
@@ -349,15 +344,21 @@ class HomeController extends Controller
 
     function subirFotoJugadorPublico(Request $request) {
         try {
-            $id = $request->input('id');
+            $id = $request->id;
             
             if (!$id) {
-                return redirect()->route('subir.foto.jugador')->with('error', 'ID de jugador requerido');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ID de jugador requerido'
+                ], 400);
             }
             
             $jugador = Jugadore::find($id);
             if (!$jugador) {
-                return redirect()->route('subir.foto.jugador')->with('error', 'Jugador no encontrado');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jugador no encontrado'
+                ], 404);
             }
             
             // Manejar subida de foto
@@ -367,7 +368,10 @@ class HomeController extends Controller
                     
                     // Validar que sea una imagen
                     if (!$image->isValid()) {
-                        return redirect()->route('subir.foto.jugador')->with('error', 'El archivo enviado no es válido');
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'El archivo enviado no es válido'
+                        ], 400);
                     }
                     
                     // Sanitizar nombre del archivo
@@ -391,11 +395,7 @@ class HomeController extends Controller
                     }
                     
                     // Cargar imagen con Intervention Image
-                    try {
-                        $img = Image::make($image->getRealPath());
-                    } catch (\Exception $e) {
-                        throw new \Exception('No se pudo procesar la imagen. Verifica que sea un formato válido (JPG, PNG, GIF).');
-                    }
+                    $img = Image::make($image->getRealPath());
                     
                     // Tamaño máximo en bytes (5MB)
                     $maxSize = 5 * 1024 * 1024; // 5MB
@@ -409,49 +409,39 @@ class HomeController extends Controller
                         });
                     }
                     
-                    // Guardar imagen con compresión progresiva si es necesario
-                    $quality = 90;
-                    $maxAttempts = 8;
+                    // Comprimir y guardar con calidad ajustable
+                    $quality = 85;
+                    $maxAttempts = 10;
                     $attempt = 0;
-                    $fileSize = 0;
                     
                     do {
-                        try {
-                            $img->save($imgPath, $quality);
-                            
-                            if (!file_exists($imgPath)) {
-                                throw new \Exception('No se pudo guardar el archivo en: ' . $imgPath);
-                            }
-                            
-                            $fileSize = filesize($imgPath);
-                            
-                            // Si el archivo es menor a 5MB, salir del bucle
-                            if ($fileSize <= $maxSize) {
-                                break;
-                            }
-                            
-                            // Reducir calidad
-                            $quality -= 10;
-                            $attempt++;
-                            
-                            // Si la calidad es muy baja y aún es grande, reducir tamaño
-                            if ($quality < 60 && $fileSize > $maxSize && $attempt < $maxAttempts) {
-                                $currentWidth = $img->width();
-                                $currentHeight = $img->height();
-                                $newWidth = intval($currentWidth * 0.85);
-                                $newHeight = intval($currentHeight * 0.85);
-                                $img->resize($newWidth, $newHeight, function ($constraint) {
-                                    $constraint->aspectRatio();
-                                });
-                                $quality = 75; // Resetear calidad después de redimensionar
-                            }
-                            
-                        } catch (\Exception $saveError) {
-                            if ($attempt >= $maxAttempts - 1) {
-                                throw $saveError;
-                            }
-                            $quality -= 10;
-                            $attempt++;
+                        $img->save($imgPath, $quality);
+                        
+                        if (!file_exists($imgPath)) {
+                            throw new \Exception('No se pudo guardar el archivo');
+                        }
+                        
+                        $fileSize = filesize($imgPath);
+                        
+                        // Si el archivo es menor a 5MB, salir del bucle
+                        if ($fileSize <= $maxSize) {
+                            break;
+                        }
+                        
+                        // Reducir calidad
+                        $quality -= 10;
+                        $attempt++;
+                        
+                        // Si la calidad es muy baja y aún es grande, reducir tamaño
+                        if ($quality < 60 && $fileSize > $maxSize && $attempt < $maxAttempts) {
+                            $currentWidth = $img->width();
+                            $currentHeight = $img->height();
+                            $newWidth = intval($currentWidth * 0.85);
+                            $newHeight = intval($currentHeight * 0.85);
+                            $img->resize($newWidth, $newHeight, function ($constraint) {
+                                $constraint->aspectRatio();
+                            });
+                            $quality = 70; // Resetear calidad después de redimensionar
                         }
                         
                     } while ($fileSize > $maxSize && $quality >= 40 && $attempt < $maxAttempts);
@@ -464,11 +454,18 @@ class HomeController extends Controller
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
-                    \Log::error('Stack: ' . $e->getTraceAsString());
-                    return redirect()->route('subir.foto.jugador')->with('error', 'Error al procesar la imagen: ' . $e->getMessage());
+                    \Log::error('Stack trace: ' . $e->getTraceAsString());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error al procesar la imagen: ' . $e->getMessage(),
+                        'trace' => config('app.debug') ? $e->getTraceAsString() : null
+                    ], 500);
                 }
             } else {
-                return redirect()->route('subir.foto.jugador')->with('error', 'No se envió ninguna imagen. Verifica que hayas seleccionado un archivo.');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se envió ninguna imagen'
+                ], 400);
             }
             
             $jugador->save();
@@ -479,22 +476,23 @@ class HomeController extends Controller
             if (file_exists($filePath)) {
                 $fileSize = filesize($filePath);
                 $fileSizeMB = round($fileSize / (1024 * 1024), 2);
-                \Log::info('Foto guardada exitosamente en: ' . $filePath . ' (Tamaño: ' . $fileSizeMB . ' MB)');
-                \Log::info('Ruta en BD: ' . $jugador->foto);
-                \Log::info('URL pública: ' . asset($jugador->foto));
-            } else {
-                \Log::error('El archivo no existe después de guardar: ' . $filePath);
             }
             
-            $mensaje = 'Foto actualizada correctamente';
-            if ($fileSizeMB > 0) {
-                $mensaje .= ' (tamaño final: ' . $fileSizeMB . ' MB)';
-            }
-            
-            // Redirigir con el ID del jugador para mantener la selección
-            return redirect()->route('subir.foto.jugador', ['jugador_id' => $jugador->id])->with('success', $mensaje);
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto actualizada correctamente' . ($fileSizeMB > 0 ? ' (tamaño final: ' . $fileSizeMB . ' MB)' : ''),
+                'jugador' => $jugador,
+                'foto_url' => asset($jugador->foto),
+                'file_size_mb' => $fileSizeMB
+            ]);
         } catch (\Exception $e) {
-            return redirect()->route('subir.foto.jugador')->with('error', 'Error al subir la foto: ' . $e->getMessage());
+            \Log::error('Error al subir foto: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al subir la foto: ' . $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
         }
     }
 
@@ -1644,8 +1642,7 @@ class HomeController extends Controller
                     'jugador_2' => $grupo->jugador_2,
                     'partidos_ganados' => 0,
                     'partidos_perdidos' => 0,
-                    'puntos_ganados' => 0, // Suma de games ganados
-                    'puntos_perdidos' => 0, // Suma de games perdidos
+                    'puntos_ganados' => 0, // Suma de games/sets ganados
                     'partidos_directos' => [] // Para almacenar resultados de partidos directos
                 ];
             }
@@ -1698,10 +1695,8 @@ class HomeController extends Controller
                 if ($puntosPareja1 > $puntosPareja2) {
                     $parejas[$key1]['partidos_ganados']++;
                     $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
-                    $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
                     $parejas[$key2]['partidos_perdidos']++;
                     $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
-                    $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
                     
                     // Guardar resultado del partido directo
                     $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => true, 'puntos' => $puntosPareja1 . '-' . $puntosPareja2];
@@ -1709,10 +1704,8 @@ class HomeController extends Controller
                 } else if ($puntosPareja2 > $puntosPareja1) {
                     $parejas[$key2]['partidos_ganados']++;
                     $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
-                    $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
                     $parejas[$key1]['partidos_perdidos']++;
                     $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
-                    $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
                     
                     // Guardar resultado del partido directo
                     $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => true, 'puntos' => $puntosPareja2 . '-' . $puntosPareja1];
@@ -1722,10 +1715,8 @@ class HomeController extends Controller
         }
         
         // Agregar keys a cada pareja para poder comparar partidos directos
-        // Calcular diferencia de games (ganados - perdidos)
         foreach ($parejas as $key => $pareja) {
             $parejas[$key]['key'] = $key;
-            $parejas[$key]['diferencia_games'] = $pareja['puntos_ganados'] - $pareja['puntos_perdidos'];
         }
         
         // Convertir a array y ordenar por posición
@@ -1738,9 +1729,9 @@ class HomeController extends Controller
                 return $b['partidos_ganados'] - $a['partidos_ganados'];
             }
             
-            // 2. Si tienen los mismos partidos ganados, por DIFERENCIA DE GAMES (ganados - perdidos)
-            if ($a['diferencia_games'] != $b['diferencia_games']) {
-                return $b['diferencia_games'] - $a['diferencia_games'];
+            // 2. Si tienen los mismos partidos ganados, por PUNTOS GANADOS (games)
+            if ($a['puntos_ganados'] != $b['puntos_ganados']) {
+                return $b['puntos_ganados'] - $a['puntos_ganados'];
             }
             
             // 3. Si siguen empatando, por PARTIDO DIRECTO
@@ -2157,576 +2148,6 @@ class HomeController extends Controller
         });
         
         return response()->json(['success' => true, 'posiciones' => $posiciones]);
-    }
-
-    public function tvTorneoAmericanoCruces(Request $request) {
-        $torneoId = $request->torneo_id;
-        
-        $torneo = DB::table('torneos')
-                        ->where('torneos.id', $torneoId)
-                        ->where('torneos.activo', 1)
-                        ->first();
-        
-        if (!$torneo) {
-            return redirect()->route('admintorneos')->with('error', 'Torneo no encontrado');
-        }
-        
-        // Obtener información de los jugadores
-        $jugadores = DB::table('jugadores')
-                        ->where('jugadores.activo', 1)
-                        ->get()
-                        ->toArray();
-        
-        // PRIMERO: Obtener todos los partidos eliminatorios existentes directamente de la base de datos
-        $cruces = [];
-        $resultadosGuardados = [];
-        
-        // Obtener todos los grupos eliminatorios con sus partidos
-        $gruposEliminatorios = DB::table('grupos')
-            ->where('torneo_id', $torneoId)
-            ->whereIn('zona', ['cuartos final', 'semifinal', 'final'])
-            ->whereNotNull('partido_id')
-            ->orderBy('zona')
-            ->orderBy('partido_id')
-            ->orderBy('id')
-            ->get();
-        
-        // Agrupar por partido_id
-        $partidosAgrupados = [];
-        foreach ($gruposEliminatorios as $grupo) {
-            $partidoId = $grupo->partido_id;
-            if (!isset($partidosAgrupados[$partidoId])) {
-                $partidosAgrupados[$partidoId] = [
-                    'zona' => $grupo->zona,
-                    'partido_id' => $partidoId,
-                    'grupos' => []
-                ];
-            }
-            $partidosAgrupados[$partidoId]['grupos'][] = $grupo;
-        }
-        
-        // Obtener los datos de los partidos
-        $partidosIds = array_keys($partidosAgrupados);
-        $partidos = [];
-        if (count($partidosIds) > 0) {
-            $partidos = DB::table('partidos')
-                ->whereIn('id', $partidosIds)
-                ->get()
-                ->keyBy('id');
-        }
-        
-        // Construir cruces desde los partidos existentes
-        $crucesPorRonda = [
-            'cuartos' => [],
-            'semifinales' => [],
-            'final' => []
-        ];
-        
-        foreach ($partidosAgrupados as $partidoId => $datosPartido) {
-            if (count($datosPartido['grupos']) >= 2) {
-                $g1 = $datosPartido['grupos'][0];
-                $g2 = $datosPartido['grupos'][1];
-                $partido = $partidos[$partidoId] ?? null;
-                
-                // Determinar la ronda según la zona
-                $ronda = 'cuartos';
-                if ($datosPartido['zona'] === 'semifinal') {
-                    $ronda = 'semifinales';
-                } else if ($datosPartido['zona'] === 'final') {
-                    $ronda = 'final';
-                }
-                
-                // Crear el cruce
-                $cruce = [
-                    'id' => $ronda . '_' . $partidoId,
-                    'pareja_1' => [
-                        'jugador_1' => $g1->jugador_1,
-                        'jugador_2' => $g1->jugador_2,
-                        'zona' => null,
-                        'posicion' => null
-                    ],
-                    'pareja_2' => [
-                        'jugador_1' => $g2->jugador_1,
-                        'jugador_2' => $g2->jugador_2,
-                        'zona' => null,
-                        'posicion' => null
-                    ],
-                    'ronda' => $ronda
-                ];
-                
-                $crucesPorRonda[$ronda][] = $cruce;
-                $cruces[] = $cruce;
-                
-                // Guardar resultado si existe
-                if ($partido && ($partido->pareja_1_set_1 > 0 || $partido->pareja_2_set_1 > 0)) {
-                    $resultadosGuardados[] = [
-                        'partido_id' => $partidoId,
-                        'cruce_id' => $cruce['id'], // Agregar el ID del cruce para facilitar la búsqueda en la vista
-                        'ronda' => $ronda,
-                        'pareja_1_jugador_1' => $g1->jugador_1,
-                        'pareja_1_jugador_2' => $g1->jugador_2,
-                        'pareja_2_jugador_1' => $g2->jugador_1,
-                        'pareja_2_jugador_2' => $g2->jugador_2,
-                        'pareja_1_set_1' => $partido->pareja_1_set_1 ?? 0,
-                        'pareja_2_set_1' => $partido->pareja_2_set_1 ?? 0,
-                    ];
-                }
-            }
-        }
-        
-        // Calcular posiciones de cada zona para mostrar en la vista (necesario para clasificados)
-        $grupos = DB::table('grupos')
-                        ->where('grupos.torneo_id', $torneoId)
-                        ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
-                        ->orderBy('grupos.zona')
-                        ->orderBy('grupos.id')
-                        ->get();
-        
-        // Calcular posiciones de cada zona y clasificados (siempre necesario para la vista)
-        $posicionesPorZona = [];
-        $zonas = $grupos->pluck('zona')->unique()->sort()->values();
-        
-        foreach ($zonas as $zona) {
-            // Obtener todas las parejas de la zona
-            $gruposZona = $grupos->where('zona', $zona)->filter(function($grupo) {
-                return $grupo->jugador_1 !== null && $grupo->jugador_2 !== null;
-            });
-            
-            // Agrupar por pareja (jugador_1 y jugador_2)
-            $parejas = [];
-            foreach ($gruposZona as $grupo) {
-                $key = $grupo->jugador_1 . '_' . $grupo->jugador_2;
-                if (!isset($parejas[$key])) {
-                    $parejas[$key] = [
-                        'jugador_1' => $grupo->jugador_1,
-                        'jugador_2' => $grupo->jugador_2,
-                        'partidos_ganados' => 0,
-                        'partidos_perdidos' => 0,
-                        'puntos_ganados' => 0,
-                        'partidos_directos' => []
-                    ];
-                }
-            }
-            
-            // Obtener todos los partidos de la zona
-            $partidosIds = $gruposZona->pluck('partido_id')->unique()->filter();
-            $partidos = DB::table('partidos')
-                            ->whereIn('id', $partidosIds)
-                            ->get();
-            
-            // Obtener grupos asociados a cada partido
-            $gruposPorPartido = [];
-            foreach ($gruposZona as $grupo) {
-                if ($grupo->partido_id) {
-                    if (!isset($gruposPorPartido[$grupo->partido_id])) {
-                        $gruposPorPartido[$grupo->partido_id] = [];
-                    }
-                    $gruposPorPartido[$grupo->partido_id][] = $grupo;
-                }
-            }
-            
-            // Procesar cada partido
-            foreach ($partidos as $partido) {
-                if (!isset($gruposPorPartido[$partido->id]) || count($gruposPorPartido[$partido->id]) < 2) {
-                    continue;
-                }
-                
-                $gruposPartido = collect($gruposPorPartido[$partido->id])->sortBy('id')->values()->all();
-                $pareja1Grupo = $gruposPartido[0];
-                $pareja2Grupo = $gruposPartido[1];
-                
-                $key1 = $pareja1Grupo->jugador_1 . '_' . $pareja1Grupo->jugador_2;
-                $key2 = $pareja2Grupo->jugador_1 . '_' . $pareja2Grupo->jugador_2;
-                
-                if (!isset($parejas[$key1]) || !isset($parejas[$key2])) {
-                    continue;
-                }
-                
-                $puntosPareja1 = $partido->pareja_1_set_1 ?? 0;
-                $puntosPareja2 = $partido->pareja_2_set_1 ?? 0;
-                
-                if ($puntosPareja1 > 0 || $puntosPareja2 > 0) {
-                    if ($puntosPareja1 > $puntosPareja2) {
-                        $parejas[$key1]['partidos_ganados']++;
-                        $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
-                        $parejas[$key2]['partidos_perdidos']++;
-                        $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
-                        $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => true];
-                        $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => false];
-                    } else if ($puntosPareja2 > $puntosPareja1) {
-                        $parejas[$key2]['partidos_ganados']++;
-                        $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
-                        $parejas[$key1]['partidos_perdidos']++;
-                        $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
-                        $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => true];
-                        $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => false];
-                    }
-                }
-            }
-            
-            // Agregar keys y ordenar
-            foreach ($parejas as $key => $pareja) {
-                $parejas[$key]['key'] = $key;
-            }
-            
-            $posiciones = array_values($parejas);
-            usort($posiciones, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                if ($a['puntos_ganados'] != $b['puntos_ganados']) {
-                    return $b['puntos_ganados'] - $a['puntos_ganados'];
-                }
-                $keyA = $a['key'];
-                $keyB = $b['key'];
-                if (isset($a['partidos_directos'][$keyB])) {
-                    return $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
-                }
-                return 0;
-            });
-            
-            $posicionesPorZona[$zona] = $posiciones;
-        }
-        
-        // Calcular clasificados para pasarlos a la vista (siempre necesario)
-        $clasificados = [];
-        $zonasArray = $zonas->toArray();
-        
-        // Clasificar los primeros de cada grupo
-        foreach ($zonasArray as $zona) {
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 0) {
-                $clasificados[] = [
-                    'zona' => $zona,
-                    'posicion' => 1,
-                    'jugador_1' => $posicionesPorZona[$zona][0]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][0]['jugador_2'],
-                    'partidos_ganados' => $posicionesPorZona[$zona][0]['partidos_ganados'],
-                    'puntos_ganados' => $posicionesPorZona[$zona][0]['puntos_ganados']
-                ];
-            }
-        }
-        
-        // Obtener segundos y terceros por zona (necesario para completar clasificados)
-        $segundosPorZona = [];
-        $tercerosPorZona = [];
-        foreach ($zonasArray as $zona) {
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 1) {
-                $segundosPorZona[$zona] = [
-                    'zona' => $zona,
-                    'posicion' => 2,
-                    'jugador_1' => $posicionesPorZona[$zona][1]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][1]['jugador_2'],
-                    'partidos_ganados' => $posicionesPorZona[$zona][1]['partidos_ganados'],
-                    'puntos_ganados' => $posicionesPorZona[$zona][1]['puntos_ganados']
-                ];
-            }
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 2) {
-                $tercerosPorZona[$zona] = [
-                    'zona' => $zona,
-                    'posicion' => 3,
-                    'jugador_1' => $posicionesPorZona[$zona][2]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][2]['jugador_2'],
-                    'partidos_ganados' => $posicionesPorZona[$zona][2]['partidos_ganados'],
-                    'puntos_ganados' => $posicionesPorZona[$zona][2]['puntos_ganados']
-                ];
-            }
-        }
-        
-        // Completar clasificados según el formato del torneo
-        $zonasOrdenadasArray = $zonasArray;
-        sort($zonasOrdenadasArray);
-        if (count($zonasOrdenadasArray) == 3) {
-            // 3 zonas: agregar A2, B2, C2 y 2 mejores terceros
-            foreach ($zonasOrdenadasArray as $zona) {
-                if (isset($segundosPorZona[$zona])) {
-                    $clasificados[] = $segundosPorZona[$zona];
-                }
-            }
-            $terceros = [];
-            foreach ($tercerosPorZona as $tercero) {
-                $terceros[] = $tercero;
-            }
-            usort($terceros, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
-            });
-            for ($i = 0; $i < min(2, count($terceros)); $i++) {
-                $clasificados[] = $terceros[$i];
-            }
-        } else {
-            // Lógica estándar para otros casos
-            $segundos = array_values($segundosPorZona);
-            usort($segundos, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
-            });
-            $necesarios = 8 - count($clasificados);
-            for ($i = 0; $i < min($necesarios, count($segundos)); $i++) {
-                $clasificados[] = $segundos[$i];
-            }
-            if (count($clasificados) < 8) {
-                $terceros = array_values($tercerosPorZona);
-                usort($terceros, function($a, $b) {
-                    if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                        return $b['partidos_ganados'] - $a['partidos_ganados'];
-                    }
-                    return $b['puntos_ganados'] - $a['puntos_ganados'];
-                });
-                $necesarios = 8 - count($clasificados);
-                for ($i = 0; $i < min($necesarios, count($terceros)); $i++) {
-                    $clasificados[] = $terceros[$i];
-                }
-            }
-        }
-        
-        // Si no hay cruces de cuartos en la base de datos, generarlos desde los clasificados
-        if (count($crucesPorRonda['cuartos']) == 0) {
-            // Armar los cruces según las reglas estándar
-            $primerosPorZonaFinal = [];
-            $segundosPorZonaFinal = [];
-            $tercerosFinal = [];
-            
-            foreach ($clasificados as $clasificado) {
-                if ($clasificado['posicion'] == 1) {
-                    $primerosPorZonaFinal[$clasificado['zona']] = $clasificado;
-                } else if ($clasificado['posicion'] == 2) {
-                    $segundosPorZonaFinal[$clasificado['zona']] = $clasificado;
-                } else if ($clasificado['posicion'] == 3) {
-                    $tercerosFinal[] = $clasificado;
-                }
-            }
-            
-            usort($tercerosFinal, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
-            });
-            
-            $crucesCuartos = [];
-            $totalClasificados = count($clasificados);
-            $zonasOrdenadasFinal = array_keys($primerosPorZonaFinal);
-            sort($zonasOrdenadasFinal);
-            
-            // Caso especial: 6 clasificados
-            if ($totalClasificados == 6) {
-                $primeros = [];
-                $resto = [];
-                
-                foreach ($clasificados as $clasificado) {
-                    if ($clasificado['posicion'] == 1) {
-                        $primeros[] = $clasificado;
-                    } else {
-                        $resto[] = $clasificado;
-                    }
-                }
-                
-                $segundosPorZona = [];
-                $tercerosPorZona = [];
-                
-                foreach ($resto as $pareja) {
-                    if ($pareja['posicion'] == 2) {
-                        $segundosPorZona[$pareja['zona']] = $pareja;
-                    } else if ($pareja['posicion'] == 3) {
-                        $tercerosPorZona[$pareja['zona']] = $pareja;
-                    }
-                }
-                
-                $zonasArray = array_keys($segundosPorZona + $tercerosPorZona);
-                sort($zonasArray);
-                
-                if (count($zonasArray) >= 2) {
-                    $zona1 = $zonasArray[0];
-                    $zona2 = $zonasArray[1];
-                    
-                    if (isset($segundosPorZona[$zona1]) && isset($tercerosPorZona[$zona2])) {
-                        $crucesCuartos[] = [
-                            'pareja_1' => $segundosPorZona[$zona1],
-                            'pareja_2' => $tercerosPorZona[$zona2],
-                            'ronda' => 'cuartos'
-                        ];
-                    }
-                    
-                    if (isset($segundosPorZona[$zona2]) && isset($tercerosPorZona[$zona1])) {
-                        $crucesCuartos[] = [
-                            'pareja_1' => $segundosPorZona[$zona2],
-                            'pareja_2' => $tercerosPorZona[$zona1],
-                            'ronda' => 'cuartos'
-                        ];
-                    }
-                } else {
-                    if (count($resto) >= 2) {
-                        for ($i = 0; $i < count($resto) - 1; $i += 2) {
-                            if (isset($resto[$i + 1])) {
-                                $crucesCuartos[] = [
-                                    'pareja_1' => $resto[$i],
-                                    'pareja_2' => $resto[$i + 1],
-                                    'ronda' => 'cuartos'
-                                ];
-                            }
-                        }
-                    }
-                }
-            } else if ($totalClasificados == 8 && count($zonasOrdenadasFinal) == 3) {
-                $zonaA = $zonasOrdenadasFinal[0];
-                $zonaB = $zonasOrdenadasFinal[1];
-                $zonaC = $zonasOrdenadasFinal[2];
-                
-                if (isset($primerosPorZonaFinal[$zonaA]) && count($tercerosFinal) > 0) {
-                    $crucesCuartos[] = [
-                        'pareja_1' => $primerosPorZonaFinal[$zonaA],
-                        'pareja_2' => $tercerosFinal[0],
-                        'ronda' => 'cuartos'
-                    ];
-                }
-                
-                if (isset($primerosPorZonaFinal[$zonaB]) && count($tercerosFinal) > 1) {
-                    $crucesCuartos[] = [
-                        'pareja_1' => $primerosPorZonaFinal[$zonaB],
-                        'pareja_2' => $tercerosFinal[1],
-                        'ronda' => 'cuartos'
-                    ];
-                }
-                
-                if (isset($primerosPorZonaFinal[$zonaC]) && isset($segundosPorZonaFinal[$zonaA])) {
-                    $crucesCuartos[] = [
-                        'pareja_1' => $primerosPorZonaFinal[$zonaC],
-                        'pareja_2' => $segundosPorZonaFinal[$zonaA],
-                        'ronda' => 'cuartos'
-                    ];
-                }
-                
-                if (isset($segundosPorZonaFinal[$zonaB]) && isset($segundosPorZonaFinal[$zonaC])) {
-                    $crucesCuartos[] = [
-                        'pareja_1' => $segundosPorZonaFinal[$zonaB],
-                        'pareja_2' => $segundosPorZonaFinal[$zonaC],
-                        'ronda' => 'cuartos'
-                    ];
-                }
-            } else {
-                $primeros = [];
-                $resto = [];
-                
-                foreach ($clasificados as $clasificado) {
-                    if ($clasificado['posicion'] == 1) {
-                        $primeros[] = $clasificado;
-                    } else {
-                        $resto[] = $clasificado;
-                    }
-                }
-                
-                $primerosUsados = [];
-                $restoUsados = [];
-                
-                $mitad = ceil(count($primeros) / 2);
-                $primerosSuperior = array_slice($primeros, 0, $mitad);
-                $primerosInferior = array_slice($primeros, $mitad);
-                
-                foreach ($primerosSuperior as $primero) {
-                    $encontrado = false;
-                    foreach ($resto as $index => $r) {
-                        if (!in_array($index, $restoUsados) && $r['zona'] != $primero['zona']) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $r,
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                            $encontrado = true;
-                            break;
-                        }
-                    }
-                    if (!$encontrado && count($resto) > 0) {
-                        $index = 0;
-                        while (in_array($index, $restoUsados) && $index < count($resto)) {
-                            $index++;
-                        }
-                        if ($index < count($resto)) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $resto[$index],
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                        }
-                    }
-                }
-                
-                foreach ($primerosInferior as $primero) {
-                    $encontrado = false;
-                    foreach ($resto as $index => $r) {
-                        if (!in_array($index, $restoUsados) && $r['zona'] != $primero['zona']) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $r,
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                            $encontrado = true;
-                            break;
-                        }
-                    }
-                    if (!$encontrado && count($resto) > 0) {
-                        $index = 0;
-                        while (in_array($index, $restoUsados) && $index < count($resto)) {
-                            $index++;
-                        }
-                        if ($index < count($resto)) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $resto[$index],
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                        }
-                    }
-                }
-                
-                $restantes = [];
-                foreach ($resto as $index => $r) {
-                    if (!in_array($index, $restoUsados)) {
-                        $restantes[] = $r;
-                    }
-                }
-                if (count($restantes) >= 2) {
-                    for ($i = 0; $i < count($restantes) - 1; $i += 2) {
-                        $crucesCuartos[] = [
-                            'pareja_1' => $restantes[$i],
-                            'pareja_2' => $restantes[$i + 1],
-                            'ronda' => 'cuartos'
-                        ];
-                    }
-                }
-            }
-            
-            // Agregar los cruces de cuartos generados a los cruces existentes
-            $cruces = array_merge($crucesPorRonda['cuartos'], $crucesCuartos, $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
-        } else {
-            // Si ya hay cruces de cuartos en la base de datos, usar todos los cruces existentes
-            $cruces = array_merge($crucesPorRonda['cuartos'], $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
-        }
-        
-        // Separar primeros para pasarlos a la vista (necesario para el caso de 6 clasificados)
-        $primerosClasificados = [];
-        foreach ($clasificados as $clasificado) {
-            if ($clasificado['posicion'] == 1) {
-                $primerosClasificados[] = $clasificado;
-            }
-        }
-        
-        return View('bahia_padel.tv.cruces_americano')
-                    ->with('torneo', $torneo)
-                    ->with('jugadores', $jugadores)
-                    ->with('clasificados', $clasificados)
-                    ->with('cruces', $cruces)
-                    ->with('posicionesPorZona', $posicionesPorZona)
-                    ->with('resultadosGuardados', $resultadosGuardados)
-                    ->with('primerosClasificados', $primerosClasificados)
-                    ->with('totalClasificados', count($clasificados));
     }
 
     public function adminTorneoAmericanoCruces(Request $request) {

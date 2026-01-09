@@ -49,6 +49,12 @@
 
             <!-- Navegación de zonas -->
             <div class="card shadow bg-white p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                     <a href="{{ route('tvtorneoamericano') }}?torneo_id={{ $torneo->id }}" target="_blank" class="btn btn-primary">
+                        <i class="fa fa-desktop"></i> Abrir Pantalla TV Zonas
+                    </a>
+                </div>
+
                 <div class="d-flex justify-content-between align-items-center">
                     <button type="button" class="btn btn-secondary" id="btn-zona-anterior">
                         ← Anterior
