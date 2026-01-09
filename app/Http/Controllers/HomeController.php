@@ -1354,6 +1354,137 @@ class HomeController extends Controller
                     ->with('partidosConResultados', $partidosConResultados)
                     ->with('posicionesPorZona', $posicionesPorZona);
     }
+    
+    public function tvTorneoAmericanoActualizar(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        $torneo = DB::table('torneos')
+                        ->where('torneos.id', $torneoId)
+                        ->where('torneos.activo', 1)
+                        ->first();
+        
+        if (!$torneo) {
+            return response()->json(['success' => false, 'message' => 'Torneo no encontrado'], 404);
+        }
+        
+        // Obtener grupos y calcular posiciones (misma lógica que tvTorneoAmericano)
+        $grupos = DB::table('grupos')
+                        ->where('grupos.torneo_id', $torneoId)
+                        ->whereNotNull('grupos.partido_id')
+                        ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                        ->orderBy('grupos.zona')
+                        ->orderBy('grupos.id')
+                        ->get();
+        
+        // Obtener resultados de partidos
+        $partidosIds = $grupos->pluck('partido_id')->unique()->filter();
+        $partidosConResultados = [];
+        if ($partidosIds->count() > 0) {
+            $partidos = DB::table('partidos')
+                            ->whereIn('id', $partidosIds)
+                            ->get();
+            foreach ($partidos as $partido) {
+                $partidosConResultados[$partido->id] = $partido;
+            }
+        }
+        
+        // Calcular posiciones por zona
+        $posicionesPorZona = [];
+        $gruposCollection = collect($grupos);
+        
+        // Obtener zonas únicas
+        $zonas = $grupos->pluck('zona')->unique();
+        
+        foreach ($zonas as $zona) {
+            $gruposZona = $gruposCollection->where('zona', $zona);
+            
+            $parejas = [];
+            foreach ($gruposZona as $grupo) {
+                if (!$grupo->jugador_1 || !$grupo->jugador_2) continue;
+                
+                $key = $grupo->jugador_1 . '_' . $grupo->jugador_2;
+                if (!isset($parejas[$key])) {
+                    $parejas[$key] = [
+                        'jugador_1' => $grupo->jugador_1,
+                        'jugador_2' => $grupo->jugador_2,
+                        'partidos_ganados' => 0,
+                        'partidos_perdidos' => 0,
+                        'puntos_ganados' => 0,
+                        'puntos_perdidos' => 0,
+                        'partidos_directos' => []
+                    ];
+                }
+            }
+            
+            // Obtener partidos de esta zona
+            $partidosZona = [];
+            foreach ($gruposZona as $grupo) {
+                if ($grupo->partido_id && isset($partidosConResultados[$grupo->partido_id])) {
+                    $partidosZona[$grupo->partido_id] = $partidosConResultados[$grupo->partido_id];
+                }
+            }
+            
+            // Procesar partidos para calcular estadísticas
+            foreach ($partidosZona as $partidoId => $partido) {
+                $gruposPartido = $gruposZona->where('partido_id', $partidoId)->sortBy('id')->values();
+                if ($gruposPartido->count() < 2) continue;
+                
+                $g1 = $gruposPartido[0];
+                $g2 = $gruposPartido[1];
+                
+                $key1 = $g1->jugador_1 . '_' . $g1->jugador_2;
+                $key2 = $g2->jugador_1 . '_' . $g2->jugador_2;
+                
+                if (!isset($parejas[$key1]) || !isset($parejas[$key2])) continue;
+                
+                $puntosPareja1 = $partido->pareja_1_set_1 ?? 0;
+                $puntosPareja2 = $partido->pareja_2_set_1 ?? 0;
+                
+                if ($puntosPareja1 > 0 || $puntosPareja2 > 0) {
+                    if ($puntosPareja1 > $puntosPareja2) {
+                        $parejas[$key1]['partidos_ganados']++;
+                        $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                        $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
+                        $parejas[$key2]['partidos_perdidos']++;
+                        $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                        $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
+                    } elseif ($puntosPareja2 > $puntosPareja1) {
+                        $parejas[$key2]['partidos_ganados']++;
+                        $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                        $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
+                        $parejas[$key1]['partidos_perdidos']++;
+                        $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                        $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
+                    }
+                }
+            }
+            
+            // Calcular diferencia y ordenar
+            foreach ($parejas as $key => $val) {
+                $parejas[$key]['key'] = $key;
+                $parejas[$key]['diferencia_games'] = ($val['puntos_ganados'] ?? 0) - ($val['puntos_perdidos'] ?? 0);
+            }
+            
+            $posiciones = array_values($parejas);
+            usort($posiciones, function($a, $b) {
+                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                    return $b['partidos_ganados'] - $a['partidos_ganados'];
+                }
+                if ($a['diferencia_games'] != $b['diferencia_games']) {
+                    return $b['diferencia_games'] - $a['diferencia_games'];
+                }
+                return 0;
+            });
+            
+            $posicionesPorZona[$zona] = $posiciones;
+        }
+        
+        return response()->json([
+            'success' => true,
+            'posicionesPorZona' => $posicionesPorZona,
+            'partidosConResultados' => $partidosConResultados
+        ]);
+    }
 
     public function adminTorneoAmericanoPartidos(Request $request) {
         $torneoId = $request->torneo_id;

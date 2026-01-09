@@ -219,7 +219,7 @@
                                                 <th style="width:40%; text-align:right; padding-right:20px;">Pareja 2</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="tbody-partidos-{{ $zona }}">
                                             @php
                                                 // Function to render match row
                                                 $renderRow = function($partido) use ($jugadoresKeyed, $gruposExistentes, $partidosConResultados) {
@@ -251,7 +251,7 @@
                                                         }
                                                     }
                                                     
-                                                    return '<tr>' .
+                                                    return '<tr data-partido-id="' . $partidoIdKey . '">' .
                                                         '<td>' .
                                                             '<div class="player-info">' .
                                                                 ($jugador1_1 ? '<img src="' . asset($jugador1_1->foto ?? 'images/jugador_img.png') . '" class="player-img">' : '') .
@@ -263,9 +263,9 @@
                                                         '</td>' .
                                                         '<td class="text-center">' .
                                                             '<div class="score-container">' .
-                                                                '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s1 > $s2) ? 'score-active' : '') . '">' . $s1 . '</div>' .
+                                                                '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s1 > $s2) ? 'score-active' : '') . '" data-score-p1="' . $s1 . '">' . $s1 . '</div>' .
                                                                 '<span style="color:#555; font-size:1.5rem; margin:0 5px;">-</span>' .
-                                                                '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s2 > $s1) ? 'score-active' : '') . '">' . $s2 . '</div>' .
+                                                                '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s2 > $s1) ? 'score-active' : '') . '" data-score-p2="' . $s2 . '">' . $s2 . '</div>' .
                                                             '</div>' .
                                                         '</td>' .
                                                         '<td style="text-align:right;">' .
@@ -310,7 +310,7 @@
                                                <th class="text-center">Games</th>
                                            </tr>
                                        </thead>
-                                       <tbody>
+                                       <tbody id="tbody-posiciones-{{ $zona }}">
                                             @if(isset($posicionesPorZona[$zona]))
                                                 @foreach($posicionesPorZona[$zona] as $index => $pos)
                                                     @php
@@ -362,7 +362,12 @@
             // 20 seconds slide interval
             let slideInterval = 20000; 
             // 2 minutes full reload to get new results
-            let totalRefreshTime = 120000; 
+            let totalRefreshTime = 120000;
+            
+            // Datos iniciales para comparar
+            let jugadores = @json($jugadores ?? []);
+            let partidosPorZona = @json($partidosPorZona ?? []);
+            let gruposExistentes = @json($gruposExistentes ?? []);
             
             function showSlide(index) {
                 slides.removeClass('active');
@@ -375,6 +380,131 @@
                 setTimeout(function() {
                     $('#progress-bar').css('transition', 'width ' + (slideInterval/1000) + 's linear').css('width', '100%');
                 }, 50);
+            }
+            
+            // Función para actualizar tablas
+            function actualizarTablas() {
+                let torneoId = {{ $torneo->id ?? 0 }};
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '{{ route("tvtorneoamericanoactualizar") }}',
+                    data: {
+                        torneo_id: torneoId,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Actualizar posiciones por zona
+                            if (response.posicionesPorZona) {
+                                Object.keys(response.posicionesPorZona).forEach(function(zona) {
+                                    actualizarPosiciones(zona, response.posicionesPorZona[zona]);
+                                });
+                            }
+                            
+                            // Actualizar resultados de partidos
+                            if (response.partidosConResultados) {
+                                actualizarResultadosPartidos(response.partidosConResultados);
+                            }
+                        }
+                    },
+                    error: function() {
+                        // Silencioso, no mostrar error si falla
+                    }
+                });
+            }
+            
+            // Función para actualizar tabla de posiciones
+            function actualizarPosiciones(zona, posiciones) {
+                let tbody = $('#tbody-posiciones-' + zona);
+                if (tbody.length === 0) return;
+                
+                tbody.empty();
+                
+                if (posiciones.length === 0) {
+                    tbody.append('<tr><td colspan="4" class="text-center">No info</td></tr>');
+                    return;
+                }
+                
+                posiciones.forEach(function(pos, index) {
+                    let p1 = jugadores.find(j => j.id == pos.jugador_1) || null;
+                    let p2 = jugadores.find(j => j.id == pos.jugador_2) || null;
+                    
+                    let diferencia = (pos.puntos_ganados || 0) - (pos.puntos_perdidos || 0);
+                    let diferenciaTexto = diferencia >= 0 ? '+' + diferencia : diferencia.toString();
+                    let diferenciaClass = diferencia >= 0 ? 'color:#4e73df;' : 'color:#e74a3b;';
+                    
+                    let foto1 = p1 && p1.foto ? '{{ url("/") }}/' + p1.foto : '{{ url("/") }}/images/jugador_img.png';
+                    let foto2 = p2 && p2.foto ? '{{ url("/") }}/' + p2.foto : '';
+                    
+                    let row = '<tr>' +
+                        '<td class="text-center"><span class="pos-rank pos-rank-' + (index + 1) + '">' + (index + 1) + '</span></td>' +
+                        '<td>' +
+                            '<div class="player-info">' +
+                                '<img src="' + foto1 + '" class="player-img" style="width:40px;height:40px;">' +
+                                '<div class="player-names">' +
+                                    '<span class="player-name" style="font-size:0.9rem;">' + (p1 ? p1.apellido : '') + '</span>' +
+                                    (p2 ? '<span class="player-name" style="font-size:0.9rem;">' + p2.apellido + '</span>' : '') +
+                                '</div>' +
+                            '</div>' +
+                        '</td>' +
+                        '<td class="text-center"><span style="font-size:1.5rem; font-weight:bold;">' + (pos.partidos_ganados || 0) + '</span></td>' +
+                        '<td class="text-center">' +
+                            '<span style="font-size:1.5rem; font-weight:bold; ' + diferenciaClass + '">' + diferenciaTexto + '</span>' +
+                        '</td>' +
+                    '</tr>';
+                    
+                    tbody.append(row);
+                });
+            }
+            
+            // Función para actualizar resultados de partidos
+            function actualizarResultadosPartidos(partidosConResultados) {
+                Object.keys(partidosPorZona).forEach(function(zona) {
+                    partidosPorZona[zona].forEach(function(partido) {
+                        let partidoId = partido.partido_id;
+                        if (!partidoId || !partidosConResultados[partidoId]) return;
+                        
+                        let resultado = partidosConResultados[partidoId];
+                        let row = $('tr[data-partido-id="' + partidoId + '"]');
+                        if (row.length === 0) return;
+                        
+                        // Determinar scores
+                        let gruposPartido = gruposExistentes.filter(g => g.partido_id == partidoId).sort((a, b) => a.id - b.id);
+                        let s1 = '-', s2 = '-';
+                        
+                        if (gruposPartido.length >= 2) {
+                            let grupo1 = gruposPartido[0];
+                            if (grupo1.jugador_1 == partido.pareja_1.jugador_1 && grupo1.jugador_2 == partido.pareja_1.jugador_2) {
+                                s1 = resultado.pareja_1_set_1 || '-';
+                                s2 = resultado.pareja_2_set_1 || '-';
+                            } else {
+                                s1 = resultado.pareja_2_set_1 || '-';
+                                s2 = resultado.pareja_1_set_1 || '-';
+                            }
+                        } else {
+                            s1 = resultado.pareja_1_set_1 || '-';
+                            s2 = resultado.pareja_2_set_1 || '-';
+                        }
+                        
+                        // Actualizar scores
+                        let scoreCells = row.find('.score-cell');
+                        if (scoreCells.length >= 2) {
+                            scoreCells.eq(0).text(s1).attr('data-score-p1', s1);
+                            scoreCells.eq(1).text(s2).attr('data-score-p2', s2);
+                            
+                            // Actualizar clases de activo
+                            scoreCells.removeClass('score-active');
+                            if (s1 != '-' && s2 != '-') {
+                                if (parseInt(s1) > parseInt(s2)) {
+                                    scoreCells.eq(0).addClass('score-active');
+                                } else if (parseInt(s2) > parseInt(s1)) {
+                                    scoreCells.eq(1).addClass('score-active');
+                                }
+                            }
+                        }
+                    });
+                });
             }
             
             if (slides.length > 0) {
@@ -392,6 +522,16 @@
                      }, slideInterval);
                 }
             }
+            
+            // Actualizar tablas cada 3 segundos
+            setInterval(function() {
+                actualizarTablas();
+            }, 3000);
+            
+            // Primera actualización después de 3 segundos
+            setTimeout(function() {
+                actualizarTablas();
+            }, 3000);
             
             // Reload page periodically
             setTimeout(function() {
