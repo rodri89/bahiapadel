@@ -2954,6 +2954,95 @@ class HomeController extends Controller
             'resultadosGuardados' => $resultadosGuardados
         ]);
     }
+    
+    public function tvTorneoAmericanoSorteo(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        $torneo = DB::table('torneos')
+                        ->where('torneos.id', $torneoId)
+                        ->where('torneos.activo', 1)
+                        ->first();
+        
+        if (!$torneo) {
+            return redirect()->route('index')->with('error', 'Torneo no encontrado');
+        }
+        
+        // Obtener grupos iniciales (sin partido_id) para mostrar el sorteo
+        $grupos = DB::table('grupos')
+                        ->where('grupos.torneo_id', $torneoId)
+                        ->whereNull('grupos.partido_id') // Solo grupos iniciales
+                        ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                        ->whereNotNull('grupos.jugador_1')
+                        ->whereNotNull('grupos.jugador_2')
+                        ->orderBy('grupos.zona')
+                        ->orderBy('grupos.id')
+                        ->get();
+        
+        // Agrupar por zona
+        $gruposPorZona = [];
+        foreach ($grupos as $grupo) {
+            $zona = $grupo->zona;
+            if (!isset($gruposPorZona[$zona])) {
+                $gruposPorZona[$zona] = [];
+            }
+            $gruposPorZona[$zona][] = $grupo;
+        }
+        
+        // Obtener información de los jugadores
+        $jugadores = DB::table('jugadores')
+                        ->where('jugadores.activo', 1)
+                        ->get()
+                        ->keyBy('id');
+        
+        return View('bahia_padel.tv.sorteo_americano')
+                    ->with('torneo', $torneo)
+                    ->with('gruposPorZona', $gruposPorZona)
+                    ->with('jugadores', $jugadores);
+    }
+    
+    public function tvTorneoAmericanoSorteoActualizar(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        $torneo = DB::table('torneos')
+                        ->where('torneos.id', $torneoId)
+                        ->where('torneos.activo', 1)
+                        ->first();
+        
+        if (!$torneo) {
+            return response()->json(['success' => false, 'message' => 'Torneo no encontrado'], 404);
+        }
+        
+        // Obtener grupos iniciales (sin partido_id) para mostrar el sorteo
+        $grupos = DB::table('grupos')
+                        ->where('grupos.torneo_id', $torneoId)
+                        ->whereNull('grupos.partido_id')
+                        ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                        ->whereNotNull('grupos.jugador_1')
+                        ->whereNotNull('grupos.jugador_2')
+                        ->orderBy('grupos.zona')
+                        ->orderBy('grupos.id')
+                        ->get();
+        
+        // Agrupar por zona
+        $gruposPorZona = [];
+        foreach ($grupos as $grupo) {
+            $zona = $grupo->zona;
+            if (!isset($gruposPorZona[$zona])) {
+                $gruposPorZona[$zona] = [];
+            }
+            $gruposPorZona[$zona][] = [
+                'id' => $grupo->id,
+                'zona' => $grupo->zona,
+                'jugador_1' => $grupo->jugador_1,
+                'jugador_2' => $grupo->jugador_2
+            ];
+        }
+        
+        return response()->json([
+            'success' => true,
+            'gruposPorZona' => $gruposPorZona
+        ]);
+    }
 
     public function adminTorneoAmericanoCruces(Request $request) {
         $torneoId = $request->torneo_id;

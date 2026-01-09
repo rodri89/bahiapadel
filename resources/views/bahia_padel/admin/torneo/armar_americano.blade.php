@@ -48,13 +48,23 @@
                             Comenzar
                         </button>
                     </div>
+                    <div class="col-md-4">
+                        <a href="{{ route('tvtorneoamericanosorteo') }}?torneo_id={{ $torneo->id ?? 0 }}" target="_blank" class="btn btn-info btn-lg w-100" id="btn-proyectar-sorteo-tv" style="display:none;">
+                            <i class="fa fa-desktop"></i> Proyectar Pantalla Sorteo TV
+                        </a>
+                    </div>
                 </div>
             </div>
 
             <!-- Sección 2: Distribución de Grupos con Animación -->
             <div id="seccion-distribucion" style="display:none;">
                 <div class="card shadow bg-white p-4 mb-4">
-                    <h4 class="mb-3">Distribuyendo Parejas en Grupos...</h4>
+                    <h4 class="mb-3">Grupos del Torneo</h4>
+                    <div class="text-center mb-3">
+                        <button type="button" class="btn btn-primary btn-lg" id="btn-mezclar-grupos">
+                            <i class="fa fa-random"></i> Mezclar Grupos
+                        </button>
+                    </div>
                     <div id="contenedor-grupos-animacion" class="row">
                         <!-- Los grupos se crearán dinámicamente aquí -->
                     </div>
@@ -316,16 +326,69 @@
             return;
         }
         
+        // NO mezclar automáticamente, solo mostrar los grupos vacíos
+        $('#seccion-seleccion-parejas').hide();
+        $('#seccion-distribucion').show();
+        $('#btn-proyectar-sorteo-tv').show();
+        
+        // Crear grupos vacíos sin mezclar
+        crearGruposVacios(cantidadGrupos);
+    });
+    
+    // Botón mezclar grupos
+    $('#btn-mezclar-grupos').on('click', function() {
+        if (parejasLista.length === 0) {
+            alert('Debe agregar al menos una pareja');
+            return;
+        }
+        
+        let cantidadGrupos = parseInt($('#cantidad_grupos').val());
+        if (cantidadGrupos < 1 || cantidadGrupos > 20) {
+            alert('Por favor ingrese un número entre 1 y 20');
+            return;
+        }
+        
         if (distribucionEnProceso) {
             return;
         }
         
         distribucionEnProceso = true;
-        $('#seccion-seleccion-parejas').hide();
-        $('#seccion-distribucion').show();
-        
         distribuirParejasAleatoriamente(cantidadGrupos);
     });
+    
+    // Función para crear grupos vacíos sin mezclar
+    function crearGruposVacios(cantidadGrupos) {
+        gruposCreados = [];
+        parejasSeleccionadas = {};
+        let contenedor = $('#contenedor-grupos-animacion');
+        contenedor.empty();
+        
+        for (let i = 1; i <= cantidadGrupos; i++) {
+            let letraGrupo = String.fromCharCode(64 + i); // A, B, C, etc.
+            gruposCreados.push({
+                id: i,
+                letra: letraGrupo,
+                jugadores: []
+            });
+            parejasSeleccionadas[i] = [];
+            
+            let grupoHtml = `
+                <div class="col-md-6 col-lg-4 mb-4" data-grupo-id="${i}">
+                    <div class="card border-primary h-100">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h5 class="mb-0">Grupo ${letraGrupo}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="parejas-grupo-anim-${i}" class="mb-3">
+                                <p class="text-muted text-center">Esperando mezcla...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            contenedor.append(grupoHtml);
+        }
+    }
     
     function distribuirParejasAleatoriamente(cantidadGrupos) {
         // Crear grupos vacíos
@@ -376,13 +439,13 @@
             setTimeout(function() {
                 agregarParejaAGrupoAnimacion(grupoId, pareja);
                 
-                // Si es la última pareja, mostrar sección final
+                // Si es la última pareja, mostrar sección final después de un delay
                 if (index === parejasMezcladas.length - 1) {
                     setTimeout(function() {
                         mostrarGruposFinales();
-                    }, 3000);
+                    }, 1000);
                 }
-            }, index * 3000); // Delay de 3 segundos entre cada pareja
+            }, index * 500); // Delay de 500ms entre cada pareja (más rápido)
         });
     }
     
