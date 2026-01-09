@@ -792,11 +792,18 @@
             const cruce = encontrarCruce(resultado);
             if (!cruce) return;
 
-            const parejaGanadora = actualizarMarcadores(resultado, cruce);
+            const matchCard = obtenerMatchCard(cruce, resultado.ronda, resultado);
+            if (!matchCard || !matchCard.length) return;
+
+            const parejaGanadora = actualizarMarcador(matchCard, resultado, cruce);
             
-            if (parejaGanadora) {
-                aplicados++;
-            }
+            // Asegurar que los scores se muestren
+            const score1 = Number(resultado.pareja_1_set_1) || 0;
+            const score2 = Number(resultado.pareja_2_set_1) || 0;
+            matchCard.find(`.score-display[data-pareja="1"]`).text(score1);
+            matchCard.find(`.score-display[data-pareja="2"]`).text(score2);
+
+            aplicados++;
 
             if (resultado.ronda === 'final' && parejaGanadora) {
                 parejaGanadoraFinal = parejaGanadora;
