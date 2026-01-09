@@ -27,7 +27,7 @@ class HomeController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth', ['except' => ['buscarJugadoresPublico', 'subirFotoJugadorPublico']]);
+        $this->middleware('auth', ['except' => ['buscarJugadoresPublico', 'subirFotoJugadorPublico', 'tvTorneoAmericano']]);
         //$this->middleware('guest', ['except' => 'logout']);
     }
 
@@ -1074,6 +1074,274 @@ class HomeController extends Controller
                 'message' => 'Error al crear los partidos: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function tvTorneoAmericano(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        $torneo = DB::table('torneos')
+                        ->where('torneos.id', $torneoId)
+                        ->where('torneos.activo', 1)
+                        ->first();
+        
+        if (!$torneo) {
+            return redirect()->route('index')->with('error', 'Torneo no encontrado');
+        }
+        
+        // Obtener todos los grupos del torneo (con partido_id) para identificar parejas y zonas
+        // Después de crear los partidos, los grupos iniciales se eliminan, así que usamos los grupos con partido_id
+        $grupos = DB::table('grupos')
+                        ->where('grupos.torneo_id', $torneoId)
+                        ->whereNotNull('grupos.partido_id') // Solo grupos con partido_id (partidos creados)
+                        ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final']) // Excluir grupos de eliminatoria
+                        ->orderBy('grupos.zona')
+                        ->orderBy('grupos.id')
+                        ->get();
+        
+        // Agrupar por zona y extraer parejas únicas (sin duplicados)
+        $parejasPorZona = [];
+        $parejasUnicas = []; // Para evitar duplicados: "zona-jugador1-jugador2"
+        foreach ($grupos as $grupo) {
+            $zona = $grupo->zona;
+            if (!isset($parejasPorZona[$zona])) {
+                $parejasPorZona[$zona] = [];
+            }
+            // Solo agregar si tiene ambos jugadores (es una pareja válida)
+            if ($grupo->jugador_1 && $grupo->jugador_2) {
+                $keyPareja = $zona . '-' . min($grupo->jugador_1, $grupo->jugador_2) . '-' . max($grupo->jugador_1, $grupo->jugador_2);
+                if (!isset($parejasUnicas[$keyPareja])) {
+                    $parejasPorZona[$zona][] = [
+                        'grupo_id' => $grupo->id,
+                        'jugador_1' => $grupo->jugador_1,
+                        'jugador_2' => $grupo->jugador_2,
+                        'partido_id' => $grupo->partido_id
+                    ];
+                    $parejasUnicas[$keyPareja] = true;
+                }
+            }
+        }
+        
+        // Construir TODOS los partidos posibles (todos contra todos) para cada zona
+        // Crear los partidos si no existen, o usar los existentes
+        $partidosPorZona = [];
+        
+        foreach ($parejasPorZona as $zona => $parejas) {
+            $partidosPorZona[$zona] = [];
+            
+            // Generar todas las combinaciones "todos contra todos"
+            $combinaciones = [];
+            for ($i = 0; $i < count($parejas); $i++) {
+                for ($j = $i + 1; $j < count($parejas); $j++) {
+                    $combinaciones[] = [
+                        'pareja_1' => $parejas[$i],
+                        'pareja_2' => $parejas[$j],
+                    ];
+                }
+            }
+            
+            // Para cada combinación, SOLO buscar partidos existentes (NO crear nuevos)
+            $partidosTemporales = [];
+            foreach ($combinaciones as $combo) {
+                $pareja1 = $combo['pareja_1'];
+                $pareja2 = $combo['pareja_2'];
+                
+                // SOLO buscar si existe un partido con estas parejas en la BD
+                $partidoExistente = DB::table('grupos as g1')
+                    ->join('grupos as g2', function($join) {
+                        $join->on('g1.partido_id', '=', 'g2.partido_id')
+                             ->whereRaw('g1.id != g2.id');
+                    })
+                    ->where('g1.torneo_id', $torneoId)
+                    ->where('g1.zona', $zona)
+                    ->where('g2.torneo_id', $torneoId)
+                    ->where('g2.zona', $zona)
+                    ->whereNotNull('g1.partido_id')
+                    ->whereNotNull('g2.partido_id')
+                    ->where(function($query) use ($pareja1, $pareja2) {
+                        // Caso 1: g1 tiene pareja1 y g2 tiene pareja2
+                        $query->where(function($q) use ($pareja1, $pareja2) {
+                            $q->where('g1.jugador_1', $pareja1['jugador_1'])
+                              ->where('g1.jugador_2', $pareja1['jugador_2'])
+                              ->where('g2.jugador_1', $pareja2['jugador_1'])
+                              ->where('g2.jugador_2', $pareja2['jugador_2']);
+                        })
+                        // Caso 2: g1 tiene pareja2 y g2 tiene pareja1
+                        ->orWhere(function($q) use ($pareja1, $pareja2) {
+                            $q->where('g1.jugador_1', $pareja2['jugador_1'])
+                              ->where('g1.jugador_2', $pareja2['jugador_2'])
+                              ->where('g2.jugador_1', $pareja1['jugador_1'])
+                              ->where('g2.jugador_2', $pareja1['jugador_2']);
+                        });
+                    })
+                    ->select('g1.partido_id')
+                    ->first();
+                
+                // Si existe, usar su partido_id, si no existe, usar null
+                $partidoIdEncontrado = $partidoExistente ? $partidoExistente->partido_id : null;
+                
+                // Agregar el partido temporalmente
+                $partidosTemporales[] = [
+                    'partido_id' => $partidoIdEncontrado,
+                    'pareja_1' => $pareja1,
+                    'pareja_2' => $pareja2
+                ];
+            }
+            
+            // Ordenar los partidos para intercalar las parejas
+            $partidosOrdenados = $this->ordenarPartidosIntercalados($partidosTemporales);
+            
+            // Asignar números de partido en el orden final
+            $numeroPartido = 1;
+            foreach ($partidosOrdenados as $partido) {
+                $partidosPorZona[$zona][] = [
+                    'partido_id' => $partido['partido_id'],
+                    'pareja_1' => $partido['pareja_1'],
+                    'pareja_2' => $partido['pareja_2'],
+                    'numero_partido' => $numeroPartido
+                ];
+                $numeroPartido++;
+            }
+        }
+        
+        // Obtener información de los jugadores (como array, no keyBy para que funcione en JavaScript)
+        $jugadores = DB::table('jugadores')
+                        ->where('jugadores.activo', 1)
+                        ->get()
+                        ->toArray();
+        
+        // Obtener resultados de partidos existentes
+        $partidosIds = [];
+        foreach ($partidosPorZona as $zona => $partidos) {
+            foreach ($partidos as $partido) {
+                if ($partido['partido_id']) {
+                    $partidosIds[] = $partido['partido_id'];
+                }
+            }
+        }
+        $partidosIds = array_unique($partidosIds);
+        
+        $partidosConResultados = [];
+        if (!empty($partidosIds)) {
+            $partidos = DB::table('partidos')
+                            ->whereIn('id', $partidosIds)
+                            ->get();
+            
+            foreach ($partidos as $partido) {
+                $partidosConResultados[$partido->id] = $partido;
+            }
+        }
+        
+        // Calcular posiciones por zona
+        $posicionesPorZona = [];
+        $gruposCollection = collect($grupos);
+
+        foreach (array_keys($partidosPorZona) as $zona) {
+             $gruposZona = $gruposCollection->where('zona', $zona);
+             
+             $parejas = [];
+             foreach ($gruposZona as $grupo) {
+                if (!$grupo->jugador_1 || !$grupo->jugador_2) continue;
+                
+                $key = $grupo->jugador_1 . '_' . $grupo->jugador_2;
+                if (!isset($parejas[$key])) {
+                    $parejas[$key] = [
+                        'jugador_1' => $grupo->jugador_1,
+                        'jugador_2' => $grupo->jugador_2,
+                        'partidos_ganados' => 0,
+                        'partidos_perdidos' => 0,
+                        'puntos_ganados' => 0, 
+                        'partidos_directos' => []
+                    ];
+                }
+             }
+
+             // Iterar sobre partidos
+             foreach ($partidosPorZona[$zona] as $p) {
+                 if (!$p['partido_id']) continue;
+                 $pid = $p['partido_id'];
+                 if (!isset($partidosConResultados[$pid])) continue;
+                 
+                 $partido = $partidosConResultados[$pid];
+                 
+                 $gruposPartido = $gruposCollection->where('partido_id', $pid)->sortBy('id')->values();
+                 if ($gruposPartido->count() < 2) continue;
+                 
+                 $g1 = $gruposPartido[0];
+                 $paramPareja1 = $p['pareja_1'];
+                 
+                 $p1_key = $paramPareja1['jugador_1'] . '_' . $paramPareja1['jugador_2'];
+                 $p2_key = $p['pareja_2']['jugador_1'] . '_' . $p['pareja_2']['jugador_2'];
+                 
+                 $set1 = $partido->pareja_1_set_1;
+                 $set2 = $partido->pareja_2_set_1;
+                 
+                 $p1_score = 0; 
+                 $p2_score = 0;
+                 
+                 // Verificar orden
+                 if ($g1->jugador_1 == $paramPareja1['jugador_1'] && $g1->jugador_2 == $paramPareja1['jugador_2']) {
+                     $p1_score = $set1;
+                     $p2_score = $set2;
+                 } else {
+                     $p1_score = $set2;
+                     $p2_score = $set1;
+                 }
+                 
+                 if ($p1_score > 0 || $p2_score > 0) {
+                      if ($p1_score > $p2_score) {
+                          if(isset($parejas[$p1_key])) {
+                              $parejas[$p1_key]['partidos_ganados']++;
+                              $parejas[$p1_key]['puntos_ganados'] += $p1_score;
+                              $parejas[$p1_key]['partidos_directos'][$p2_key] = ['ganado'=>true];
+                          }
+                          if(isset($parejas[$p2_key])) {
+                              $parejas[$p2_key]['partidos_perdidos']++;
+                              $parejas[$p2_key]['puntos_ganados'] += $p2_score;
+                              $parejas[$p2_key]['partidos_directos'][$p1_key] = ['ganado'=>false];
+                          }
+                      } elseif ($p2_score > $p1_score) {
+                          if(isset($parejas[$p2_key])) {
+                              $parejas[$p2_key]['partidos_ganados']++;
+                              $parejas[$p2_key]['puntos_ganados'] += $p2_score;
+                              $parejas[$p2_key]['partidos_directos'][$p1_key] = ['ganado'=>true];
+                          }
+                          if(isset($parejas[$p1_key])) {
+                              $parejas[$p1_key]['partidos_perdidos']++;
+                              $parejas[$p1_key]['puntos_ganados'] += $p1_score;
+                              $parejas[$p1_key]['partidos_directos'][$p2_key] = ['ganado'=>false];
+                          }
+                      }
+                 }
+             }
+             
+             // Sort
+             foreach ($parejas as $key => $val) { $parejas[$key]['key'] = $key; }
+             $posiciones = array_values($parejas);
+             
+             usort($posiciones, function($a, $b) {
+                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                    return $b['partidos_ganados'] - $a['partidos_ganados'];
+                }
+                if ($a['puntos_ganados'] != $b['puntos_ganados']) {
+                    return $b['puntos_ganados'] - $a['puntos_ganados'];
+                }
+                $keyA = $a['key'];
+                $keyB = $b['key'];
+                if (isset($a['partidos_directos'][$keyB])) {
+                    return $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
+                }
+                return 0;
+             });
+             
+             $posicionesPorZona[$zona] = $posiciones;
+        }
+        
+        return View('bahia_padel.tv.resultados')
+                    ->with('torneo', $torneo)
+                    ->with('partidosPorZona', $partidosPorZona)
+                    ->with('jugadores', $jugadores)
+                    ->with('partidosConResultados', $partidosConResultados)
+                    ->with('posicionesPorZona', $posicionesPorZona);
     }
 
     public function adminTorneoAmericanoPartidos(Request $request) {
