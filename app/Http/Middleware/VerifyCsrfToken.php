@@ -20,5 +20,7 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'deploy-webhook', // Webhook de GitHub para despliegue automático
+        'buscar-jugadores-publico', // Búsqueda pública de jugadores sin autenticación
+        'subir-foto-jugador-publico', // Subida de foto pública sin autenticación
     ];
 }
