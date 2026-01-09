@@ -367,7 +367,7 @@
             // Datos iniciales para comparar
             let jugadores = @json($jugadores ?? []);
             let partidosPorZona = @json($partidosPorZona ?? []);
-            let gruposExistentes = @json($gruposExistentes ?? []);
+            let gruposExistentes = @json($gruposExistentes->toArray() ?? []);
             
             function showSlide(index) {
                 slides.removeClass('active');
@@ -470,21 +470,21 @@
                         if (row.length === 0) return;
                         
                         // Determinar scores
-                        let gruposPartido = gruposExistentes.filter(g => g.partido_id == partidoId).sort((a, b) => a.id - b.id);
+                        let gruposPartido = gruposExistentes.filter(function(g) { return g.partido_id == partidoId; }).sort(function(a, b) { return a.id - b.id; });
                         let s1 = '-', s2 = '-';
                         
                         if (gruposPartido.length >= 2) {
                             let grupo1 = gruposPartido[0];
                             if (grupo1.jugador_1 == partido.pareja_1.jugador_1 && grupo1.jugador_2 == partido.pareja_1.jugador_2) {
-                                s1 = resultado.pareja_1_set_1 || '-';
-                                s2 = resultado.pareja_2_set_1 || '-';
+                                s1 = (resultado.pareja_1_set_1 !== null && resultado.pareja_1_set_1 !== undefined) ? resultado.pareja_1_set_1 : '-';
+                                s2 = (resultado.pareja_2_set_1 !== null && resultado.pareja_2_set_1 !== undefined) ? resultado.pareja_2_set_1 : '-';
                             } else {
-                                s1 = resultado.pareja_2_set_1 || '-';
-                                s2 = resultado.pareja_1_set_1 || '-';
+                                s1 = (resultado.pareja_2_set_1 !== null && resultado.pareja_2_set_1 !== undefined) ? resultado.pareja_2_set_1 : '-';
+                                s2 = (resultado.pareja_1_set_1 !== null && resultado.pareja_1_set_1 !== undefined) ? resultado.pareja_1_set_1 : '-';
                             }
                         } else {
-                            s1 = resultado.pareja_1_set_1 || '-';
-                            s2 = resultado.pareja_2_set_1 || '-';
+                            s1 = (resultado.pareja_1_set_1 !== null && resultado.pareja_1_set_1 !== undefined) ? resultado.pareja_1_set_1 : '-';
+                            s2 = (resultado.pareja_2_set_1 !== null && resultado.pareja_2_set_1 !== undefined) ? resultado.pareja_2_set_1 : '-';
                         }
                         
                         // Actualizar scores
@@ -495,7 +495,7 @@
                             
                             // Actualizar clases de activo
                             scoreCells.removeClass('score-active');
-                            if (s1 != '-' && s2 != '-') {
+                            if (s1 != '-' && s2 != '-' && !isNaN(s1) && !isNaN(s2)) {
                                 if (parseInt(s1) > parseInt(s2)) {
                                     scoreCells.eq(0).addClass('score-active');
                                 } else if (parseInt(s2) > parseInt(s1)) {
