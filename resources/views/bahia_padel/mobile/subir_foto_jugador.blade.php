@@ -395,11 +395,26 @@ function subirFoto(jugadorId, archivo) {
             }
         },
         error: function(xhr) {
+            console.error('Error completo:', xhr);
             let mensaje = 'Error al subir la foto';
-            if (xhr.responseJSON && xhr.responseJSON.message) {
-                mensaje = xhr.responseJSON.message;
+            
+            if (xhr.responseJSON) {
+                if (xhr.responseJSON.message) {
+                    mensaje = xhr.responseJSON.message;
+                }
+                if (xhr.responseJSON.trace) {
+                    console.error('Trace del error:', xhr.responseJSON.trace);
+                }
+            } else if (xhr.responseText) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    mensaje = response.message || mensaje;
+                } catch (e) {
+                    mensaje = 'Error al procesar la respuesta del servidor';
+                }
             }
-            mostrarMensaje(mensaje, 'error');
+            
+            mostrarMensaje(mensaje + ' (Revisa la consola para más detalles)', 'error');
             $('#btn-subir-foto').prop('disabled', false).html('<i class="fas fa-upload"></i> Subir Foto');
         }
     });
