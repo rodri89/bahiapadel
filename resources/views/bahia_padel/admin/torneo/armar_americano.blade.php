@@ -341,6 +341,7 @@
         $('#seccion-distribucion').show();
         $('#btn-proyectar-sorteo-tv').show();
         $('#btn-proyectar-sorteo-tv-top').show();
+        $('#btn-proyectar-sorteo-tv-distribucion').show();
         
         // Crear grupos vacíos sin mezclar
         crearGruposVacios(cantidadGrupos);
