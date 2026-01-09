@@ -27,7 +27,7 @@ class HomeController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth', ['except' => ['buscarJugadoresPublico', 'subirFotoJugadorPublico']]);
         //$this->middleware('guest', ['except' => 'logout']);
     }
 
