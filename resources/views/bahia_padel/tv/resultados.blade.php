@@ -122,15 +122,37 @@
             font-weight: 800;
             color: #fff;
             text-align: center;
-            width: 80px;
+            min-width: 40px; /* Reduced from fixed width to allow flex */
+        }
+        
+        .score-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
         }
 
         .score-active {
             color: #4e73df;
         }
-
-        .pos-rank {
-            font-size: 1.5rem;
+        
+        .tv-table td {
+            padding: 8px 6px; /* Reduced padding */
+        }
+        
+        .player-img {
+            width: 40px; /* Smaller image */
+            height: 40px;
+        }
+        
+        .player-name {
+            font-size: 1rem; /* Smaller font */
+        }
+        
+        .tv-header {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
             font-weight: 800;
             color: #888;
             text-align: center;
@@ -168,6 +190,9 @@
                     ->orderBy('partido_id')
                     ->orderBy('id')
                     ->get());
+                
+                $jugadoresArray = is_array($jugadores) ? $jugadores : (is_object($jugadores) ? $jugadores->toArray() : []);
+                $jugadoresKeyed = collect($jugadoresArray)->keyBy('id');
             @endphp
 
             @foreach($partidosPorZona as $zona => $partidos)
@@ -195,11 +220,9 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($partidos as $partido)
-                                                @php
-                                                    $jugadoresArray = is_array($jugadores) ? $jugadores : (is_object($jugadores) ? $jugadores->toArray() : []);
-                                                    $jugadoresKeyed = collect($jugadoresArray)->keyBy('id');
-                                                    
+                                            @php
+                                                // Function to render match row
+                                                $renderRow = function($partido) use ($jugadoresKeyed, $gruposExistentes, $partidosConResultados) {
                                                     $jugador1_1 = $jugadoresKeyed[$partido['pareja_1']['jugador_1']] ?? null;
                                                     $jugador1_2 = $jugadoresKeyed[$partido['pareja_1']['jugador_2']] ?? null;
                                                     $jugador2_1 = $jugadoresKeyed[$partido['pareja_2']['jugador_1']] ?? null;
@@ -211,59 +234,60 @@
                                                     $s1 = '-'; $s2 = '-';
                                                     
                                                     if ($resultado) {
-                                                        // Logic to determine which set corresponds to which pair
                                                         $gruposPartido = $gruposExistentes->where('partido_id', $partidoIdKey)->sortBy('id')->values();
-                                                        
-                                                        $val1 = 0; $val2 = 0;
-                                                        
                                                         if ($gruposPartido->count() >= 2) {
                                                             $grupo1 = $gruposPartido[0];
-                                                            // If pareja 1 matches the first group in DB
                                                             if ($grupo1->jugador_1 == $partido['pareja_1']['jugador_1'] && 
                                                                 $grupo1->jugador_2 == $partido['pareja_1']['jugador_2']) {
-                                                                $val1 = $resultado->pareja_1_set_1;
-                                                                $val2 = $resultado->pareja_2_set_1;
+                                                                $s1 = $resultado->pareja_1_set_1;
+                                                                $s2 = $resultado->pareja_2_set_1;
                                                             } else {
-                                                                $val1 = $resultado->pareja_2_set_1;
-                                                                $val2 = $resultado->pareja_1_set_1;
+                                                                $s1 = $resultado->pareja_2_set_1;
+                                                                $s2 = $resultado->pareja_1_set_1;
                                                             }
                                                         } else {
-                                                            $val1 = $resultado->pareja_1_set_1;
-                                                            $val2 = $resultado->pareja_2_set_1;
+                                                            $s1 = $resultado->pareja_1_set_1;
+                                                            $s2 = $resultado->pareja_2_set_1;
                                                         }
-                                                        
-                                                        // Only show score if match started (at least one > 0, or just show 0-0 if preferred. User wants "results")
-                                                        // Usually 0-0 is fine to show.
-                                                        $s1 = $val1;
-                                                        $s2 = $val2;
                                                     }
-                                                @endphp
-                                                <tr>
-                                                    <td>
-                                                        <div class="player-info">
-                                                            @if($jugador1_1) <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" class="player-img"> @endif
-                                                            <div class="player-names">
-                                                                <span class="player-name">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</span>
-                                                                @if($jugador1_2)<span class="player-name">{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}</span>@endif
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <div class="score-cell {{ (is_numeric($s1) && is_numeric($s2) && $s1 > $s2) ? 'score-active' : '' }}" style="display:inline-block;">{{ $s1 }}</div>
-                                                        <span style="color:#555; font-size:1.5rem; margin:0 10px;">-</span>
-                                                        <div class="score-cell {{ (is_numeric($s1) && is_numeric($s2) && $s2 > $s1) ? 'score-active' : '' }}" style="display:inline-block;">{{ $s2 }}</div>
-                                                    </td>
-                                                    <td style="text-align:right;">
-                                                        <div class="player-info" style="flex-direction:row-reverse; text-align:right;">
-                                                             @if($jugador2_1) <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" class="player-img" style="margin-right:0; margin-left:12px;"> @endif
-                                                            <div class="player-names">
-                                                                <span class="player-name">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</span>
-                                                                @if($jugador2_2)<span class="player-name">{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}</span>@endif
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
+                                                    
+                                                    return '<tr>' .
+                                                        '<td>' .
+                                                            '<div class="player-info">' .
+                                                                ($jugador1_1 ? '<img src="' . asset($jugador1_1->foto ?? 'images/jugador_img.png') . '" class="player-img">' : '') .
+                                                                '<div class="player-names">' .
+                                                                    '<span class="player-name">' . ($jugador1_1->apellido ?? '') . '</span>' .
+                                                                    ($jugador1_2 ? '<span class="player-name">' . ($jugador1_2->apellido ?? '') . '</span>' : '') .
+                                                                '</div>' .
+                                                            '</div>' .
+                                                        '</td>' .
+                                                        '<td class="text-center">' .
+                                                            '<div class="score-container">' .
+                                                                '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s1 > $s2) ? 'score-active' : '') . '">' . $s1 . '</div>' .
+                                                                '<span style="color:#555; font-size:1.5rem; margin:0 5px;">-</span>' .
+                                                                '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s2 > $s1) ? 'score-active' : '') . '">' . $s2 . '</div>' .
+                                                            '</div>' .
+                                                        '</td>' .
+                                                        '<td style="text-align:right;">' .
+                                                            '<div class="player-info" style="flex-direction:row-reverse; text-align:right;">' .
+                                                                ($jugador2_1 ? '<img src="' . asset($jugador2_1->foto ?? 'images/jugador_img.png') . '" class="player-img" style="margin-right:0; margin-left:12px;">' : '') .
+                                                                '<div class="player-names">' .
+                                                                    '<span class="player-name">' . ($jugador2_1->apellido ?? '') . '</span>' .
+                                                                    ($jugador2_2 ? '<span class="player-name">' . ($jugador2_2->apellido ?? '') . '</span>' : '') .
+                                                                '</div>' .
+                                                            '</div>' .
+                                                        '</td>' .
+                                                    '</tr>';
+                                                };
+                                                
+                                                // If more than 8 matches, split into 2 columns
+                                                // But table structure doesn't support columns easily inside table.
+                                                // We can render two tables if needed.
+                                                // For now, simpler compact view.
+                                                foreach($partidos as $partido) {
+                                                    echo $renderRow($partido);
+                                                }
+                                            @endphp
                                         </tbody>
                                      </table>
                                  </div>
@@ -278,7 +302,14 @@
                                 </div>
                                 <div class="tv-card-body">
                                     <table class="tv-table">
-                                       <thead><tr><th class="text-center">#</th><th>Pareja</th><th class="text-center">Pts</th></tr></thead>
+                                       <thead>
+                                           <tr>
+                                               <th class="text-center">#</th>
+                                               <th>Pareja</th>
+                                               <th class="text-center">PG</th>
+                                               <th class="text-center">Games</th>
+                                           </tr>
+                                       </thead>
                                        <tbody>
                                             @if(isset($posicionesPorZona[$zona]))
                                                 @foreach($posicionesPorZona[$zona] as $index => $pos)
@@ -298,10 +329,11 @@
                                                             </div>
                                                         </td>
                                                         <td class="text-center"><span style="font-size:1.5rem; font-weight:bold;">{{ $pos['partidos_ganados'] ?? 0 }}</span></td>
+                                                        <td class="text-center"><span style="font-size:1.5rem; font-weight:bold; color:#aaa;">{{ $pos['puntos_ganados'] ?? 0 }}</span></td>
                                                     </tr>
                                                 @endforeach
                                             @else
-                                                <tr><td colspan="3" class="text-center">No info</td></tr>
+                                                <tr><td colspan="4" class="text-center">No info</td></tr>
                                             @endif
                                        </tbody>
                                     </table>
