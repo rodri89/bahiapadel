@@ -54,6 +54,13 @@
                         </a>
                     </div>
                 </div>
+                <div class="row mt-3">
+                    <div class="col-12 text-center">
+                        <a href="{{ route('tvtorneoamericanosorteo') }}?torneo_id={{ $torneo->id ?? 0 }}" target="_blank" class="btn btn-info btn-lg" id="btn-proyectar-sorteo-tv-top" style="display:none;">
+                            <i class="fa fa-desktop"></i> Proyectar Pantalla Sorteo TV
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- Sección 2: Distribución de Grupos con Animación -->
@@ -330,6 +337,7 @@
         $('#seccion-seleccion-parejas').hide();
         $('#seccion-distribucion').show();
         $('#btn-proyectar-sorteo-tv').show();
+        $('#btn-proyectar-sorteo-tv-top').show();
         
         // Crear grupos vacíos sin mezclar
         crearGruposVacios(cantidadGrupos);
