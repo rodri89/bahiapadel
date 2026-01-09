@@ -112,6 +112,13 @@ $(document).ready(function() {
     // Cargar todos los jugadores al inicio
     cargarTodosJugadores();
     
+    // Si hay un jugador seleccionado desde la URL (después de subir foto), seleccionarlo
+    @if(isset($jugador_id_seleccionado) && $jugador_id_seleccionado)
+        setTimeout(function() {
+            seleccionarJugador({{ $jugador_id_seleccionado }});
+        }, 1000); // Esperar a que se carguen los jugadores
+    @endif
+    
     // Buscador en tiempo real
     $('#buscador-jugadores').on('input', function() {
         const busqueda = $(this).val().trim();
@@ -184,6 +191,18 @@ $(document).ready(function() {
         
         // Mostrar indicador de carga
         $('#btn-subir-foto').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
+    });
+    
+    // Después de que la página se recarga (por el redirect), recargar la lista de jugadores
+    // Esto asegura que se vean las fotos actualizadas
+    $(document).ready(function() {
+        // Si hay un mensaje de éxito, recargar la lista de jugadores
+        @if(session('success'))
+            // Esperar un momento para que la página termine de cargar
+            setTimeout(function() {
+                cargarTodosJugadores();
+            }, 500);
+        @endif
     });
     
     // Función para mostrar mensajes
@@ -268,18 +287,27 @@ function buscarJugadores(busqueda) {
 
 function mostrarJugadores(jugadores) {
     let html = '';
+    const baseUrl = '{{ url('/') }}';
+    const timestamp = new Date().getTime(); // Para evitar caché
+    
     jugadores.forEach(function(jugador) {
-        let foto = jugador.foto || '{{ asset('images/jugador_img.png') }}';
+        // Construir ruta de foto correctamente
+        let foto = jugador.foto || 'images/jugador_img.png';
+        
+        // Si la foto no empieza con http o /, agregar la base URL
         if (!foto.startsWith('http') && !foto.startsWith('/')) {
-            foto = '{{ url('/') }}/' + foto;
-        } else if (foto.startsWith('/') && !foto.startsWith('{{ url('/') }}')) {
-            foto = '{{ url('/') }}' + foto;
+            foto = baseUrl + '/' + foto;
+        } else if (foto.startsWith('/')) {
+            foto = baseUrl + foto;
         }
+        
+        // Agregar timestamp para evitar caché
+        foto += (foto.indexOf('?') > -1 ? '&' : '?') + 't=' + timestamp;
         
         html += `
             <div class="jugador-item" data-id="${jugador.id}">
                 <div class="d-flex align-items-center">
-                    <img src="${foto}" class="jugador-foto-mobile me-3" alt="${jugador.nombre} ${jugador.apellido}">
+                    <img src="${foto}" class="jugador-foto-mobile me-3" alt="${jugador.nombre} ${jugador.apellido}" onerror="this.src='${baseUrl}/images/jugador_img.png?t=' + ${timestamp}">
                     <div class="flex-grow-1">
                         <h6 class="mb-0">${jugador.nombre} ${jugador.apellido}</h6>
                         ${jugador.telefono ? `<small class="text-muted"><i class="fas fa-phone"></i> ${jugador.telefono}</small>` : ''}

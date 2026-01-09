@@ -458,6 +458,8 @@ class HomeController extends Controller
                     
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
+                    \Log::error('Error al procesar imagen: ' . $e->getMessage());
+                    \Log::error('Stack: ' . $e->getTraceAsString());
                     return redirect()->route('subir.foto.jugador')->with('error', 'Error al procesar la imagen: ' . $e->getMessage());
                 }
             } else {
@@ -472,6 +474,11 @@ class HomeController extends Controller
             if (file_exists($filePath)) {
                 $fileSize = filesize($filePath);
                 $fileSizeMB = round($fileSize / (1024 * 1024), 2);
+                \Log::info('Foto guardada exitosamente en: ' . $filePath . ' (Tamaño: ' . $fileSizeMB . ' MB)');
+                \Log::info('Ruta en BD: ' . $jugador->foto);
+                \Log::info('URL pública: ' . asset($jugador->foto));
+            } else {
+                \Log::error('El archivo no existe después de guardar: ' . $filePath);
             }
             
             $mensaje = 'Foto actualizada correctamente';
@@ -479,7 +486,8 @@ class HomeController extends Controller
                 $mensaje .= ' (tamaño final: ' . $fileSizeMB . ' MB)';
             }
             
-            return redirect()->route('subir.foto.jugador')->with('success', $mensaje);
+            // Redirigir con el ID del jugador para mantener la selección
+            return redirect()->route('subir.foto.jugador', ['jugador_id' => $jugador->id])->with('success', $mensaje);
         } catch (\Exception $e) {
             return redirect()->route('subir.foto.jugador')->with('error', 'Error al subir la foto: ' . $e->getMessage());
         }
