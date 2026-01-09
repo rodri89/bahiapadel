@@ -317,6 +317,95 @@ class HomeController extends Controller
         return response()->json(['jugadores' => $jugadores]);
     }
 
+    // Métodos públicos para subir fotos (sin autenticación)
+    function buscarJugadoresPublico(Request $request) {
+        $busqueda = $request->input('busqueda', '');
+        
+        $query = DB::table('jugadores')
+                   ->where('jugadores.activo', 1);
+        
+        if (!empty($busqueda)) {
+            $query->where(function($q) use ($busqueda) {
+                $q->where('jugadores.nombre', 'LIKE', '%' . $busqueda . '%')
+                  ->orWhere('jugadores.apellido', 'LIKE', '%' . $busqueda . '%')
+                  ->orWhere(DB::raw("CONCAT(jugadores.nombre, ' ', jugadores.apellido)"), 'LIKE', '%' . $busqueda . '%');
+            });
+        }
+        
+        $jugadores = $query->orderBy('jugadores.nombre')
+                          ->orderBy('jugadores.apellido')
+                          ->limit(50) // Limitar resultados para mejor rendimiento
+                          ->get();
+        
+        return response()->json(['jugadores' => $jugadores]);
+    }
+
+    function subirFotoJugadorPublico(Request $request) {
+        try {
+            $id = $request->id;
+            
+            if (!$id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ID de jugador requerido'
+                ], 400);
+            }
+            
+            $jugador = Jugadore::find($id);
+            if (!$jugador) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jugador no encontrado'
+                ], 404);
+            }
+            
+            // Manejar subida de foto
+            if ($request->hasFile('foto')) {
+                try {
+                    $image = $request->file('foto');
+                    $name = time() . '_' . $image->getClientOriginalName();
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Crear directorio si no existe
+                    $directory = public_path('images/jugadores');
+                    if (!file_exists($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    
+                    // Usar Image para procesar y guardar la imagen
+                    Image::make($image->getRealPath())->save(public_path($path));
+                    $jugador->foto = $path;
+                } catch (\Exception $e) {
+                    \Log::error('Error al procesar imagen: ' . $e->getMessage());
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error al procesar la imagen: ' . $e->getMessage()
+                    ], 500);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se envió ninguna imagen'
+                ], 400);
+            }
+            
+            $jugador->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Foto actualizada correctamente',
+                'jugador' => $jugador,
+                'foto_url' => asset($jugador->foto)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al subir foto: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al subir la foto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     function adminEliminarJugador(Request $request) {
         $id = $request->id;
         

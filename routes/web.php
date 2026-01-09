@@ -143,6 +143,13 @@ Route::get('login', 'Auth\LoginController@showLoginForm')->name('login');
 Route::post('login', 'Auth\LoginController@login');
 Route::post('logout', 'Auth\LoginController@logout')->name('logout');
 
+// Ruta pública para subir fotos de jugadores (mobile, sin autenticación)
+Route::get('/subir-foto-jugador', function() {
+    return View('bahia_padel.mobile.subir_foto_jugador');
+})->name('subir.foto.jugador');
+Route::post('/buscar-jugadores-publico', 'HomeController@buscarJugadoresPublico')->name('buscar.jugadores.publico');
+Route::post('/subir-foto-jugador-publico', 'HomeController@subirFotoJugadorPublico')->name('subir.foto.jugador.publico');
+
 Route::get('password/reset', 'Auth\ForgotPasswordController@showLinkRequestForm')->name('password.request');
 Route::post('password/email', 'Auth\ForgotPasswordController@sendResetLinkEmail')->name('password.email');
 Route::get('password/reset/{token}', 'Auth\ResetPasswordController@showResetForm')->name('password.reset');
