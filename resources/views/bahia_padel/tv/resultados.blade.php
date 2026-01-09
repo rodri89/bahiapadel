@@ -329,7 +329,14 @@
                                                             </div>
                                                         </td>
                                                         <td class="text-center"><span style="font-size:1.5rem; font-weight:bold;">{{ $pos['partidos_ganados'] ?? 0 }}</span></td>
-                                                        <td class="text-center"><span style="font-size:1.5rem; font-weight:bold; color:#aaa;">{{ $pos['puntos_ganados'] ?? 0 }}</span></td>
+                                                        <td class="text-center">
+                                                            @php
+                                                                $diferencia = ($pos['puntos_ganados'] ?? 0) - ($pos['puntos_perdidos'] ?? 0);
+                                                                $diferenciaTexto = $diferencia >= 0 ? '+' . $diferencia : (string)$diferencia;
+                                                                $diferenciaClass = $diferencia >= 0 ? 'color:#4e73df;' : 'color:#e74a3b;';
+                                                            @endphp
+                                                            <span style="font-size:1.5rem; font-weight:bold; {{ $diferenciaClass }}">{{ $diferenciaTexto }}</span>
+                                                        </td>
                                                     </tr>
                                                 @endforeach
                                             @else

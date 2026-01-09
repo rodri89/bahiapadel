@@ -1294,38 +1294,46 @@ class HomeController extends Controller
                           if(isset($parejas[$p1_key])) {
                               $parejas[$p1_key]['partidos_ganados']++;
                               $parejas[$p1_key]['puntos_ganados'] += $p1_score;
+                              $parejas[$p1_key]['puntos_perdidos'] += $p2_score;
                               $parejas[$p1_key]['partidos_directos'][$p2_key] = ['ganado'=>true];
                           }
                           if(isset($parejas[$p2_key])) {
                               $parejas[$p2_key]['partidos_perdidos']++;
                               $parejas[$p2_key]['puntos_ganados'] += $p2_score;
+                              $parejas[$p2_key]['puntos_perdidos'] += $p1_score;
                               $parejas[$p2_key]['partidos_directos'][$p1_key] = ['ganado'=>false];
                           }
                       } elseif ($p2_score > $p1_score) {
                           if(isset($parejas[$p2_key])) {
                               $parejas[$p2_key]['partidos_ganados']++;
                               $parejas[$p2_key]['puntos_ganados'] += $p2_score;
+                              $parejas[$p2_key]['puntos_perdidos'] += $p1_score;
                               $parejas[$p2_key]['partidos_directos'][$p1_key] = ['ganado'=>true];
                           }
                           if(isset($parejas[$p1_key])) {
                               $parejas[$p1_key]['partidos_perdidos']++;
                               $parejas[$p1_key]['puntos_ganados'] += $p1_score;
+                              $parejas[$p1_key]['puntos_perdidos'] += $p2_score;
                               $parejas[$p1_key]['partidos_directos'][$p2_key] = ['ganado'=>false];
                           }
                       }
                  }
              }
              
-             // Sort
-             foreach ($parejas as $key => $val) { $parejas[$key]['key'] = $key; }
+             // Calcular diferencia de games y agregar key
+             foreach ($parejas as $key => $val) {
+                 $parejas[$key]['key'] = $key;
+                 $parejas[$key]['diferencia_games'] = ($val['puntos_ganados'] ?? 0) - ($val['puntos_perdidos'] ?? 0);
+             }
              $posiciones = array_values($parejas);
              
              usort($posiciones, function($a, $b) {
                 if ($a['partidos_ganados'] != $b['partidos_ganados']) {
                     return $b['partidos_ganados'] - $a['partidos_ganados'];
                 }
-                if ($a['puntos_ganados'] != $b['puntos_ganados']) {
-                    return $b['puntos_ganados'] - $a['puntos_ganados'];
+                // Usar diferencia de games en lugar de solo games ganados
+                if ($a['diferencia_games'] != $b['diferencia_games']) {
+                    return $b['diferencia_games'] - $a['diferencia_games'];
                 }
                 $keyA = $a['key'];
                 $keyB = $b['key'];
