@@ -498,6 +498,18 @@ function subirFoto(jugadorId, archivo) {
         data: formData,
         processData: false,
         contentType: false,
+        timeout: 120000, // 2 minutos de timeout para imágenes grandes
+        xhr: function() {
+            const xhr = new window.XMLHttpRequest();
+            // Mostrar progreso de carga
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    $('#btn-subir-foto').html('<i class="fas fa-spinner fa-spin"></i> Subiendo... ' + percentComplete + '%');
+                }
+            }, false);
+            return xhr;
+        },
         success: function(response) {
             if (response.success) {
                 const mensaje = response.file_size_mb 
