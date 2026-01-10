@@ -102,8 +102,21 @@
         
         .tv-table tbody {
             flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
+            display: block;
+            max-height: 100%;
+        }
+        
+        .tv-table thead, .tv-table tbody tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+        
+        .tv-table tbody {
+            display: block;
+            max-height: 100%;
+            overflow: hidden;
         }
         
         .tv-table th { 
@@ -232,15 +245,11 @@
 
             @foreach($partidosPorZona as $zona => $partidos)
               <div class="zona-slide" id="zona-{{ $loop->index }}">
-                 <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-12">
-                            <h1 class="tv-header">Zona {{ $zona }} <span style="font-weight:300; font-size:1.5rem; color:#888;">| {{ $torneo->nombre ?? 'Torneo' }}</span></h1>
-                        </div>
-                    </div>
-                    <div class="row">
+                 <div style="display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden;">
+                    <h1 class="tv-header">Zona {{ $zona }} <span style="font-weight:300; font-size:clamp(1rem, 2vw, 1.5rem); color:#888;">| {{ $torneo->nombre ?? 'Torneo' }}</span></h1>
+                    <div style="display: flex; gap: 1.5vw; flex: 1; min-height: 0; overflow: hidden;">
                         <!-- Partidos -->
-                        <div class="col-8">
+                        <div style="flex: 2; min-width: 0; display: flex; flex-direction: column; overflow: hidden;">
                             <div class="tv-card">
                                  <div class="tv-card-header">
                                      <h3>Partidos</h3>
@@ -249,9 +258,9 @@
                                      <table class="tv-table">
                                         <thead>
                                             <tr>
-                                                <th style="width:40%; text-align:left; padding-left:20px;">Pareja 1</th>
+                                                <th style="width:40%; text-align:left; padding-left:1.5vw;">Pareja 1</th>
                                                 <th style="width:20%;" class="text-center">Score</th>
-                                                <th style="width:40%; text-align:right; padding-right:20px;">Pareja 2</th>
+                                                <th style="width:40%; text-align:right; padding-right:1.5vw;">Pareja 2</th>
                                             </tr>
                                         </thead>
                                         <tbody id="tbody-partidos-{{ $zona }}">
