@@ -3269,16 +3269,23 @@ class HomeController extends Controller
         $clasificados = [];
         $zonasArray = $zonas->toArray();
         
-        // Verificar si hay grupos de 10 parejas (determinar por cantidad de parejas en la primera zona)
+        // Verificar si hay grupos de 10 parejas totales (10 en una zona O 5+5 en dos zonas)
         $esGrupoDe10 = false;
-        if (count($zonasArray) > 0) {
-            $primeraZona = $zonasArray[0];
-            if (isset($posicionesPorZona[$primeraZona]) && count($posicionesPorZona[$primeraZona]) == 10) {
+        if (count($zonasArray) == 2) {
+            $zona1 = $zonasArray[0];
+            $zona2 = $zonasArray[1];
+            // Caso 1: Una zona con 10 parejas
+            if (isset($posicionesPorZona[$zona1]) && count($posicionesPorZona[$zona1]) == 10) {
+                $esGrupoDe10 = true;
+            }
+            // Caso 2: Dos zonas con 5 parejas cada una (total 10 parejas)
+            elseif (isset($posicionesPorZona[$zona1]) && isset($posicionesPorZona[$zona2]) &&
+                    count($posicionesPorZona[$zona1]) == 5 && count($posicionesPorZona[$zona2]) == 5) {
                 $esGrupoDe10 = true;
             }
         }
         
-        // Si es grupo de 10 parejas con 2 zonas, clasificar los primeros 4 de cada grupo
+        // Si es grupo de 10 parejas totales con 2 zonas, clasificar los primeros 4 de cada grupo
         if ($esGrupoDe10 && count($zonasArray) == 2) {
             $zonasOrdenadasArray = $zonasArray;
             sort($zonasOrdenadasArray);
