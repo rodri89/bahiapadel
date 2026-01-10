@@ -167,10 +167,24 @@ class HomeController extends Controller
             
             // Obtener grupos excluyendo los de eliminatoria (zonas: 'cuartos final', 'semifinal', 'final')
             // Los grupos de eliminatoria son solo para los cruces y no deben mostrarse en la configuración inicial
-            // Para torneos americanos, priorizar grupos iniciales (sin partido_id) si existen
+            // Para torneos americanos, verificar si hay grupos con partido_id (torneo comenzado)
             if ($tipoTorneo == 'americano') {
-                // Primero intentar obtener grupos iniciales (sin partido_id)
-                $gruposIniciales = DB::table('grupos')
+                // Verificar si hay grupos con partido_id (torneo ya comenzado)
+                $gruposConPartidos = DB::table('grupos')
+                                ->where('grupos.torneo_id', $request->torneo_id)
+                                ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                                ->whereNotNull('grupos.partido_id')
+                                ->whereNotNull('grupos.jugador_1')
+                                ->whereNotNull('grupos.jugador_2')
+                                ->count();
+                
+                // Si hay grupos con partido_id, el torneo ya comenzó, redirigir a partidos
+                if ($gruposConPartidos > 0) {
+                    return redirect()->route('admintorneoamericanopartidos', ['torneo_id' => $request->torneo_id]);
+                }
+                
+                // Si no hay grupos con partido_id, obtener grupos iniciales (borrador) para permitir seguir editando
+                $grupos = DB::table('grupos')
                                 ->where('grupos.torneo_id', $request->torneo_id)
                                 ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
                                 ->whereNull('grupos.partido_id')
@@ -182,35 +196,6 @@ class HomeController extends Controller
                                 ->orderBy('grupos.jugador_2')
                                 ->orderBy('grupos.id')
                                 ->get();
-                
-                // Si hay grupos iniciales, usarlos; si no, usar todos los grupos
-                if ($gruposIniciales->count() > 0) {
-                    $grupos = $gruposIniciales;
-                } else {
-                    // Si no hay grupos iniciales, obtener todos los grupos (con partido_id)
-                    $grupos = DB::table('grupos')
-                                ->where('grupos.torneo_id', $request->torneo_id)
-                                ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
-                                ->whereNotNull('grupos.jugador_1')
-                                ->whereNotNull('grupos.jugador_2')
-                                ->select('grupos.id', 'grupos.torneo_id', 'grupos.zona', 'grupos.fecha', 'grupos.horario', 'grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id')
-                                ->orderBy('grupos.zona')
-                                ->orderBy('grupos.jugador_1')
-                                ->orderBy('grupos.jugador_2')
-                                ->orderBy('grupos.id')
-                                ->get();
-                    
-                    // Filtrar para obtener solo parejas únicas por zona
-                    $parejasUnicas = [];
-                    $grupos = collect($grupos)->filter(function($grupo) use (&$parejasUnicas) {
-                        $key = $grupo->zona . '_' . min($grupo->jugador_1, $grupo->jugador_2) . '_' . max($grupo->jugador_1, $grupo->jugador_2);
-                        if (!isset($parejasUnicas[$key])) {
-                            $parejasUnicas[$key] = true;
-                            return true;
-                        }
-                        return false;
-                    })->values();
-                }
             } else {
                 // Para otros tipos de torneo, usar la lógica original
                 $grupos = DB::table('grupos')

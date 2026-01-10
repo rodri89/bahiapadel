@@ -145,30 +145,44 @@
         }
     });
     
-    // Si hay grupos existentes, cargarlos directamente sin mezclar
+    // Si hay grupos existentes (borrador), cargar las parejas en la lista pero mantener la pantalla de edición
+    // NO cargar directamente los grupos finales, permitir seguir editando
     if (Object.keys(gruposPorZona).length > 0) {
-        // Cargar parejas en la lista para referencia
+        // Cargar parejas en la lista para poder seguir editando
         Object.keys(gruposPorZona).forEach(function(zona) {
             gruposPorZona[zona].forEach(function(pareja) {
                 let jugador1 = obtenerJugadorPorId(pareja.jugador1);
                 let jugador2 = obtenerJugadorPorId(pareja.jugador2);
                 if (jugador1 && jugador2) {
-                    parejasLista.push({
-                        jugador1: pareja.jugador1,
-                        jugador2: pareja.jugador2,
-                        nombre1: jugador1.nombre + ' ' + jugador1.apellido,
-                        nombre2: jugador2.nombre + ' ' + jugador2.apellido,
-                        foto1: jugador1.foto || '/images/jugador_img.png',
-                        foto2: jugador2.foto || '/images/jugador_img.png'
+                    // Verificar que la pareja no esté ya en la lista
+                    let parejaExiste = parejasLista.some(function(p) {
+                        return (p.jugador1 == pareja.jugador1 && p.jugador2 == pareja.jugador2) ||
+                               (p.jugador1 == pareja.jugador2 && p.jugador2 == pareja.jugador1);
                     });
+                    
+                    if (!parejaExiste) {
+                        parejasLista.push({
+                            jugador1: pareja.jugador1,
+                            jugador2: pareja.jugador2,
+                            nombre1: jugador1.nombre + ' ' + jugador1.apellido,
+                            nombre2: jugador2.nombre + ' ' + jugador2.apellido,
+                            foto1: jugador1.foto || '/images/jugador_img.png',
+                            foto2: jugador2.foto || '/images/jugador_img.png'
+                        });
+                    }
                 }
             });
         });
-        let cantidadGrupos = Object.keys(gruposPorZona).length;
-        document.getElementById('cantidad_grupos').value = cantidadGrupos;
         
-        // Cargar grupos existentes directamente sin mezclar
-        cargarGruposExistentes();
+        // Configurar cantidad de grupos según los grupos existentes
+        let cantidadGrupos = Object.keys(gruposPorZona).length;
+        if (cantidadGrupos > 0) {
+            document.getElementById('cantidad_grupos').value = cantidadGrupos;
+        }
+        
+        // NO cargar grupos existentes directamente en la pantalla final
+        // Dejar que el usuario pueda seguir editando y mezclando
+        // Si quiere ver los grupos guardados, puede hacer clic en "Comenzar" sin mezclar
     }
     
     // Inicializar lista de parejas al cargar
