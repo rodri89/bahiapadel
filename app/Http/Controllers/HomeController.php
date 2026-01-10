@@ -3415,8 +3415,9 @@ class HomeController extends Controller
                     $clasificadosPorZonaPosicion[$clasificado['zona']][$clasificado['posicion']] = $clasificado;
                 }
                 
-                // Crear cruces según el formato: A1-B4, B1-A4, A2-B3, B2-A3
+                // Crear cruces según el formato en este orden: A1-B4, B2-A3, A2-B3, B1-A4
                 $crucesCuartos = [];
+                // 1. A1 vs B4
                 if (isset($clasificadosPorZonaPosicion[$zonaA][1]) && isset($clasificadosPorZonaPosicion[$zonaB][4])) {
                     $crucesCuartos[] = [
                         'pareja_1' => $clasificadosPorZonaPosicion[$zonaA][1],
@@ -3424,13 +3425,15 @@ class HomeController extends Controller
                         'ronda' => 'cuartos'
                     ];
                 }
-                if (isset($clasificadosPorZonaPosicion[$zonaB][1]) && isset($clasificadosPorZonaPosicion[$zonaA][4])) {
+                // 2. B2 vs A3
+                if (isset($clasificadosPorZonaPosicion[$zonaB][2]) && isset($clasificadosPorZonaPosicion[$zonaA][3])) {
                     $crucesCuartos[] = [
-                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][1],
-                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][4],
+                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][2],
+                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][3],
                         'ronda' => 'cuartos'
                     ];
                 }
+                // 3. A2 vs B3
                 if (isset($clasificadosPorZonaPosicion[$zonaA][2]) && isset($clasificadosPorZonaPosicion[$zonaB][3])) {
                     $crucesCuartos[] = [
                         'pareja_1' => $clasificadosPorZonaPosicion[$zonaA][2],
@@ -3438,10 +3441,11 @@ class HomeController extends Controller
                         'ronda' => 'cuartos'
                     ];
                 }
-                if (isset($clasificadosPorZonaPosicion[$zonaB][2]) && isset($clasificadosPorZonaPosicion[$zonaA][3])) {
+                // 4. B1 vs A4
+                if (isset($clasificadosPorZonaPosicion[$zonaB][1]) && isset($clasificadosPorZonaPosicion[$zonaA][4])) {
                     $crucesCuartos[] = [
-                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][2],
-                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][3],
+                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][1],
+                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][4],
                         'ronda' => 'cuartos'
                     ];
                 }
