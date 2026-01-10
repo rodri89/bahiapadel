@@ -103,20 +103,15 @@
         .tv-table tbody {
             flex: 1;
             overflow: hidden;
-            display: block;
-            max-height: 100%;
+            display: table-row-group;
         }
         
-        .tv-table thead, .tv-table tbody tr {
-            display: table;
-            width: 100%;
+        .tv-table {
             table-layout: fixed;
         }
         
-        .tv-table tbody {
-            display: block;
-            max-height: 100%;
-            overflow: hidden;
+        .tv-table tbody tr {
+            display: table-row;
         }
         
         .tv-table th { 
