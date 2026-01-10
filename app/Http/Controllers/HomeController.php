@@ -3595,6 +3595,67 @@ class HomeController extends Controller
             }
         }
         
+        // Verificar si es el caso especial de grupos de 10 parejas antes de retornar la vista
+        $esGrupoDe10Admin = false;
+        if (count($zonasArray) > 0) {
+            $primeraZonaAdmin = $zonasArray[0];
+            if (isset($posicionesPorZona[$primeraZonaAdmin]) && count($posicionesPorZona[$primeraZonaAdmin]) == 10) {
+                $esGrupoDe10Admin = true;
+            }
+        }
+        
+        // Si no hay cruces de cuartos y es grupo de 10, regenerar cruces con la nueva lógica
+        if (count($crucesPorRonda['cuartos']) == 0 && $esGrupoDe10Admin && count($zonasArray) == 2 && count($clasificados) == 8) {
+            // Limpiar cruces existentes para regenerarlos
+            $cruces = array_merge($crucesPorRonda['semifinales'], $crucesPorRonda['final']);
+            
+            // Ordenar zonas (A y B)
+            $zonasOrdenadasCruces = $zonasArray;
+            sort($zonasOrdenadasCruces);
+            $zonaA = $zonasOrdenadasCruces[0];
+            $zonaB = $zonasOrdenadasCruces[1];
+            
+            // Organizar clasificados por zona y posición
+            $clasificadosPorZonaPosicion = [];
+            foreach ($clasificados as $clasificado) {
+                $clasificadosPorZonaPosicion[$clasificado['zona']][$clasificado['posicion']] = $clasificado;
+            }
+            
+            // Crear cruces según el formato: A1-B4, B1-A4, A2-B3, B2-A3
+            $crucesCuartosNuevos = [];
+            if (isset($clasificadosPorZonaPosicion[$zonaA][1]) && isset($clasificadosPorZonaPosicion[$zonaB][4])) {
+                $crucesCuartosNuevos[] = [
+                    'pareja_1' => $clasificadosPorZonaPosicion[$zonaA][1],
+                    'pareja_2' => $clasificadosPorZonaPosicion[$zonaB][4],
+                    'ronda' => 'cuartos'
+                ];
+            }
+            if (isset($clasificadosPorZonaPosicion[$zonaB][1]) && isset($clasificadosPorZonaPosicion[$zonaA][4])) {
+                $crucesCuartosNuevos[] = [
+                    'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][1],
+                    'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][4],
+                    'ronda' => 'cuartos'
+                ];
+            }
+            if (isset($clasificadosPorZonaPosicion[$zonaA][2]) && isset($clasificadosPorZonaPosicion[$zonaB][3])) {
+                $crucesCuartosNuevos[] = [
+                    'pareja_1' => $clasificadosPorZonaPosicion[$zonaA][2],
+                    'pareja_2' => $clasificadosPorZonaPosicion[$zonaB][3],
+                    'ronda' => 'cuartos'
+                ];
+            }
+            if (isset($clasificadosPorZonaPosicion[$zonaB][2]) && isset($clasificadosPorZonaPosicion[$zonaA][3])) {
+                $crucesCuartosNuevos[] = [
+                    'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][2],
+                    'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][3],
+                    'ronda' => 'cuartos'
+                ];
+            }
+            
+            // Agregar los cruces de cuartos nuevos a los cruces existentes
+            $cruces = array_merge($crucesCuartosNuevos, $cruces);
+        }
+        
         return View('bahia_padel.admin.torneo.cruces_americano')
                     ->with('torneo', $torneo)
                     ->with('jugadores', $jugadores)
