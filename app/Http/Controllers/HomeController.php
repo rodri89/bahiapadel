@@ -3269,313 +3269,391 @@ class HomeController extends Controller
         $clasificados = [];
         $zonasArray = $zonas->toArray();
         
-        // Clasificar los primeros de cada grupo
-        foreach ($zonasArray as $zona) {
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 0) {
-                $clasificados[] = [
-                    'zona' => $zona,
-                    'posicion' => 1,
-                    'jugador_1' => $posicionesPorZona[$zona][0]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][0]['jugador_2'],
-                    'partidos_ganados' => $posicionesPorZona[$zona][0]['partidos_ganados'],
-                    'puntos_ganados' => $posicionesPorZona[$zona][0]['puntos_ganados']
-                ];
+        // Verificar si hay grupos de 10 parejas (determinar por cantidad de parejas en la primera zona)
+        $esGrupoDe10 = false;
+        if (count($zonasArray) > 0) {
+            $primeraZona = $zonasArray[0];
+            if (isset($posicionesPorZona[$primeraZona]) && count($posicionesPorZona[$primeraZona]) == 10) {
+                $esGrupoDe10 = true;
             }
         }
         
-        // Obtener segundos y terceros por zona (necesario para completar clasificados)
-        $segundosPorZona = [];
-        $tercerosPorZona = [];
-        foreach ($zonasArray as $zona) {
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 1) {
-                $segundosPorZona[$zona] = [
-                    'zona' => $zona,
-                    'posicion' => 2,
-                    'jugador_1' => $posicionesPorZona[$zona][1]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][1]['jugador_2'],
-                    'partidos_ganados' => $posicionesPorZona[$zona][1]['partidos_ganados'],
-                    'puntos_ganados' => $posicionesPorZona[$zona][1]['puntos_ganados']
-                ];
-            }
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 2) {
-                $tercerosPorZona[$zona] = [
-                    'zona' => $zona,
-                    'posicion' => 3,
-                    'jugador_1' => $posicionesPorZona[$zona][2]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][2]['jugador_2'],
-                    'partidos_ganados' => $posicionesPorZona[$zona][2]['partidos_ganados'],
-                    'puntos_ganados' => $posicionesPorZona[$zona][2]['puntos_ganados']
-                ];
-            }
-        }
-        
-        // Completar clasificados según el formato del torneo
-        $zonasOrdenadasArray = $zonasArray;
-        sort($zonasOrdenadasArray);
-        if (count($zonasOrdenadasArray) == 3) {
-            // 3 zonas: agregar A2, B2, C2 y 2 mejores terceros
+        // Si es grupo de 10 parejas con 2 zonas, clasificar los primeros 4 de cada grupo
+        if ($esGrupoDe10 && count($zonasArray) == 2) {
+            $zonasOrdenadasArray = $zonasArray;
+            sort($zonasOrdenadasArray);
+            
             foreach ($zonasOrdenadasArray as $zona) {
-                if (isset($segundosPorZona[$zona])) {
-                    $clasificados[] = $segundosPorZona[$zona];
+                if (isset($posicionesPorZona[$zona])) {
+                    // Clasificar posiciones 1, 2, 3 y 4 (eliminar solo el último, posición 10)
+                    for ($i = 0; $i < min(4, count($posicionesPorZona[$zona])); $i++) {
+                        $clasificados[] = [
+                            'zona' => $zona,
+                            'posicion' => $i + 1,
+                            'jugador_1' => $posicionesPorZona[$zona][$i]['jugador_1'],
+                            'jugador_2' => $posicionesPorZona[$zona][$i]['jugador_2'],
+                            'partidos_ganados' => $posicionesPorZona[$zona][$i]['partidos_ganados'],
+                            'puntos_ganados' => $posicionesPorZona[$zona][$i]['puntos_ganados']
+                        ];
+                    }
                 }
-            }
-            $terceros = [];
-            foreach ($tercerosPorZona as $tercero) {
-                $terceros[] = $tercero;
-            }
-            usort($terceros, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
-            });
-            for ($i = 0; $i < min(2, count($terceros)); $i++) {
-                $clasificados[] = $terceros[$i];
             }
         } else {
-            // Lógica estándar para otros casos
-            $segundos = array_values($segundosPorZona);
-            usort($segundos, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
+            // Lógica original para otros casos
+            // Clasificar los primeros de cada grupo
+            foreach ($zonasArray as $zona) {
+                if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 0) {
+                    $clasificados[] = [
+                        'zona' => $zona,
+                        'posicion' => 1,
+                        'jugador_1' => $posicionesPorZona[$zona][0]['jugador_1'],
+                        'jugador_2' => $posicionesPorZona[$zona][0]['jugador_2'],
+                        'partidos_ganados' => $posicionesPorZona[$zona][0]['partidos_ganados'],
+                        'puntos_ganados' => $posicionesPorZona[$zona][0]['puntos_ganados']
+                    ];
                 }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
-            });
-            $necesarios = 8 - count($clasificados);
-            for ($i = 0; $i < min($necesarios, count($segundos)); $i++) {
-                $clasificados[] = $segundos[$i];
             }
-            if (count($clasificados) < 8) {
-                $terceros = array_values($tercerosPorZona);
+            
+            // Obtener segundos y terceros por zona (necesario para completar clasificados)
+            $segundosPorZona = [];
+            $tercerosPorZona = [];
+            foreach ($zonasArray as $zona) {
+                if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 1) {
+                    $segundosPorZona[$zona] = [
+                        'zona' => $zona,
+                        'posicion' => 2,
+                        'jugador_1' => $posicionesPorZona[$zona][1]['jugador_1'],
+                        'jugador_2' => $posicionesPorZona[$zona][1]['jugador_2'],
+                        'partidos_ganados' => $posicionesPorZona[$zona][1]['partidos_ganados'],
+                        'puntos_ganados' => $posicionesPorZona[$zona][1]['puntos_ganados']
+                    ];
+                }
+                if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 2) {
+                    $tercerosPorZona[$zona] = [
+                        'zona' => $zona,
+                        'posicion' => 3,
+                        'jugador_1' => $posicionesPorZona[$zona][2]['jugador_1'],
+                        'jugador_2' => $posicionesPorZona[$zona][2]['jugador_2'],
+                        'partidos_ganados' => $posicionesPorZona[$zona][2]['partidos_ganados'],
+                        'puntos_ganados' => $posicionesPorZona[$zona][2]['puntos_ganados']
+                    ];
+                }
+            }
+            
+            // Completar clasificados según el formato del torneo
+            $zonasOrdenadasArray = $zonasArray;
+            sort($zonasOrdenadasArray);
+            if (count($zonasOrdenadasArray) == 3) {
+                // 3 zonas: agregar A2, B2, C2 y 2 mejores terceros
+                foreach ($zonasOrdenadasArray as $zona) {
+                    if (isset($segundosPorZona[$zona])) {
+                        $clasificados[] = $segundosPorZona[$zona];
+                    }
+                }
+                $terceros = [];
+                foreach ($tercerosPorZona as $tercero) {
+                    $terceros[] = $tercero;
+                }
                 usort($terceros, function($a, $b) {
                     if ($a['partidos_ganados'] != $b['partidos_ganados']) {
                         return $b['partidos_ganados'] - $a['partidos_ganados'];
                     }
                     return $b['puntos_ganados'] - $a['puntos_ganados'];
                 });
-                $necesarios = 8 - count($clasificados);
-                for ($i = 0; $i < min($necesarios, count($terceros)); $i++) {
+                for ($i = 0; $i < min(2, count($terceros)); $i++) {
                     $clasificados[] = $terceros[$i];
+                }
+            } else {
+                // Lógica estándar para otros casos
+                $segundos = array_values($segundosPorZona);
+                usort($segundos, function($a, $b) {
+                    if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                        return $b['partidos_ganados'] - $a['partidos_ganados'];
+                    }
+                    return $b['puntos_ganados'] - $a['puntos_ganados'];
+                });
+                $necesarios = 8 - count($clasificados);
+                for ($i = 0; $i < min($necesarios, count($segundos)); $i++) {
+                    $clasificados[] = $segundos[$i];
+                }
+                if (count($clasificados) < 8) {
+                    $terceros = array_values($tercerosPorZona);
+                    usort($terceros, function($a, $b) {
+                        if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                            return $b['partidos_ganados'] - $a['partidos_ganados'];
+                        }
+                        return $b['puntos_ganados'] - $a['puntos_ganados'];
+                    });
+                    $necesarios = 8 - count($clasificados);
+                    for ($i = 0; $i < min($necesarios, count($terceros)); $i++) {
+                        $clasificados[] = $terceros[$i];
+                    }
                 }
             }
         }
         
         // Si no hay cruces de cuartos en la base de datos, generarlos desde los clasificados
         if (count($crucesPorRonda['cuartos']) == 0) {
-            // Armar los cruces según las reglas estándar
-            $primerosPorZonaFinal = [];
-            $segundosPorZonaFinal = [];
-            $tercerosFinal = [];
-            
-            foreach ($clasificados as $clasificado) {
-                if ($clasificado['posicion'] == 1) {
-                    $primerosPorZonaFinal[$clasificado['zona']] = $clasificado;
-                } else if ($clasificado['posicion'] == 2) {
-                    $segundosPorZonaFinal[$clasificado['zona']] = $clasificado;
-                } else if ($clasificado['posicion'] == 3) {
-                    $tercerosFinal[] = $clasificado;
-                }
-            }
-            
-            usort($tercerosFinal, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
-            });
-            
-            $crucesCuartos = [];
-            $totalClasificados = count($clasificados);
-            $zonasOrdenadasFinal = array_keys($primerosPorZonaFinal);
-            sort($zonasOrdenadasFinal);
-            
-            // Caso especial: 6 clasificados
-            if ($totalClasificados == 6) {
-                $primeros = [];
-                $resto = [];
+            // Verificar si es el caso especial de grupos de 10 parejas con 2 zonas (8 clasificados: 4 de cada zona)
+            if ($esGrupoDe10 && count($zonasArray) == 2 && count($clasificados) == 8) {
+                // Ordenar zonas (A y B)
+                $zonasOrdenadasCruces = $zonasArray;
+                sort($zonasOrdenadasCruces);
+                $zonaA = $zonasOrdenadasCruces[0];
+                $zonaB = $zonasOrdenadasCruces[1];
                 
+                // Organizar clasificados por zona y posición
+                $clasificadosPorZonaPosicion = [];
                 foreach ($clasificados as $clasificado) {
-                    if ($clasificado['posicion'] == 1) {
-                        $primeros[] = $clasificado;
-                    } else {
-                        $resto[] = $clasificado;
-                    }
+                    $clasificadosPorZonaPosicion[$clasificado['zona']][$clasificado['posicion']] = $clasificado;
                 }
                 
-                $segundosPorZona = [];
-                $tercerosPorZona = [];
-                
-                foreach ($resto as $pareja) {
-                    if ($pareja['posicion'] == 2) {
-                        $segundosPorZona[$pareja['zona']] = $pareja;
-                    } else if ($pareja['posicion'] == 3) {
-                        $tercerosPorZona[$pareja['zona']] = $pareja;
-                    }
-                }
-                
-                $zonasArray = array_keys($segundosPorZona + $tercerosPorZona);
-                sort($zonasArray);
-                
-                if (count($zonasArray) >= 2) {
-                    $zona1 = $zonasArray[0];
-                    $zona2 = $zonasArray[1];
-                    
-                    if (isset($segundosPorZona[$zona1]) && isset($tercerosPorZona[$zona2])) {
-                        $crucesCuartos[] = [
-                            'pareja_1' => $segundosPorZona[$zona1],
-                            'pareja_2' => $tercerosPorZona[$zona2],
-                            'ronda' => 'cuartos'
-                        ];
-                    }
-                    
-                    if (isset($segundosPorZona[$zona2]) && isset($tercerosPorZona[$zona1])) {
-                        $crucesCuartos[] = [
-                            'pareja_1' => $segundosPorZona[$zona2],
-                            'pareja_2' => $tercerosPorZona[$zona1],
-                            'ronda' => 'cuartos'
-                        ];
-                    }
-                } else {
-                    if (count($resto) >= 2) {
-                        for ($i = 0; $i < count($resto) - 1; $i += 2) {
-                            if (isset($resto[$i + 1])) {
-                                $crucesCuartos[] = [
-                                    'pareja_1' => $resto[$i],
-                                    'pareja_2' => $resto[$i + 1],
-                                    'ronda' => 'cuartos'
-                                ];
-                            }
-                        }
-                    }
-                }
-            } else if ($totalClasificados == 8 && count($zonasOrdenadasFinal) == 3) {
-                $zonaA = $zonasOrdenadasFinal[0];
-                $zonaB = $zonasOrdenadasFinal[1];
-                $zonaC = $zonasOrdenadasFinal[2];
-                
-                if (isset($primerosPorZonaFinal[$zonaA]) && count($tercerosFinal) > 0) {
+                // Crear cruces según el formato: A1-B4, B1-A4, A2-B3, B2-A3
+                $crucesCuartos = [];
+                if (isset($clasificadosPorZonaPosicion[$zonaA][1]) && isset($clasificadosPorZonaPosicion[$zonaB][4])) {
                     $crucesCuartos[] = [
-                        'pareja_1' => $primerosPorZonaFinal[$zonaA],
-                        'pareja_2' => $tercerosFinal[0],
+                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaA][1],
+                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaB][4],
                         'ronda' => 'cuartos'
                     ];
                 }
-                
-                if (isset($primerosPorZonaFinal[$zonaB]) && count($tercerosFinal) > 1) {
+                if (isset($clasificadosPorZonaPosicion[$zonaB][1]) && isset($clasificadosPorZonaPosicion[$zonaA][4])) {
                     $crucesCuartos[] = [
-                        'pareja_1' => $primerosPorZonaFinal[$zonaB],
-                        'pareja_2' => $tercerosFinal[1],
+                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][1],
+                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][4],
                         'ronda' => 'cuartos'
                     ];
                 }
-                
-                if (isset($primerosPorZonaFinal[$zonaC]) && isset($segundosPorZonaFinal[$zonaA])) {
+                if (isset($clasificadosPorZonaPosicion[$zonaA][2]) && isset($clasificadosPorZonaPosicion[$zonaB][3])) {
                     $crucesCuartos[] = [
-                        'pareja_1' => $primerosPorZonaFinal[$zonaC],
-                        'pareja_2' => $segundosPorZonaFinal[$zonaA],
+                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaA][2],
+                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaB][3],
                         'ronda' => 'cuartos'
                     ];
                 }
-                
-                if (isset($segundosPorZonaFinal[$zonaB]) && isset($segundosPorZonaFinal[$zonaC])) {
+                if (isset($clasificadosPorZonaPosicion[$zonaB][2]) && isset($clasificadosPorZonaPosicion[$zonaA][3])) {
                     $crucesCuartos[] = [
-                        'pareja_1' => $segundosPorZonaFinal[$zonaB],
-                        'pareja_2' => $segundosPorZonaFinal[$zonaC],
+                        'pareja_1' => $clasificadosPorZonaPosicion[$zonaB][2],
+                        'pareja_2' => $clasificadosPorZonaPosicion[$zonaA][3],
                         'ronda' => 'cuartos'
                     ];
                 }
             } else {
-                $primeros = [];
-                $resto = [];
+                // Armar los cruces según las reglas estándar (lógica original)
+                $primerosPorZonaFinal = [];
+                $segundosPorZonaFinal = [];
+                $tercerosFinal = [];
                 
                 foreach ($clasificados as $clasificado) {
                     if ($clasificado['posicion'] == 1) {
-                        $primeros[] = $clasificado;
+                        $primerosPorZonaFinal[$clasificado['zona']] = $clasificado;
+                    } else if ($clasificado['posicion'] == 2) {
+                        $segundosPorZonaFinal[$clasificado['zona']] = $clasificado;
+                    } else if ($clasificado['posicion'] == 3) {
+                        $tercerosFinal[] = $clasificado;
+                    }
+                }
+                
+                usort($tercerosFinal, function($a, $b) {
+                    if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                        return $b['partidos_ganados'] - $a['partidos_ganados'];
+                    }
+                    return $b['puntos_ganados'] - $a['puntos_ganados'];
+                });
+                
+                $crucesCuartos = [];
+                $totalClasificados = count($clasificados);
+                $zonasOrdenadasFinal = array_keys($primerosPorZonaFinal);
+                sort($zonasOrdenadasFinal);
+                
+                // Caso especial: 6 clasificados
+                if ($totalClasificados == 6) {
+                    $primeros = [];
+                    $resto = [];
+                    
+                    foreach ($clasificados as $clasificado) {
+                        if ($clasificado['posicion'] == 1) {
+                            $primeros[] = $clasificado;
+                        } else {
+                            $resto[] = $clasificado;
+                        }
+                    }
+                    
+                    $segundosPorZona = [];
+                    $tercerosPorZona = [];
+                    
+                    foreach ($resto as $pareja) {
+                        if ($pareja['posicion'] == 2) {
+                            $segundosPorZona[$pareja['zona']] = $pareja;
+                        } else if ($pareja['posicion'] == 3) {
+                            $tercerosPorZona[$pareja['zona']] = $pareja;
+                        }
+                    }
+                    
+                    $zonasArray = array_keys($segundosPorZona + $tercerosPorZona);
+                    sort($zonasArray);
+                    
+                    if (count($zonasArray) >= 2) {
+                        $zona1 = $zonasArray[0];
+                        $zona2 = $zonasArray[1];
+                        
+                        if (isset($segundosPorZona[$zona1]) && isset($tercerosPorZona[$zona2])) {
+                            $crucesCuartos[] = [
+                                'pareja_1' => $segundosPorZona[$zona1],
+                                'pareja_2' => $tercerosPorZona[$zona2],
+                                'ronda' => 'cuartos'
+                            ];
+                        }
+                        
+                        if (isset($segundosPorZona[$zona2]) && isset($tercerosPorZona[$zona1])) {
+                            $crucesCuartos[] = [
+                                'pareja_1' => $segundosPorZona[$zona2],
+                                'pareja_2' => $tercerosPorZona[$zona1],
+                                'ronda' => 'cuartos'
+                            ];
+                        }
                     } else {
-                        $resto[] = $clasificado;
-                    }
-                }
-                
-                $primerosUsados = [];
-                $restoUsados = [];
-                
-                $mitad = ceil(count($primeros) / 2);
-                $primerosSuperior = array_slice($primeros, 0, $mitad);
-                $primerosInferior = array_slice($primeros, $mitad);
-                
-                foreach ($primerosSuperior as $primero) {
-                    $encontrado = false;
-                    foreach ($resto as $index => $r) {
-                        if (!in_array($index, $restoUsados) && $r['zona'] != $primero['zona']) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $r,
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                            $encontrado = true;
-                            break;
+                        if (count($resto) >= 2) {
+                            for ($i = 0; $i < count($resto) - 1; $i += 2) {
+                                if (isset($resto[$i + 1])) {
+                                    $crucesCuartos[] = [
+                                        'pareja_1' => $resto[$i],
+                                        'pareja_2' => $resto[$i + 1],
+                                        'ronda' => 'cuartos'
+                                    ];
+                                }
+                            }
                         }
                     }
-                    if (!$encontrado && count($resto) > 0) {
-                        $index = 0;
-                        while (in_array($index, $restoUsados) && $index < count($resto)) {
-                            $index++;
-                        }
-                        if ($index < count($resto)) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $resto[$index],
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                        }
-                    }
-                }
-                
-                foreach ($primerosInferior as $primero) {
-                    $encontrado = false;
-                    foreach ($resto as $index => $r) {
-                        if (!in_array($index, $restoUsados) && $r['zona'] != $primero['zona']) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $r,
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                            $encontrado = true;
-                            break;
-                        }
-                    }
-                    if (!$encontrado && count($resto) > 0) {
-                        $index = 0;
-                        while (in_array($index, $restoUsados) && $index < count($resto)) {
-                            $index++;
-                        }
-                        if ($index < count($resto)) {
-                            $crucesCuartos[] = [
-                                'pareja_1' => $primero,
-                                'pareja_2' => $resto[$index],
-                                'ronda' => 'cuartos'
-                            ];
-                            $restoUsados[] = $index;
-                        }
-                    }
-                }
-                
-                $restantes = [];
-                foreach ($resto as $index => $r) {
-                    if (!in_array($index, $restoUsados)) {
-                        $restantes[] = $r;
-                    }
-                }
-                if (count($restantes) >= 2) {
-                    for ($i = 0; $i < count($restantes) - 1; $i += 2) {
+                } else if ($totalClasificados == 8 && count($zonasOrdenadasFinal) == 3) {
+                    $zonaA = $zonasOrdenadasFinal[0];
+                    $zonaB = $zonasOrdenadasFinal[1];
+                    $zonaC = $zonasOrdenadasFinal[2];
+                    
+                    if (isset($primerosPorZonaFinal[$zonaA]) && count($tercerosFinal) > 0) {
                         $crucesCuartos[] = [
-                            'pareja_1' => $restantes[$i],
-                            'pareja_2' => $restantes[$i + 1],
+                            'pareja_1' => $primerosPorZonaFinal[$zonaA],
+                            'pareja_2' => $tercerosFinal[0],
                             'ronda' => 'cuartos'
                         ];
+                    }
+                    
+                    if (isset($primerosPorZonaFinal[$zonaB]) && count($tercerosFinal) > 1) {
+                        $crucesCuartos[] = [
+                            'pareja_1' => $primerosPorZonaFinal[$zonaB],
+                            'pareja_2' => $tercerosFinal[1],
+                            'ronda' => 'cuartos'
+                        ];
+                    }
+                    
+                    if (isset($primerosPorZonaFinal[$zonaC]) && isset($segundosPorZonaFinal[$zonaA])) {
+                        $crucesCuartos[] = [
+                            'pareja_1' => $primerosPorZonaFinal[$zonaC],
+                            'pareja_2' => $segundosPorZonaFinal[$zonaA],
+                            'ronda' => 'cuartos'
+                        ];
+                    }
+                    
+                    if (isset($segundosPorZonaFinal[$zonaB]) && isset($segundosPorZonaFinal[$zonaC])) {
+                        $crucesCuartos[] = [
+                            'pareja_1' => $segundosPorZonaFinal[$zonaB],
+                            'pareja_2' => $segundosPorZonaFinal[$zonaC],
+                            'ronda' => 'cuartos'
+                        ];
+                    }
+                } else {
+                    $primeros = [];
+                    $resto = [];
+                    
+                    foreach ($clasificados as $clasificado) {
+                        if ($clasificado['posicion'] == 1) {
+                            $primeros[] = $clasificado;
+                        } else {
+                            $resto[] = $clasificado;
+                        }
+                    }
+                    
+                    $primerosUsados = [];
+                    $restoUsados = [];
+                    
+                    $mitad = ceil(count($primeros) / 2);
+                    $primerosSuperior = array_slice($primeros, 0, $mitad);
+                    $primerosInferior = array_slice($primeros, $mitad);
+                    
+                    foreach ($primerosSuperior as $primero) {
+                        $encontrado = false;
+                        foreach ($resto as $index => $r) {
+                            if (!in_array($index, $restoUsados) && $r['zona'] != $primero['zona']) {
+                                $crucesCuartos[] = [
+                                    'pareja_1' => $primero,
+                                    'pareja_2' => $r,
+                                    'ronda' => 'cuartos'
+                                ];
+                                $restoUsados[] = $index;
+                                $encontrado = true;
+                                break;
+                            }
+                        }
+                        if (!$encontrado && count($resto) > 0) {
+                            $index = 0;
+                            while (in_array($index, $restoUsados) && $index < count($resto)) {
+                                $index++;
+                            }
+                            if ($index < count($resto)) {
+                                $crucesCuartos[] = [
+                                    'pareja_1' => $primero,
+                                    'pareja_2' => $resto[$index],
+                                    'ronda' => 'cuartos'
+                                ];
+                                $restoUsados[] = $index;
+                            }
+                        }
+                    }
+                    
+                    foreach ($primerosInferior as $primero) {
+                        $encontrado = false;
+                        foreach ($resto as $index => $r) {
+                            if (!in_array($index, $restoUsados) && $r['zona'] != $primero['zona']) {
+                                $crucesCuartos[] = [
+                                    'pareja_1' => $primero,
+                                    'pareja_2' => $r,
+                                    'ronda' => 'cuartos'
+                                ];
+                                $restoUsados[] = $index;
+                                $encontrado = true;
+                                break;
+                            }
+                        }
+                        if (!$encontrado && count($resto) > 0) {
+                            $index = 0;
+                            while (in_array($index, $restoUsados) && $index < count($resto)) {
+                                $index++;
+                            }
+                            if ($index < count($resto)) {
+                                $crucesCuartos[] = [
+                                    'pareja_1' => $primero,
+                                    'pareja_2' => $resto[$index],
+                                    'ronda' => 'cuartos'
+                                ];
+                                $restoUsados[] = $index;
+                            }
+                        }
+                    }
+                    
+                    $restantes = [];
+                    foreach ($resto as $index => $r) {
+                        if (!in_array($index, $restoUsados)) {
+                            $restantes[] = $r;
+                        }
+                    }
+                    if (count($restantes) >= 2) {
+                        for ($i = 0; $i < count($restantes) - 1; $i += 2) {
+                            $crucesCuartos[] = [
+                                'pareja_1' => $restantes[$i],
+                                'pareja_2' => $restantes[$i + 1],
+                                'ronda' => 'cuartos'
+                            ];
+                        }
                     }
                 }
             }
