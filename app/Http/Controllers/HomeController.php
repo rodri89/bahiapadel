@@ -3269,18 +3269,18 @@ class HomeController extends Controller
         $clasificados = [];
         $zonasArray = $zonas->toArray();
         
-        // Verificar si hay grupos de 10 parejas totales (10 en una zona O 5+5 en dos zonas)
+        // Verificar si hay grupos de 10 parejas totales: 2 grupos de 5 parejas cada uno
         $esGrupoDe10 = false;
         if (count($zonasArray) == 2) {
             $zona1 = $zonasArray[0];
             $zona2 = $zonasArray[1];
-            // Caso 1: Una zona con 10 parejas
-            if (isset($posicionesPorZona[$zona1]) && count($posicionesPorZona[$zona1]) == 10) {
+            // Dos zonas con 5 parejas cada una (total 10 parejas)
+            if (isset($posicionesPorZona[$zona1]) && isset($posicionesPorZona[$zona2]) &&
+                count($posicionesPorZona[$zona1]) == 5 && count($posicionesPorZona[$zona2]) == 5) {
                 $esGrupoDe10 = true;
             }
-            // Caso 2: Dos zonas con 5 parejas cada una (total 10 parejas)
-            elseif (isset($posicionesPorZona[$zona1]) && isset($posicionesPorZona[$zona2]) &&
-                    count($posicionesPorZona[$zona1]) == 5 && count($posicionesPorZona[$zona2]) == 5) {
+            // O una zona con 10 parejas (cuando hay 2 zonas en total)
+            elseif (isset($posicionesPorZona[$zona1]) && count($posicionesPorZona[$zona1]) == 10) {
                 $esGrupoDe10 = true;
             }
         }
@@ -3292,7 +3292,7 @@ class HomeController extends Controller
             
             foreach ($zonasOrdenadasArray as $zona) {
                 if (isset($posicionesPorZona[$zona])) {
-                    // Clasificar posiciones 1, 2, 3 y 4 (eliminar solo el último, posición 10)
+                    // Clasificar posiciones 1, 2, 3 y 4 (eliminar solo el último: posición 5 si es grupo de 5, o posición 10 si es grupo de 10)
                     for ($i = 0; $i < min(4, count($posicionesPorZona[$zona])); $i++) {
                         $clasificados[] = [
                             'zona' => $zona,
