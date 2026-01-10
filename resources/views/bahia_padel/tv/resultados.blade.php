@@ -151,26 +151,22 @@
         }
         
         .tv-table td {
-            padding: 8px 6px; /* Reduced padding */
+            padding: 18px 15px; 
         }
         
         .player-img {
-            width: 60px; /* Larger image */
+            width: 60px;
             height: 60px;
         }
         
         .player-name {
-            font-size: 1.5rem; /* Larger font */
+            font-size: 1.5rem;
             font-weight: 600;
         }
         
         .tv-header {
             font-size: 2.2rem;
             margin-bottom: 15px;
-        }
-        
-        .tv-table tr:nth-child(even) {
-            background-color: #222;
         }
         
         .pos-rank-1 { color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
