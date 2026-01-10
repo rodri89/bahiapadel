@@ -82,36 +82,33 @@
         .tv-card-body {
             flex: 1;
             min-height: 0;
-            overflow: hidden;
+            overflow: auto;
             padding: 0;
-            display: flex;
-            flex-direction: column;
+            display: block;
+        }
+        
+        .tv-card-body::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .tv-card-body::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        .tv-card-body::-webkit-scrollbar-thumb {
+            background: #4e73df;
+            border-radius: 4px;
+        }
+        
+        .tv-card-body::-webkit-scrollbar-thumb:hover {
+            background: #375a7f;
         }
         
         .tv-table { 
             width: 100%; 
             border-collapse: collapse;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .tv-table thead {
-            flex-shrink: 0;
-        }
-        
-        .tv-table tbody {
-            flex: 1;
-            overflow: hidden;
-            display: table-row-group;
-        }
-        
-        .tv-table {
             table-layout: fixed;
-        }
-        
-        .tv-table tbody tr {
-            display: table-row;
         }
         
         .tv-table th { 
