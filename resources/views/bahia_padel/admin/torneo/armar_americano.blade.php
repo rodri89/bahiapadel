@@ -321,7 +321,8 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
-                                    <img src="${pareja.foto1}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover;">
+                                    <img src="${pareja.foto1 || '/images/jugador_img.png'}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover;" onerror="this.src='/images/jugador_img.png'">
+                                    <img src="${pareja.foto2 || '/images/jugador_img.png'}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover; margin-left:-15px; border:2px solid white;" onerror="this.src='/images/jugador_img.png'">
                                     <div class="mr-2">
                                         <div style="font-size:0.9rem;">${pareja.nombre1}</div>
                                         <div style="font-size:0.9rem;">${pareja.nombre2}</div>
