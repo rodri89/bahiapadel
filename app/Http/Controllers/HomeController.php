@@ -824,6 +824,7 @@ class HomeController extends Controller
     public function guardarTorneoAmericano(Request $request) {
         $torneoId = $request->torneo_id;
         $grupos = $request->grupos; // Array de grupos con zona y parejas
+        $esBorrador = $request->es_borrador ?? 0; // 1 si es borrador, 0 si es guardado final
         
         // Eliminar solo los grupos iniciales del torneo (sin partido_id)
         // NO eliminar los grupos que ya tienen partido_id, porque esos son los partidos ya creados
@@ -856,7 +857,13 @@ class HomeController extends Controller
             }
         }
         
-        return response()->json(['success' => true, 'message' => 'Torneo americano guardado correctamente']);
+        // Si es borrador, actualizar el estado del torneo (si existe un campo para esto)
+        // Por ahora, solo retornamos un mensaje diferente
+        $mensaje = $esBorrador 
+            ? 'Borrador guardado correctamente. Puede continuar editando.' 
+            : 'Torneo americano guardado correctamente';
+        
+        return response()->json(['success' => true, 'message' => $mensaje, 'es_borrador' => $esBorrador]);
     }
 
     public function crearPartidosAmericano(Request $request) {

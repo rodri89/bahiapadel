@@ -89,11 +89,14 @@
                         <!-- Los grupos finales se mostrarán aquí -->
                     </div>
                     <div class="text-center mt-4">
+                        <button type="button" class="btn btn-warning btn-lg mr-2" id="btn-guardar-borrador">
+                            <i class="fa fa-save"></i> Guardar como Borrador
+                        </button>
                         <button type="button" class="btn btn-success btn-lg mr-2" id="btn-guardar-americano">
-                            Guardar Torneo Americano
+                            <i class="fa fa-check"></i> Guardar Torneo Americano
                         </button>
                         <button type="button" class="btn btn-primary btn-lg" id="btn-comenzar-americano">
-                            Comenzar Torneo
+                            <i class="fa fa-play"></i> Comenzar Torneo
                         </button>
                     </div>
                 </div>
@@ -663,8 +666,8 @@
         $('.mensaje-pareja').remove();
     });
     
-    // Guardar torneo americano
-    $('#btn-guardar-americano').on('click', function() {
+    // Función para guardar torneo (compartida entre guardar y borrador)
+    function guardarTorneoAmericano(esBorrador) {
         if (gruposCreados.length === 0) {
             alert('Debe crear al menos un grupo');
             return;
@@ -672,7 +675,8 @@
         
         let datos = {
             torneo_id: torneoId,
-            grupos: []
+            grupos: [],
+            es_borrador: esBorrador ? 1 : 0
         };
         
         gruposCreados.forEach(function(grupo) {
@@ -693,7 +697,11 @@
             },
             success: function(response) {
                 if (response.success) {
-                    alert('Torneo Americano guardado correctamente');
+                    if (esBorrador) {
+                        alert('Borrador guardado correctamente. Puede continuar editando.');
+                    } else {
+                        alert('Torneo Americano guardado correctamente');
+                    }
                 } else {
                     alert('Error al guardar: ' + (response.message || 'Error desconocido'));
                 }
@@ -708,6 +716,16 @@
                 alert(errorMsg);
             }
         });
+    }
+    
+    // Botón guardar como borrador
+    $('#btn-guardar-borrador').on('click', function() {
+        guardarTorneoAmericano(true);
+    });
+    
+    // Botón guardar torneo americano
+    $('#btn-guardar-americano').on('click', function() {
+        guardarTorneoAmericano(false);
     });
     
     // Botón comenzar torneo
