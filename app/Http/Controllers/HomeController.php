@@ -3901,64 +3901,102 @@ class HomeController extends Controller
             $posicionesPorZona[$zona] = $posiciones;
         }
         
-        // Obtener clasificados (misma lógica que adminTorneoAmericanoCruces)
-        $clasificados = [];
+        // Verificar si es caso de grupos de 10 parejas (misma lógica que adminTorneoAmericanoCruces)
+        $esGrupoDe10 = false;
         $zonasArray = $zonas->toArray();
         
-        foreach ($zonasArray as $zona) {
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 0) {
-                $clasificados[] = [
-                    'zona' => $zona,
-                    'posicion' => 1,
-                    'jugador_1' => $posicionesPorZona[$zona][0]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][0]['jugador_2']
-                ];
+        if (count($zonasArray) == 2) {
+            $zona1 = $zonasArray[0];
+            $zona2 = $zonasArray[1];
+            // Dos zonas con 5 parejas cada una (total 10 parejas)
+            if (isset($posicionesPorZona[$zona1]) && isset($posicionesPorZona[$zona2]) &&
+                count($posicionesPorZona[$zona1]) == 5 && count($posicionesPorZona[$zona2]) == 5) {
+                $esGrupoDe10 = true;
+            }
+            // O una zona con 10 parejas (cuando hay 2 zonas en total)
+            elseif (isset($posicionesPorZona[$zona1]) && count($posicionesPorZona[$zona1]) == 10) {
+                $esGrupoDe10 = true;
             }
         }
         
-        // Obtener segundos y terceros según el formato
-        $segundosPorZona = [];
-        $tercerosPorZona = [];
-        foreach ($zonasArray as $zona) {
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 1) {
-                $segundosPorZona[$zona] = [
-                    'zona' => $zona,
-                    'posicion' => 2,
-                    'jugador_1' => $posicionesPorZona[$zona][1]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][1]['jugador_2']
-                ];
-            }
-            if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 2) {
-                $tercerosPorZona[$zona] = [
-                    'zona' => $zona,
-                    'posicion' => 3,
-                    'jugador_1' => $posicionesPorZona[$zona][2]['jugador_1'],
-                    'jugador_2' => $posicionesPorZona[$zona][2]['jugador_2']
-                ];
-            }
-        }
+        // Obtener clasificados (misma lógica que adminTorneoAmericanoCruces)
+        $clasificados = [];
         
-        // Determinar formato (6 o 8 clasificados)
-        $zonasOrdenadasArray = $zonasArray;
-        sort($zonasOrdenadasArray);
-        $totalClasificados = count($clasificados);
-        
-        if (count($zonasOrdenadasArray) == 3) {
-            // 3 zonas: agregar A2, B2, C2 y 2 mejores terceros
+        // Si es grupo de 10 parejas con 2 zonas, clasificar los primeros 4 de cada grupo
+        if ($esGrupoDe10 && count($zonasArray) == 2) {
+            $zonasOrdenadasArray = $zonasArray;
+            sort($zonasOrdenadasArray);
+            
             foreach ($zonasOrdenadasArray as $zona) {
-                if (isset($segundosPorZona[$zona])) {
-                    $clasificados[] = $segundosPorZona[$zona];
+                if (isset($posicionesPorZona[$zona])) {
+                    // Clasificar posiciones 1, 2, 3 y 4 (eliminar solo el último: posición 5 si es grupo de 5, o posición 10 si es grupo de 10)
+                    for ($i = 0; $i < min(4, count($posicionesPorZona[$zona])); $i++) {
+                        $clasificados[] = [
+                            'zona' => $zona,
+                            'posicion' => $i + 1,
+                            'jugador_1' => $posicionesPorZona[$zona][$i]['jugador_1'],
+                            'jugador_2' => $posicionesPorZona[$zona][$i]['jugador_2']
+                        ];
+                    }
                 }
             }
-            $terceros = array_values($tercerosPorZona);
-            usort($terceros, function($a, $b) {
-                return 0; // Simplificado
-            });
-            for ($i = 0; $i < min(2, count($terceros)); $i++) {
-                $clasificados[] = $terceros[$i];
+        } else {
+            // Lógica original para otros casos
+            foreach ($zonasArray as $zona) {
+                if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 0) {
+                    $clasificados[] = [
+                        'zona' => $zona,
+                        'posicion' => 1,
+                        'jugador_1' => $posicionesPorZona[$zona][0]['jugador_1'],
+                        'jugador_2' => $posicionesPorZona[$zona][0]['jugador_2']
+                    ];
+                }
             }
-            $totalClasificados = count($clasificados);
+            
+            // Obtener segundos y terceros según el formato
+            $segundosPorZona = [];
+            $tercerosPorZona = [];
+            foreach ($zonasArray as $zona) {
+                if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 1) {
+                    $segundosPorZona[$zona] = [
+                        'zona' => $zona,
+                        'posicion' => 2,
+                        'jugador_1' => $posicionesPorZona[$zona][1]['jugador_1'],
+                        'jugador_2' => $posicionesPorZona[$zona][1]['jugador_2']
+                    ];
+                }
+                if (isset($posicionesPorZona[$zona]) && count($posicionesPorZona[$zona]) > 2) {
+                    $tercerosPorZona[$zona] = [
+                        'zona' => $zona,
+                        'posicion' => 3,
+                        'jugador_1' => $posicionesPorZona[$zona][2]['jugador_1'],
+                        'jugador_2' => $posicionesPorZona[$zona][2]['jugador_2']
+                    ];
+                }
+            }
+            
+            // Determinar formato (6 o 8 clasificados)
+            $zonasOrdenadasArray = $zonasArray;
+            sort($zonasOrdenadasArray);
+            
+            if (count($zonasOrdenadasArray) == 3) {
+                // 3 zonas: agregar A2, B2, C2 y 2 mejores terceros
+                foreach ($zonasOrdenadasArray as $zona) {
+                    if (isset($segundosPorZona[$zona])) {
+                        $clasificados[] = $segundosPorZona[$zona];
+                    }
+                }
+                $terceros = array_values($tercerosPorZona);
+                usort($terceros, function($a, $b) {
+                    return 0; // Simplificado
+                });
+                for ($i = 0; $i < min(2, count($terceros)); $i++) {
+                    $clasificados[] = $terceros[$i];
+                }
+            }
         }
+        
+        $totalClasificados = count($clasificados);
         
         // Obtener todos los partidos de cuartos con resultados
         $partidosCuartos = DB::table('partidos')
@@ -4011,8 +4049,21 @@ class HomeController extends Controller
             }
         }
         
+        // Para grupos de 10 parejas con 8 clasificados: SF1 = Ganador A1-B4 vs Ganador B2-A3, SF2 = Ganador A2-B3 vs Ganador B1-A4
+        if ($esGrupoDe10 && count($zonasArray) == 2 && $totalClasificados == 8) {
+            // Orden de cuartos: A1-B4 (0), B2-A3 (1), A2-B3 (2), B1-A4 (3)
+            // SF1: Ganador cuarto[0] (A1-B4) vs Ganador cuarto[1] (B2-A3)
+            if (isset($ganadoresCuartos[0]) && isset($ganadoresCuartos[1])) {
+                $this->crearPartidoEliminatorio($torneoId, $ganadoresCuartos[0], $ganadoresCuartos[1], 'semifinales');
+            }
+            
+            // SF2: Ganador cuarto[2] (A2-B3) vs Ganador cuarto[3] (B1-A4)
+            if (isset($ganadoresCuartos[2]) && isset($ganadoresCuartos[3])) {
+                $this->crearPartidoEliminatorio($torneoId, $ganadoresCuartos[2], $ganadoresCuartos[3], 'semifinales');
+            }
+        }
         // Para 6 clasificados: SF1 = Primero 1 vs Ganador QF1, SF2 = Primero 2 vs Ganador QF2
-        if ($totalClasificados == 6) {
+        else if ($totalClasificados == 6) {
             $primeros = [];
             foreach ($clasificados as $c) {
                 if ($c['posicion'] == 1) {
@@ -4033,7 +4084,7 @@ class HomeController extends Controller
                 $this->crearPartidoEliminatorio($torneoId, $primeros[1], $ganadoresCuartos[1], 'semifinales');
             }
         } 
-        // Para 8 clasificados: SF1 = Ganador QF1 vs Ganador QF3, SF2 = Ganador QF2 vs Ganador QF4
+        // Para 8 clasificados (otros casos): SF1 = Ganador QF1 vs Ganador QF3, SF2 = Ganador QF2 vs Ganador QF4
         else if ($totalClasificados == 8) {
             // Crear SF1: Ganador QF1 vs Ganador QF3
             if (isset($ganadoresCuartos[0]) && isset($ganadoresCuartos[2])) {
