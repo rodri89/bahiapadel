@@ -7,41 +7,57 @@
     <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
     <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body { 
             overflow: hidden; 
             font-family: 'Nunito', sans-serif; 
             background-color: #1a1a1a;
             color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
         }
+        
         .zona-slide { 
             display: none; 
             height: 100vh; 
-            padding: 20px; 
+            width: 100vw;
+            padding: 1vh 1.5vw; 
             box-sizing: border-box;
+            overflow: hidden;
         }
+        
         .zona-slide.active { 
-            display: block; 
+            display: flex; 
+            flex-direction: column;
             animation: fadeIn 0.8s; 
         }
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .tv-header { 
-            font-size: 2.5rem; 
-            margin-bottom: 20px; 
+            font-size: clamp(1.5rem, 3vw, 2.5rem); 
+            margin: 0.5vh 0 1vh 0; 
             text-align: center; 
             color: #fff; 
             text-transform: uppercase;
             letter-spacing: 2px;
             font-weight: 800;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            flex-shrink: 0;
         }
         
         .tv-card { 
             background-color: #252525; 
             border: 1px solid #3d3d3d; 
             border-radius: 15px; 
-            margin-bottom: 20px; 
-            height: calc(100vh - 120px); 
+            height: 0;
+            flex: 1;
+            min-height: 0;
             overflow: hidden; 
             box-shadow: 0 10px 20px rgba(0,0,0,0.3);
             display: flex;
@@ -50,41 +66,59 @@
 
         .tv-card-header {
             background-color: #1f1f1f;
-            padding: 15px;
+            padding: 1vh 1vw;
             border-bottom: 2px solid #3d3d3d;
             text-align: center;
+            flex-shrink: 0;
         }
 
         .tv-card-header h3 {
             margin: 0;
             color: #4e73df;
             font-weight: 700;
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
         }
 
         .tv-card-body {
             flex: 1;
-            overflow-y: auto;
+            min-height: 0;
+            overflow: hidden;
             padding: 0;
+            display: flex;
+            flex-direction: column;
         }
         
         .tv-table { 
             width: 100%; 
             border-collapse: collapse;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tv-table thead {
+            flex-shrink: 0;
+        }
+        
+        .tv-table tbody {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         .tv-table th { 
             background-color: #2d2d2d; 
             color: #aaa; 
             text-transform: uppercase;
-            font-size: 1.1rem;
-            padding: 15px;
+            font-size: clamp(0.8rem, 1.2vw, 1.1rem);
+            padding: 1vh 1vw;
             position: sticky;
             top: 0;
             z-index: 10;
         }
         
         .tv-table td { 
-            padding: 18px 15px; 
+            padding: clamp(0.8vh, 1.2vh, 1.5vh) clamp(0.8vw, 1.2vw, 1.5vw); 
             border-bottom: 1px solid #333;
             vertical-align: middle;
         }
@@ -94,12 +128,13 @@
         }
         
         .player-img { 
-            width: 50px; 
-            height: 50px; 
+            width: clamp(40px, 4vw, 60px); 
+            height: clamp(40px, 4vw, 60px); 
             border-radius: 50%; 
             object-fit: cover; 
             border: 2px solid #555; 
-            margin-right: 12px; 
+            margin-right: 0.8vw; 
+            flex-shrink: 0;
         }
         
         .player-img-overlap {
@@ -112,31 +147,39 @@
         .player-img-container {
             display: flex;
             align-items: center;
-            margin-right: 12px;
+            margin-right: 0.8vw;
+            flex-shrink: 0;
         }
         
         .player-info {
             display: flex;
             align-items: center;
+            width: 100%;
         }
         
         .player-names {
-            line-height: 1.3;
+            line-height: 1.2;
+            flex: 1;
+            min-width: 0;
         }
         
         .player-name {
             display: block;
-            font-size: 1.4rem;
+            font-size: clamp(1rem, 1.8vw, 1.5rem);
             font-weight: 600;
             color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .score-cell {
-            font-size: 1.8rem;
+            font-size: clamp(1.5rem, 2.5vw, 2rem);
             font-weight: 800;
             color: #fff;
             text-align: center;
-            min-width: 40px; /* Reduced from fixed width to allow flex */
+            min-width: 40px;
+            flex-shrink: 0;
         }
         
         .score-container {
@@ -148,25 +191,6 @@
 
         .score-active {
             color: #4e73df;
-        }
-        
-        .tv-table td {
-            padding: 18px 15px; 
-        }
-        
-        .player-img {
-            width: 60px;
-            height: 60px;
-        }
-        
-        .player-name {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        
-        .tv-header {
-            font-size: 2.2rem;
-            margin-bottom: 15px;
         }
         
         .pos-rank-1 { color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
@@ -190,8 +214,8 @@
 
     <div id="app-container">
         @if(empty($partidosPorZona))
-            <div style="display:flex; justify-content:center; align-items:center; height:100vh;">
-                <h1>Esperando Partidos...</h1>
+            <div style="display:flex; justify-content:center; align-items:center; height:100vh; width:100vw;">
+                <h1 style="font-size:clamp(2rem, 4vw, 3rem);">Esperando Partidos...</h1>
             </div>
         @else
             @php
@@ -278,7 +302,7 @@
                                                         '<td class="text-center">' .
                                                             '<div class="score-container">' .
                                                                 '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s1 > $s2) ? 'score-active' : '') . '" data-score-p1="' . $s1 . '">' . $s1 . '</div>' .
-                                                                '<span style="color:#555; font-size:1.5rem; margin:0 5px;">-</span>' .
+                                                                '<span style="color:#555; font-size:clamp(1.2rem, 2vw, 1.8rem); margin:0 0.5vw;">-</span>' .
                                                                 '<div class="score-cell ' . ((is_numeric($s1) && is_numeric($s2) && $s2 > $s1) ? 'score-active' : '') . '" data-score-p2="' . $s2 . '">' . $s2 . '</div>' .
                                                             '</div>' .
                                                         '</td>' .
@@ -312,7 +336,7 @@
                         </div>
                         
                         <!-- Posiciones -->
-                        <div class="col-4">
+                        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                             <div class="tv-card">
                                 <div class="tv-card-header">
                                     <h3>Posiciones</h3>
@@ -321,10 +345,10 @@
                                     <table class="tv-table">
                                        <thead>
                                            <tr>
-                                               <th class="text-center">#</th>
-                                               <th>Pareja</th>
-                                               <th class="text-center">PG</th>
-                                               <th class="text-center">Games</th>
+                                               <th class="text-center" style="width:15%;">#</th>
+                                               <th style="width:50%;">Pareja</th>
+                                               <th class="text-center" style="width:17.5%;">PG</th>
+                                               <th class="text-center" style="width:17.5%;">Games</th>
                                            </tr>
                                        </thead>
                                        <tbody id="tbody-posiciones-{{ $zona }}">
@@ -354,14 +378,14 @@
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td class="text-center"><span style="font-size:1.5rem; font-weight:bold;">{{ $pos['partidos_ganados'] ?? 0 }}</span></td>
+                                                        <td class="text-center"><span style="font-size:clamp(1.2rem, 2vw, 1.5rem); font-weight:bold;">{{ $pos['partidos_ganados'] ?? 0 }}</span></td>
                                                         <td class="text-center">
                                                             @php
                                                                 $diferencia = ($pos['puntos_ganados'] ?? 0) - ($pos['puntos_perdidos'] ?? 0);
                                                                 $diferenciaTexto = $diferencia >= 0 ? '+' . $diferencia : (string)$diferencia;
                                                                 $diferenciaClass = $diferencia >= 0 ? 'color:#4e73df;' : 'color:#e74a3b;';
                                                             @endphp
-                                                            <span style="font-size:1.5rem; font-weight:bold; {{ $diferenciaClass }}">{{ $diferenciaTexto }}</span>
+                                                            <span style="font-size:clamp(1.2rem, 2vw, 1.5rem); font-weight:bold; {{ $diferenciaClass }}">{{ $diferenciaTexto }}</span>
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -477,9 +501,9 @@
                                 '</div>' +
                             '</div>' +
                         '</td>' +
-                        '<td class="text-center"><span style="font-size:1.5rem; font-weight:bold;">' + (pos.partidos_ganados || 0) + '</span></td>' +
+                                                        '<td class="text-center"><span style="font-size:clamp(1.2rem, 2vw, 1.5rem); font-weight:bold;">' + (pos.partidos_ganados || 0) + '</span></td>' +
                         '<td class="text-center">' +
-                            '<span style="font-size:1.5rem; font-weight:bold; ' + diferenciaClass + '">' + diferenciaTexto + '</span>' +
+                            '<span style="font-size:clamp(1.2rem, 2vw, 1.5rem); font-weight:bold; ' + diferenciaClass + '">' + diferenciaTexto + '</span>' +
                         '</td>' +
                     '</tr>';
                     
