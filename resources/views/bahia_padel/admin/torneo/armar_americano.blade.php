@@ -39,16 +39,21 @@
                     </div>
                 </div>
                 <div class="row align-items-end">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="cantidad_grupos" class="form-label">Cantidad de Grupos</label>
                         <input type="number" class="form-control form-control-lg" id="cantidad_grupos" min="1" max="20" value="1">
                     </div>
-                    <div class="col-md-4">
-                        <button type="button" class="btn btn-success btn-lg w-100" id="btn-comenzar-distribucion" disabled>
-                            Comenzar
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-warning btn-lg w-100" id="btn-guardar-borrador-inicial" disabled>
+                            <i class="fa fa-save"></i> Guardar como Borrador
                         </button>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-success btn-lg w-100" id="btn-comenzar-distribucion" disabled>
+                            <i class="fa fa-play"></i> Comenzar
+                        </button>
+                    </div>
+                    <div class="col-md-3">
                         <a href="{{ route('tvtorneoamericanosorteo') }}?torneo_id={{ $torneo->id ?? 0 }}" target="_blank" class="btn btn-info btn-lg w-100" id="btn-proyectar-sorteo-tv" style="display:none;">
                             <i class="fa fa-desktop"></i> Proyectar Pantalla Sorteo TV
                         </a>
@@ -291,6 +296,7 @@
         if (parejasLista.length === 0) {
             contenedor.append('<div class="col-12"><p class="text-muted">No hay parejas agregadas</p></div>');
             $('#btn-comenzar-distribucion').prop('disabled', true);
+            $('#btn-guardar-borrador-inicial').prop('disabled', true);
             return;
         }
         
@@ -319,6 +325,7 @@
         });
         
         $('#btn-comenzar-distribucion').prop('disabled', parejasLista.length === 0);
+        $('#btn-guardar-borrador-inicial').prop('disabled', parejasLista.length === 0);
     }
     
     function eliminarParejaLista(index) {
@@ -668,24 +675,58 @@
     
     // Función para guardar torneo (compartida entre guardar y borrador)
     function guardarTorneoAmericano(esBorrador) {
-        if (gruposCreados.length === 0) {
-            alert('Debe crear al menos un grupo');
+        let cantidadGrupos = 0;
+        let gruposParaGuardar = [];
+        
+        // Si ya hay grupos creados y mezclados, usar esos
+        if (gruposCreados.length > 0 && Object.keys(parejasSeleccionadas).length > 0) {
+            gruposCreados.forEach(function(grupo) {
+                let parejas = parejasSeleccionadas[grupo.id] || [];
+                gruposParaGuardar.push({
+                    zona: grupo.letra,
+                    parejas: parejas
+                });
+            });
+        } else if (parejasLista.length > 0) {
+            // Si solo hay parejas en la lista, crear grupos vacíos o distribuir automáticamente
+            cantidadGrupos = parseInt($('#cantidad_grupos').val()) || 1;
+            
+            // Distribuir parejas en grupos de forma simple (sin animación)
+            for (let i = 1; i <= cantidadGrupos; i++) {
+                let letraGrupo = String.fromCharCode(64 + i); // A, B, C, etc.
+                let parejasEnGrupo = [];
+                
+                // Distribuir parejas de forma circular
+                parejasLista.forEach(function(pareja, index) {
+                    let grupoId = (index % cantidadGrupos) + 1;
+                    if (grupoId === i) {
+                        parejasEnGrupo.push({
+                            jugador1: pareja.jugador1,
+                            jugador2: pareja.jugador2
+                        });
+                    }
+                });
+                
+                gruposParaGuardar.push({
+                    zona: letraGrupo,
+                    parejas: parejasEnGrupo
+                });
+            }
+        } else {
+            alert('Debe agregar al menos una pareja o crear grupos');
+            return;
+        }
+        
+        if (gruposParaGuardar.length === 0) {
+            alert('No hay grupos para guardar');
             return;
         }
         
         let datos = {
             torneo_id: torneoId,
-            grupos: [],
+            grupos: gruposParaGuardar,
             es_borrador: esBorrador ? 1 : 0
         };
-        
-        gruposCreados.forEach(function(grupo) {
-            let parejas = parejasSeleccionadas[grupo.id] || [];
-            datos.grupos.push({
-                zona: grupo.letra,
-                parejas: parejas
-            });
-        });
         
         $.ajax({
             type: 'POST',
@@ -717,6 +758,15 @@
             }
         });
     }
+    
+    // Botón guardar como borrador desde la sección inicial
+    $('#btn-guardar-borrador-inicial').on('click', function() {
+        if (parejasLista.length === 0) {
+            alert('Debe agregar al menos una pareja antes de guardar');
+            return;
+        }
+        guardarTorneoAmericano(true);
+    });
     
     // Botón guardar como borrador
     $('#btn-guardar-borrador').on('click', function() {
