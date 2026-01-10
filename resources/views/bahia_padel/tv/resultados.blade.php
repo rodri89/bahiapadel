@@ -76,15 +76,15 @@
             background-color: #2d2d2d; 
             color: #aaa; 
             text-transform: uppercase;
-            font-size: 0.9rem;
-            padding: 12px;
+            font-size: 1.1rem;
+            padding: 15px;
             position: sticky;
             top: 0;
             z-index: 10;
         }
         
         .tv-table td { 
-            padding: 15px 12px; 
+            padding: 18px 15px; 
             border-bottom: 1px solid #333;
             vertical-align: middle;
         }
@@ -102,19 +102,33 @@
             margin-right: 12px; 
         }
         
+        .player-img-overlap {
+            margin-left: -20px;
+            border: 3px solid #252525;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .player-img-container {
+            display: flex;
+            align-items: center;
+            margin-right: 12px;
+        }
+        
         .player-info {
             display: flex;
             align-items: center;
         }
         
         .player-names {
-            line-height: 1.2;
+            line-height: 1.3;
         }
         
         .player-name {
             display: block;
-            font-size: 1.1rem;
+            font-size: 1.4rem;
             font-weight: 600;
+            color: #fff;
         }
 
         .score-cell {
@@ -141,21 +155,22 @@
         }
         
         .player-img {
-            width: 40px; /* Smaller image */
-            height: 40px;
+            width: 60px; /* Larger image */
+            height: 60px;
         }
         
         .player-name {
-            font-size: 1rem; /* Smaller font */
+            font-size: 1.5rem; /* Larger font */
+            font-weight: 600;
         }
         
         .tv-header {
-            font-size: 2rem;
-            margin-bottom: 10px;
+            font-size: 2.2rem;
+            margin-bottom: 15px;
         }
-            font-weight: 800;
-            color: #888;
-            text-align: center;
+        
+        .tv-table tr:nth-child(even) {
+            background-color: #222;
         }
         
         .pos-rank-1 { color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
@@ -254,10 +269,13 @@
                                                     return '<tr data-partido-id="' . $partidoIdKey . '">' .
                                                         '<td>' .
                                                             '<div class="player-info">' .
-                                                                ($jugador1_1 ? '<img src="' . asset($jugador1_1->foto ?? 'images/jugador_img.png') . '" class="player-img">' : '') .
+                                                                '<div class="player-img-container">' .
+                                                                    ($jugador1_1 ? '<img src="' . asset($jugador1_1->foto ?? 'images/jugador_img.png') . '" class="player-img" onerror="this.src=\'' . asset('images/jugador_img.png') . '\'">' : '') .
+                                                                    ($jugador1_2 ? '<img src="' . asset($jugador1_2->foto ?? 'images/jugador_img.png') . '" class="player-img player-img-overlap" onerror="this.src=\'' . asset('images/jugador_img.png') . '\'">' : '') .
+                                                                '</div>' .
                                                                 '<div class="player-names">' .
-                                                                    '<span class="player-name">' . ($jugador1_1->apellido ?? '') . '</span>' .
-                                                                    ($jugador1_2 ? '<span class="player-name">' . ($jugador1_2->apellido ?? '') . '</span>' : '') .
+                                                                    '<span class="player-name">' . ($jugador1_1 ? ($jugador1_1->nombre ?? '') . ' ' . ($jugador1_1->apellido ?? '') : '') . '</span>' .
+                                                                    ($jugador1_2 ? '<span class="player-name">' . ($jugador1_2->nombre ?? '') . ' ' . ($jugador1_2->apellido ?? '') . '</span>' : '') .
                                                                 '</div>' .
                                                             '</div>' .
                                                         '</td>' .
@@ -270,10 +288,13 @@
                                                         '</td>' .
                                                         '<td style="text-align:right;">' .
                                                             '<div class="player-info" style="flex-direction:row-reverse; text-align:right;">' .
-                                                                ($jugador2_1 ? '<img src="' . asset($jugador2_1->foto ?? 'images/jugador_img.png') . '" class="player-img" style="margin-right:0; margin-left:12px;">' : '') .
-                                                                '<div class="player-names">' .
-                                                                    '<span class="player-name">' . ($jugador2_1->apellido ?? '') . '</span>' .
-                                                                    ($jugador2_2 ? '<span class="player-name">' . ($jugador2_2->apellido ?? '') . '</span>' : '') .
+                                                                '<div class="player-img-container" style="flex-direction:row-reverse; margin-left:12px; margin-right:0;">' .
+                                                                    ($jugador2_2 ? '<img src="' . asset($jugador2_2->foto ?? 'images/jugador_img.png') . '" class="player-img player-img-overlap" style="margin-left:0; margin-right:-20px;" onerror="this.src=\'' . asset('images/jugador_img.png') . '\'">' : '') .
+                                                                    ($jugador2_1 ? '<img src="' . asset($jugador2_1->foto ?? 'images/jugador_img.png') . '" class="player-img" style="margin-right:0;" onerror="this.src=\'' . asset('images/jugador_img.png') . '\'">' : '') .
+                                                                '</div>' .
+                                                                '<div class="player-names" style="text-align:right;">' .
+                                                                    '<span class="player-name">' . ($jugador2_1 ? ($jugador2_1->nombre ?? '') . ' ' . ($jugador2_1->apellido ?? '') : '') . '</span>' .
+                                                                    ($jugador2_2 ? '<span class="player-name">' . ($jugador2_2->nombre ?? '') . ' ' . ($jugador2_2->apellido ?? '') . '</span>' : '') .
                                                                 '</div>' .
                                                             '</div>' .
                                                         '</td>' .
@@ -321,10 +342,19 @@
                                                         <td class="text-center"><span class="pos-rank pos-rank-{{ $index + 1 }}">{{ $index + 1 }}</span></td>
                                                         <td>
                                                             <div class="player-info">
-                                                                @if($p1)<img src="{{ asset($p1->foto ?? 'images/jugador_img.png') }}" class="player-img" style="width:40px;height:40px;">@endif
+                                                                <div class="player-img-container">
+                                                                    @if($p1)
+                                                                        <img src="{{ asset($p1->foto ?? 'images/jugador_img.png') }}" class="player-img" onerror="this.src='{{ asset('images/jugador_img.png') }}'">
+                                                                    @endif
+                                                                    @if($p2)
+                                                                        <img src="{{ asset($p2->foto ?? 'images/jugador_img.png') }}" class="player-img player-img-overlap" onerror="this.src='{{ asset('images/jugador_img.png') }}'">
+                                                                    @endif
+                                                                </div>
                                                                 <div class="player-names">
-                                                                    <span class="player-name" style="font-size:0.9rem;">{{ $p1->apellido ?? '' }}</span>
-                                                                    @if($p2)<span class="player-name" style="font-size:0.9rem;">{{ $p2->apellido ?? '' }}</span>@endif
+                                                                    <span class="player-name">{{ $p1 ? ($p1->nombre ?? '') . ' ' . ($p1->apellido ?? '') : '' }}</span>
+                                                                    @if($p2)
+                                                                        <span class="player-name">{{ ($p2->nombre ?? '') . ' ' . ($p2->apellido ?? '') }}</span>
+                                                                    @endif
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -435,16 +465,19 @@
                     let diferenciaClass = diferencia >= 0 ? 'color:#4e73df;' : 'color:#e74a3b;';
                     
                     let foto1 = p1 && p1.foto ? '{{ url("/") }}/' + p1.foto : '{{ url("/") }}/images/jugador_img.png';
-                    let foto2 = p2 && p2.foto ? '{{ url("/") }}/' + p2.foto : '';
+                    let foto2 = p2 && p2.foto ? '{{ url("/") }}/' + p2.foto : '{{ url("/") }}/images/jugador_img.png';
                     
                     let row = '<tr>' +
                         '<td class="text-center"><span class="pos-rank pos-rank-' + (index + 1) + '">' + (index + 1) + '</span></td>' +
                         '<td>' +
                             '<div class="player-info">' +
-                                '<img src="' + foto1 + '" class="player-img" style="width:40px;height:40px;">' +
+                                '<div class="player-img-container">' +
+                                    (p1 ? '<img src="' + foto1 + '" class="player-img" onerror="this.src=\'{{ url("/") }}/images/jugador_img.png\'">' : '') +
+                                    (p2 ? '<img src="' + foto2 + '" class="player-img player-img-overlap" onerror="this.src=\'{{ url("/") }}/images/jugador_img.png\'">' : '') +
+                                '</div>' +
                                 '<div class="player-names">' +
-                                    '<span class="player-name" style="font-size:0.9rem;">' + (p1 ? p1.apellido : '') + '</span>' +
-                                    (p2 ? '<span class="player-name" style="font-size:0.9rem;">' + p2.apellido + '</span>' : '') +
+                                    '<span class="player-name">' + (p1 ? ((p1.nombre || '') + ' ' + (p1.apellido || '')) : '') + '</span>' +
+                                    (p2 ? '<span class="player-name">' + ((p2.nombre || '') + ' ' + (p2.apellido || '')) + '</span>' : '') +
                                 '</div>' +
                             '</div>' +
                         '</td>' +
