@@ -485,16 +485,31 @@
                     let diferenciaTexto = diferencia >= 0 ? '+' + diferencia : diferencia.toString();
                     let diferenciaClass = diferencia >= 0 ? 'color:#4e73df;' : 'color:#e74a3b;';
                     
-                    let foto1 = p1 && p1.foto ? '{{ url("/") }}/' + p1.foto : '{{ url("/") }}/images/jugador_img.png';
-                    let foto2 = p2 && p2.foto ? '{{ url("/") }}/' + p2.foto : '{{ url("/") }}/images/jugador_img.png';
+                    // Función helper para normalizar URLs de fotos
+                    function getFotoUrlJS(foto) {
+                        if (!foto || foto === '') {
+                            return '{{ asset('images/jugador_img.png') }}';
+                        }
+                        if (foto.startsWith('http://') || foto.startsWith('https://')) {
+                            return foto;
+                        }
+                        if (foto.startsWith('/')) {
+                            return '{{ url('/') }}' + foto;
+                        }
+                        // Ruta relativa: usar asset() para construir la URL completa
+                        return '{{ asset('') }}' + foto;
+                    }
+                    
+                    let foto1 = p1 && p1.foto ? getFotoUrlJS(p1.foto) : '{{ asset('images/jugador_img.png') }}';
+                    let foto2 = p2 && p2.foto ? getFotoUrlJS(p2.foto) : '{{ asset('images/jugador_img.png') }}';
                     
                     let row = '<tr>' +
                         '<td class="text-center"><span class="pos-rank pos-rank-' + (index + 1) + '">' + (index + 1) + '</span></td>' +
                         '<td>' +
                             '<div class="player-info">' +
                                 '<div class="player-img-container">' +
-                                    (p1 ? '<img src="' + foto1 + '" class="player-img" onerror="this.src=\'{{ url("/") }}/images/jugador_img.png\'">' : '') +
-                                    (p2 ? '<img src="' + foto2 + '" class="player-img player-img-overlap" onerror="this.src=\'{{ url("/") }}/images/jugador_img.png\'">' : '') +
+                                    (p1 ? '<img src="' + foto1 + '" class="player-img" onerror="this.src=\'{{ asset('images/jugador_img.png') }}\'">' : '') +
+                                    (p2 ? '<img src="' + foto2 + '" class="player-img player-img-overlap" onerror="this.src=\'{{ asset('images/jugador_img.png') }}\'">' : '') +
                                 '</div>' +
                                 '<div class="player-names">' +
                                     '<span class="player-name">' + (p1 ? ((p1.nombre || '') + ' ' + (p1.apellido || '')) : '') + '</span>' +

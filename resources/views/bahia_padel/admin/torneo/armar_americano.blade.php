@@ -122,6 +122,22 @@
     let distribucionEnProceso = false;
     
     // Función para obtener jugador por ID (debe estar antes de usarse)
+    // Función helper para normalizar URLs de fotos
+    function getFotoUrl(foto) {
+        if (!foto || foto === '') {
+            return '{{ asset('images/jugador_img.png') }}';
+        }
+        // Si ya es una URL completa (http/https), devolverla tal cual
+        if (foto.startsWith('http://') || foto.startsWith('https://')) {
+            return foto;
+        }
+        // Construir la URL completa usando asset() de Laravel
+        // Si empieza con /, quitar el / inicial
+        const ruta = foto.startsWith('/') ? foto.substring(1) : foto;
+        // Usar asset() con la ruta completa
+        return '{{ asset('') }}' + '/' + ruta;
+    }
+    
     function obtenerJugadorPorId(id) {
         let jugadores = @json($jugadores ?? []);
         return jugadores.find(j => j.id == id);
@@ -166,8 +182,8 @@
                             jugador2: pareja.jugador2,
                             nombre1: jugador1.nombre + ' ' + jugador1.apellido,
                             nombre2: jugador2.nombre + ' ' + jugador2.apellido,
-                            foto1: jugador1.foto || '/images/jugador_img.png',
-                            foto2: jugador2.foto || '/images/jugador_img.png'
+                            foto1: getFotoUrl(jugador1.foto),
+                            foto2: getFotoUrl(jugador2.foto)
                         });
                     }
                 }
@@ -242,7 +258,7 @@
                 jugadorTemporal1 = {
                     id: jugadorId,
                     nombre: jugador.nombre + ' ' + jugador.apellido,
-                    foto: jugador.foto || '/images/jugador_img.png'
+                    foto: getFotoUrl(jugador.foto)
                 };
                 $('#modalSeleccionarJugador .mensaje-pareja').text('Ahora seleccione el segundo jugador de la pareja').removeClass('alert-info').addClass('alert-warning');
             } else {
@@ -290,7 +306,7 @@
                     nombre1: jugadorTemporal1.nombre,
                     nombre2: jugador.nombre + ' ' + jugador.apellido,
                     foto1: jugadorTemporal1.foto,
-                    foto2: jugador.foto || '/images/jugador_img.png'
+                    foto2: getFotoUrl(jugador.foto)
                 });
                 
                 actualizarListaParejas();
@@ -321,8 +337,8 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
-                                    <img src="${pareja.foto1 || '/images/jugador_img.png'}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover;" onerror="this.src='/images/jugador_img.png'">
-                                    <img src="${pareja.foto2 || '/images/jugador_img.png'}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover; margin-left:-15px; border:2px solid white;" onerror="this.src='/images/jugador_img.png'">
+                                    <img src="${pareja.foto1 || '{{ asset('images/jugador_img.png') }}'}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover;" onerror="this.src='{{ asset('images/jugador_img.png') }}'">
+                                    <img src="${pareja.foto2 || '{{ asset('images/jugador_img.png') }}'}" class="rounded-circle mr-2" style="width:40px; height:40px; object-fit:cover; margin-left:-15px; border:2px solid white;" onerror="this.src='{{ asset('images/jugador_img.png') }}'">
                                     <div class="mr-2">
                                         <div style="font-size:0.9rem;">${pareja.nombre1}</div>
                                         <div style="font-size:0.9rem;">${pareja.nombre2}</div>
@@ -508,12 +524,12 @@
                     <div class="list-group-item mb-2 animate-fade-in">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center">
-                                <img src="${jugador1.foto || '/images/jugador_img.png'}" 
+                                <img src="${getFotoUrl(jugador1.foto)}" 
                                      class="rounded-circle mr-2" 
                                      style="width:30px; height:30px; object-fit:cover;">
                                 <span class="mr-2">${jugador1.nombre} ${jugador1.apellido}</span>
                                 <span class="mx-2">+</span>
-                                <img src="${jugador2.foto || '/images/jugador_img.png'}" 
+                                <img src="${getFotoUrl(jugador2.foto)}" 
                                      class="rounded-circle mr-2" 
                                      style="width:30px; height:30px; object-fit:cover;">
                                 <span>${jugador2.nombre} ${jugador2.apellido}</span>
@@ -650,12 +666,12 @@
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center">
-                                <img src="${jugador1.foto || '/images/jugador_img.png'}" 
+                                <img src="${getFotoUrl(jugador1.foto)}" 
                                      class="rounded-circle mr-2" 
                                      style="width:30px; height:30px; object-fit:cover;">
                                 <span class="mr-2">${jugador1.nombre} ${jugador1.apellido}</span>
                                 <span class="mx-2">+</span>
-                                <img src="${jugador2.foto || '/images/jugador_img.png'}" 
+                                <img src="${getFotoUrl(jugador2.foto)}" 
                                      class="rounded-circle mr-2" 
                                      style="width:30px; height:30px; object-fit:cover;">
                                 <span>${jugador2.nombre} ${jugador2.apellido}</span>

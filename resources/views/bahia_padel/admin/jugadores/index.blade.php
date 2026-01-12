@@ -231,18 +231,29 @@
         });
     }
     
+    // Función helper para normalizar URLs de fotos
+    function getFotoUrl(foto) {
+        if (!foto || foto === '') {
+            return '{{ asset('images/jugador_img.png') }}';
+        }
+        
+        // Si ya es una URL completa (http/https), devolverla tal cual
+        if (foto.startsWith('http://') || foto.startsWith('https://')) {
+            return foto;
+        }
+        
+        // Construir la URL completa usando asset() de Laravel
+        // Si empieza con /, quitar el / inicial
+        const ruta = foto.startsWith('/') ? foto.substring(1) : foto;
+        // Usar asset() con la ruta completa
+        return '{{ asset('') }}' + '/' + ruta;
+    }
+    
     function mostrarJugadores(jugadores) {
         let html = '';
         jugadores.forEach(function(jugador) {
             if (jugador.activo == 1) {
-                let foto = jugador.foto || '{{ asset('images/jugador_img.png') }}';
-                // Si la foto no empieza con http o /, construir la ruta completa
-                if (!foto.startsWith('http') && !foto.startsWith('/')) {
-                    foto = '{{ url('/') }}/' + foto;
-                } else if (foto.startsWith('/') && !foto.startsWith('{{ url('/') }}')) {
-                    // Si empieza con / pero no tiene el dominio completo, agregarlo
-                    foto = '{{ url('/') }}' + foto;
-                }
+                let foto = getFotoUrl(jugador.foto);
                 
                 html += `
                     <div class="col-md-3 mb-4">
