@@ -360,20 +360,40 @@ class HomeController extends Controller
                     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
                     $name = time() . '_' . $safeName;
                     $path = 'images/jugadores/' . $name;
+                    
+                    // Obtener rutas usando base_path para mayor compatibilidad
+                    $directory = public_path('images/jugadores');
                     $imgPath = public_path($path);
                     
+                    // Logging para diagnóstico
+                    \Log::info('=== INICIO SUBIDA FOTO ===');
+                    \Log::info('Nombre archivo original: ' . $originalName);
+                    \Log::info('Nombre archivo seguro: ' . $safeName);
+                    \Log::info('Ruta relativa: ' . $path);
+                    \Log::info('Directorio destino: ' . $directory);
+                    \Log::info('Ruta completa archivo: ' . $imgPath);
+                    \Log::info('base_path(): ' . base_path());
+                    \Log::info('public_path(): ' . public_path());
+                    
                     // Crear directorio si no existe
-                    $directory = public_path('images/jugadores');
                     if (!file_exists($directory)) {
+                        \Log::info('Directorio no existe, intentando crear...');
                         if (!mkdir($directory, 0755, true)) {
-                            throw new \Exception('No se pudo crear el directorio de imágenes');
+                            \Log::error('ERROR: No se pudo crear el directorio: ' . $directory);
+                            throw new \Exception('No se pudo crear el directorio de imágenes: ' . $directory);
                         }
+                        \Log::info('Directorio creado exitosamente');
+                    } else {
+                        \Log::info('Directorio ya existe');
                     }
                     
                     // Verificar permisos de escritura
                     if (!is_writable($directory)) {
-                        throw new \Exception('El directorio no tiene permisos de escritura');
+                        \Log::error('ERROR: El directorio no tiene permisos de escritura: ' . $directory);
+                        \Log::error('Permisos actuales: ' . substr(sprintf('%o', fileperms($directory)), -4));
+                        throw new \Exception('El directorio no tiene permisos de escritura: ' . $directory);
                     }
+                    \Log::info('Directorio tiene permisos de escritura');
                     
                     // Cargar imagen con Intervention Image
                     try {
@@ -443,10 +463,15 @@ class HomeController extends Controller
                     
                     // Verificar que el archivo se guardó correctamente
                     if (!file_exists($imgPath)) {
-                        throw new \Exception('El archivo no se guardó correctamente');
+                        \Log::error('ERROR: El archivo no existe después de guardar: ' . $imgPath);
+                        throw new \Exception('El archivo no se guardó correctamente en: ' . $imgPath);
                     }
                     
+                    \Log::info('Archivo guardado exitosamente en: ' . $imgPath);
+                    \Log::info('Tamaño del archivo: ' . filesize($imgPath) . ' bytes');
+                    
                     $jugador->foto = $path;
+                    \Log::info('Ruta guardada en BD: ' . $jugador->foto);
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
                     \Log::error('Stack: ' . $e->getTraceAsString());
