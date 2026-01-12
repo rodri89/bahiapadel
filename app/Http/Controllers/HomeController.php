@@ -500,15 +500,39 @@ class HomeController extends Controller
             // Verificar que el archivo existe antes de obtener su tamaño
             $filePath = public_path($jugador->foto);
             $fileSizeMB = 0;
+            \Log::info('=== VERIFICACIÓN FINAL ===');
+            \Log::info('Ruta en BD: ' . $jugador->foto);
+            \Log::info('Ruta completa del archivo: ' . $filePath);
+            \Log::info('Archivo existe: ' . (file_exists($filePath) ? 'SÍ' : 'NO'));
+            
             if (file_exists($filePath)) {
                 $fileSize = filesize($filePath);
                 $fileSizeMB = round($fileSize / (1024 * 1024), 2);
                 \Log::info('Foto guardada exitosamente en: ' . $filePath . ' (Tamaño: ' . $fileSizeMB . ' MB)');
-                \Log::info('Ruta en BD: ' . $jugador->foto);
-                \Log::info('URL pública: ' . asset($jugador->foto));
+                \Log::info('URL pública generada: ' . asset($jugador->foto));
+                \Log::info('URL completa esperada: ' . url($jugador->foto));
             } else {
-                \Log::error('El archivo no existe después de guardar: ' . $filePath);
+                \Log::error('ERROR: El archivo no existe después de guardar: ' . $filePath);
+                \Log::error('Intentando buscar en otras ubicaciones...');
+                
+                // Buscar el archivo en posibles ubicaciones alternativas
+                $nombreArchivo = basename($jugador->foto);
+                $posiblesRutas = [
+                    base_path('public/images/jugadores/' . $nombreArchivo),
+                    storage_path('app/public/images/jugadores/' . $nombreArchivo),
+                    public_path('images/jugadores/' . $nombreArchivo),
+                ];
+                
+                foreach ($posiblesRutas as $rutaAlternativa) {
+                    if (file_exists($rutaAlternativa)) {
+                        \Log::error('ARCHIVO ENCONTRADO EN: ' . $rutaAlternativa);
+                    } else {
+                        \Log::error('No encontrado en: ' . $rutaAlternativa);
+                    }
+                }
             }
+            
+            \Log::info('=== FIN VERIFICACIÓN ===');
             
             $mensaje = 'Foto actualizada correctamente';
             if ($fileSizeMB > 0) {
