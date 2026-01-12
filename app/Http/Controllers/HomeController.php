@@ -470,8 +470,22 @@ class HomeController extends Controller
                     \Log::info('Archivo guardado exitosamente en: ' . $imgPath);
                     \Log::info('Tamaño del archivo: ' . filesize($imgPath) . ' bytes');
                     
+                    // Verificar que el archivo es accesible vía HTTP
+                    $urlPublica = asset($path);
+                    \Log::info('URL pública generada: ' . $urlPublica);
+                    \Log::info('APP_URL desde env: ' . env('APP_URL'));
+                    
                     $jugador->foto = $path;
                     \Log::info('Ruta guardada en BD: ' . $jugador->foto);
+                    
+                    // Verificar archivo después de guardar en BD
+                    $filePathVerificacion = public_path($jugador->foto);
+                    \Log::info('Verificación post-BD - Ruta completa: ' . $filePathVerificacion);
+                    \Log::info('Verificación post-BD - Existe: ' . (file_exists($filePathVerificacion) ? 'SÍ' : 'NO'));
+                    
+                    // Listar archivos en el directorio para debugging
+                    $archivosEnDirectorio = scandir($directory);
+                    \Log::info('Archivos en directorio ' . $directory . ': ' . json_encode($archivosEnDirectorio));
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
                     \Log::error('Stack: ' . $e->getTraceAsString());
