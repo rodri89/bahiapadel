@@ -322,6 +322,9 @@
 
     <div class="row justify-content-center mt-4 mb-4">
         <div class="col-md-8 text-center">
+            <button type="button" class="btn btn-success btn-lg mr-3" id="btn-validar-cruces" style="display: none;">
+                Validar Cruces
+            </button>
             <a href="/admin_torneos" class="btn btn-secondary btn-lg">
                 Volver a Torneos
             </a>
@@ -374,6 +377,58 @@ $(document).ready(function() {
     // Verificar partidos completos al cargar la página
     verificarYCalcularClasificacion();
     
+    // Verificar si todos los partidos de todas las zonas están completos
+    function verificarTodosPartidosCompletos() {
+        var torneoId = $('#torneo_id').val();
+        var todasZonasCompletas = true;
+        var zonasVerificadas = 0;
+        
+        zonas.forEach(function(zona) {
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '{{ route("verificarpartidoscompletos") }}',
+                data: {
+                    torneo_id: torneoId,
+                    zona: zona,
+                    _token: '{{csrf_token()}}'
+                },
+                success: function(data) {
+                    zonasVerificadas++;
+                    if (!data.success || !data.todos_completos) {
+                        todasZonasCompletas = false;
+                    }
+                    
+                    // Cuando se hayan verificado todas las zonas
+                    if (zonasVerificadas === zonas.length) {
+                        if (todasZonasCompletas) {
+                            $('#btn-validar-cruces').show();
+                        } else {
+                            $('#btn-validar-cruces').hide();
+                        }
+                    }
+                },
+                error: function() {
+                    zonasVerificadas++;
+                    todasZonasCompletas = false;
+                    if (zonasVerificadas === zonas.length) {
+                        $('#btn-validar-cruces').hide();
+                    }
+                }
+            });
+        });
+    }
+    
+    // Verificar al cargar la página
+    verificarTodosPartidosCompletos();
+    
+    // Navegar a la pantalla de cruces
+    $('#btn-validar-cruces').on('click', function() {
+        var torneoId = $('#torneo_id').val();
+        var url = '{{ url("/admin_torneo_validar_cruces") }}?torneo_id=' + torneoId;
+        window.location.href = url;
+    });
+    
     // Guardar resultado cuando se hace clic en el botón
     $(document).on('click', '.guardar-resultado', function() {
         var partidoId = $(this).data('partido-id');
@@ -415,6 +470,11 @@ $(document).ready(function() {
                     
                     // Verificar si todos los partidos están completos
                     verificarYCalcularClasificacion();
+                    
+                    // Verificar si todas las zonas están completas para mostrar el botón
+                    setTimeout(function() {
+                        verificarTodosPartidosCompletos();
+                    }, 500);
                     
                     setTimeout(function() {
                         btn.removeClass('btn-success').addClass('btn-primary').text('Guardar Resultado');

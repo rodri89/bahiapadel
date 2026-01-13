@@ -89,7 +89,9 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('/guardar_resultado_partido', 'HomeController@guardarResultadoPartido')->name('guardarresultadopartido');
 	Route::post('/calcular_posiciones_zona', 'HomeController@calcularPosicionesZona')->name('calcularposicioneszona');
 	Route::post('/verificar_partidos_completos', 'HomeController@verificarPartidosCompletos')->name('verificarpartidoscompletos');
-	Route::post('/calcular_posiciones_zona', 'HomeController@calcularPosicionesZona')->name('calcularposicioneszona');	
+	Route::get('/admin_torneo_validar_cruces', 'HomeController@adminTorneoValidarCruces')->name('admintorneovalidarcruces');
+	Route::post('/confirmar_cruces', 'HomeController@confirmarCruces')->name('confirmarcruces');
+	Route::get('/admin_torneo_puntuable_cruces', 'HomeController@adminTorneoPuntuableCruces')->name('admintorneopuntuablecruces');	
 	
 
 
