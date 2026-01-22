@@ -78,6 +78,9 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('/get_jugadores_home', 'HomeController@getJugadores')->name('getjugadoreshome');
 	Route::post('/admin_eliminar_jugador', 'HomeController@adminEliminarJugador')->name('admineliminarjugador');	
 	Route::post('/guardar_fecha_admin_torneo', 'HomeController@guardarFechaAdminTorneo')->name('guardarfechaadmintorneo');
+	Route::post('/obtener_datos_zona', 'HomeController@obtenerDatosZona')->name('obtenerdatoszona');
+	Route::post('/verificar_numero_parejas_zona', 'HomeController@verificarNumeroParejasZona')->name('verificarnumeroparejaszona');
+	Route::post('/obtener_todas_las_zonas', 'HomeController@obtenerTodasLasZonas')->name('obtenertodaslaszonas');
 	Route::post('/guardar_torneo_americano', 'HomeController@guardarTorneoAmericano')->name('guardartorneoamericano');
 	Route::post('/crear_partidos_americano', 'HomeController@crearPartidosAmericano')->name('crearpartidosamericano');
 	Route::get('/admin_torneo_americano_partidos', 'HomeController@adminTorneoAmericanoPartidos')->name('admintorneoamericanopartidos');

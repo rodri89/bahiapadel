@@ -11,7 +11,8 @@
 
 <div class="container body_admin">
     <div class="row justify-content-center">
-            <input hidden id="torneo_id" value="{{$torneo->id}}">            
+            <input hidden id="torneo_id" value="{{$torneo->id}}">
+            <input hidden id="zona_actual" value="">            
             <div class="card shadow bg-white w-100 px-5 py-3 d-flex "
                 style="border-radius: 12px; border: 1px solid #e3e6f0;">
                 <div class="d-flex flex-column align-items-start flex-grow-1">
@@ -1124,6 +1125,7 @@
     });
 
     function obtenerDatosZona() {
+        try {
         function getJugadorData(celda, posicion) {
             let img = $(`.img-jugador-${posicion}[data-celda="${celda}"]`);
             let nombre = $(`.nombre-jugador-${posicion}[data-celda="${celda}"]`);
@@ -1132,6 +1134,42 @@
                 nombre: nombre.text() || null,
                 img: img.attr('src') || null
             };
+        }
+        
+        // Función helper para obtener datos de una celda visible
+        function getHorarioData(celdaId, filaIndex) {
+            try {
+                let celda = null;
+                if (filaIndex !== undefined && filaIndex !== null) {
+                    // Obtener de una fila específica
+                    let filas = $('tbody tr');
+                    if (filaIndex >= 0 && filaIndex < filas.length) {
+                        let fila = filas.eq(filaIndex);
+                        if (fila.length) {
+                            celda = fila.find('.seleccion-dia-horario[data-celda="' + celdaId + '"]').filter(function() {
+                                return $(this).closest('td').is(':visible');
+                            }).first();
+                        }
+                    }
+                } else {
+                    // Obtener la primera celda visible
+                    celda = $('.seleccion-dia-horario[data-celda="' + celdaId + '"]').filter(function() {
+                        return $(this).closest('td').is(':visible');
+                    }).first();
+                }
+                
+                if (celda && celda.length) {
+                    let dia = celda.data('dia');
+                    let horario = celda.data('horario');
+                    return {
+                        dia: dia || null,
+                        horario: horario || null
+                    };
+                }
+            } catch (error) {
+                console.error('Error en getHorarioData para celda ' + celdaId + ', fila ' + filaIndex + ':', error);
+            }
+            return { dia: null, horario: null };
         }
         
         let datos = {
@@ -1149,47 +1187,17 @@
                     abajo: getJugadorData('celda3', 'abajo')
                 }
             },
-            horarios: {
-                1: {
-                    dia: $('.seleccion-dia-horario[data-celda="1"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="1"]').data('horario') || null
-                },
-                2: {
-                    dia: $('.seleccion-dia-horario[data-celda="2"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="2"]').data('horario') || null
-                },
-                3: {
-                    dia: $('.seleccion-dia-horario[data-celda="3"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="3"]').data('horario') || null
-                },
-                4: {
-                    dia: $('.seleccion-dia-horario[data-celda="4"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="4"]').data('horario') || null
-                },
-                5: {
-                    dia: $('.seleccion-dia-horario[data-celda="5"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="5"]').data('horario') || null
-                },
-                6: {
-                    dia: $('.seleccion-dia-horario[data-celda="6"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="6"]').data('horario') || null
-                },
-                7: {
-                    dia: $('.seleccion-dia-horario[data-celda="7"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="7"]').data('horario') || null
-                },
-                8: {
-                    dia: $('.seleccion-dia-horario[data-celda="8"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="8"]').data('horario') || null
-                },
-                9: {
-                    dia: $('.seleccion-dia-horario[data-celda="9"]').data('dia') || null,
-                    horario: $('.seleccion-dia-horario[data-celda="9"]').data('horario') || null
-                }
-            },
+            horarios: {},
+            horariosPorFila: {}, // Para zonas de 4 parejas
             tieneCuatroParejas: tieneCuatroParejas,
             tieneCuatroParejasEliminatoria: tieneCuatroParejasEliminatoria[zonas[zonaIndex]] || false
         };
+        
+        // Obtener horarios de celdas normales (1-9)
+        for (let i = 1; i <= 9; i++) {
+            let horarioData = getHorarioData(i);
+            datos.horarios[i] = horarioData;
+        }
         
         // Si hay 4 parejas, agregar datos de celda4 y horarios adicionales
         if (tieneCuatroParejas) {
@@ -1197,33 +1205,87 @@
                 arriba: getJugadorData('celda4', 'arriba'),
                 abajo: getJugadorData('celda4', 'abajo')
             };
-            datos.horarios[10] = {
-                dia: $('.seleccion-dia-horario[data-celda="10"]').data('dia') || null,
-                horario: $('.seleccion-dia-horario[data-celda="10"]').data('horario') || null
-            };
-            datos.horarios[11] = {
-                dia: $('.seleccion-dia-horario[data-celda="11"]').data('dia') || null,
-                horario: $('.seleccion-dia-horario[data-celda="11"]').data('horario') || null
-            };
-            datos.horarios[12] = {
-                dia: $('.seleccion-dia-horario[data-celda="12"]').data('dia') || null,
-                horario: $('.seleccion-dia-horario[data-celda="12"]').data('horario') || null
-            };
-            datos.horarios[13] = {
-                dia: $('.seleccion-dia-horario[data-celda="13"]').data('dia') || null,
-                horario: $('.seleccion-dia-horario[data-celda="13"]').data('horario') || null
-            };
-            datos.horarios[14] = {
-                dia: $('.seleccion-dia-horario[data-celda="14"]').data('dia') || null,
-                horario: $('.seleccion-dia-horario[data-celda="14"]').data('horario') || null
-            };
-            datos.horarios[15] = {
-                dia: $('.seleccion-dia-horario[data-celda="15"]').data('dia') || null,
-                horario: $('.seleccion-dia-horario[data-celda="15"]').data('horario') || null
-            };
+            
+            // Para zonas de 4 parejas, obtener datos por fila para evitar conflictos
+            if (!tieneCuatroParejasEliminatoria[zonas[zonaIndex]]) {
+                try {
+                    // Formato normal de 4 parejas: obtener datos por fila
+                    // Fila 1: celda 2, 3, 10
+                    let horario2Fila1 = getHorarioData(2, 0);
+                    let horario3Fila1 = getHorarioData(3, 0);
+                    let horario10Fila1 = getHorarioData(10, 0);
+                    datos.horariosPorFila['fila1_celda2'] = horario2Fila1;
+                    datos.horariosPorFila['fila1_celda3'] = horario3Fila1;
+                    datos.horariosPorFila['fila1_celda10'] = horario10Fila1;
+                    datos.horarios[2] = horario2Fila1;
+                    datos.horarios[3] = horario3Fila1;
+                    
+                    // Fila 2: celda 4, 6, 11
+                    let horario4Fila2 = getHorarioData(4, 1);
+                    let horario6Fila2 = getHorarioData(6, 1);
+                    let horario11Fila2 = getHorarioData(11, 1);
+                    datos.horariosPorFila['fila2_celda4'] = horario4Fila2;
+                    datos.horariosPorFila['fila2_celda6'] = horario6Fila2;
+                    datos.horariosPorFila['fila2_celda11'] = horario11Fila2;
+                    datos.horarios[4] = horario4Fila2;
+                    datos.horarios[6] = horario6Fila2;
+                    
+                    // Fila 3: celda 7, 8, 15
+                    let horario7Fila3 = getHorarioData(7, 2);
+                    let horario8Fila3 = getHorarioData(8, 2);
+                    let horario15Fila3 = getHorarioData(15, 2);
+                    datos.horariosPorFila['fila3_celda7'] = horario7Fila3;
+                    datos.horariosPorFila['fila3_celda8'] = horario8Fila3;
+                    datos.horariosPorFila['fila3_celda15'] = horario15Fila3;
+                    datos.horarios[7] = horario7Fila3;
+                    datos.horarios[8] = horario8Fila3;
+                    
+                    // Fila 4: celda 10, 11, 15
+                    let horario10Fila4 = getHorarioData(10, 3);
+                    let horario11Fila4 = getHorarioData(11, 3);
+                    let horario15Fila4 = getHorarioData(15, 3);
+                    datos.horariosPorFila['fila4_celda10'] = horario10Fila4;
+                    datos.horariosPorFila['fila4_celda11'] = horario11Fila4;
+                    datos.horariosPorFila['fila4_celda15'] = horario15Fila4;
+                    
+                    // También guardar en horarios generales (usar valores de fila 4 para celdas compartidas)
+                    datos.horarios[10] = horario10Fila1.dia ? horario10Fila1 : horario10Fila4;
+                    datos.horarios[11] = horario11Fila2.dia ? horario11Fila2 : horario11Fila4;
+                    datos.horarios[15] = horario15Fila3.dia ? horario15Fila3 : horario15Fila4;
+                } catch (error) {
+                    console.error('Error al obtener datos de zona de 4 parejas:', error);
+                    // Fallback: obtener datos normalmente
+                    datos.horarios[10] = getHorarioData(10);
+                    datos.horarios[11] = getHorarioData(11);
+                    datos.horarios[15] = getHorarioData(15);
+                }
+            } else {
+                // Formato eliminatoria: obtener datos normalmente
+                datos.horarios[10] = getHorarioData(10);
+                datos.horarios[11] = getHorarioData(11);
+                datos.horarios[12] = getHorarioData(12);
+                datos.horarios[13] = getHorarioData(13);
+                datos.horarios[14] = getHorarioData(14);
+                datos.horarios[15] = getHorarioData(15);
+            }
         }
         
         return datos;
+        } catch (error) {
+            console.error('Error en obtenerDatosZona:', error);
+            // Devolver estructura básica en caso de error
+            return {
+                jugadores: {
+                    celda1: { arriba: null, abajo: null },
+                    celda2: { arriba: null, abajo: null },
+                    celda3: { arriba: null, abajo: null }
+                },
+                horarios: {},
+                horariosPorFila: {},
+                tieneCuatroParejas: false,
+                tieneCuatroParejasEliminatoria: false
+            };
+        }
     }
 
     function restaurarDatosZona(datos) {
@@ -1266,6 +1328,18 @@
             $('.seleccion-dia-horario[data-celda="10"], .seleccion-dia-horario[data-celda="11"], .seleccion-dia-horario[data-celda="12"], .seleccion-dia-horario[data-celda="13"], .seleccion-dia-horario[data-celda="14"], .seleccion-dia-horario[data-celda="15"]').closest('td').hide();
             
             return;
+        }
+        
+        // PRIMERO: Limpiar todos los datos anteriores para evitar que queden datos de la zona anterior
+        // Limpiar jugadores
+        for (let celda of ['celda1', 'celda2', 'celda3', 'celda4']) {
+            $(`.img-jugador-arriba[data-celda="${celda}"], .img-jugador-abajo[data-celda="${celda}"]`).attr('src', '{{ asset('images/jugador_img.png') }}').removeAttr('data-id');
+            $(`.nombre-jugador-arriba[data-celda="${celda}"], .nombre-jugador-abajo[data-celda="${celda}"]`).text('Seleccionar');
+        }
+        
+        // Limpiar todos los horarios (remover data y contenido)
+        for (let i = 1; i <= 15; i++) {
+            $('.seleccion-dia-horario[data-celda="' + i + '"]').removeData('dia').removeData('horario');
         }
         
         // NO cambiar la estructura de la tabla aquí - eso ya lo hace actualizarZona()
@@ -1398,35 +1472,69 @@
         
         // Cuando hay 4 parejas, las celdas 10, 11, 15 aparecen en múltiples filas con diferentes valores
         // Procesar fila por fila usando horariosPorFila
-        if (tieneCuatroParejas && !tieneCuatroParejasEliminatoria[zonaActual] && datos.horariosPorFila) {
+        // Verificar si esta zona tiene 4 parejas (puede estar en datos o en el flag global)
+        let tieneCuatroParejasEnEstaZona = tieneCuatroParejas || (datos && datos.tieneCuatroParejas);
+        
+        // Si hay horariosPorFila, usarlos (datos procesados desde BD)
+        // Si no hay horariosPorFila pero hay datos en horarios, crear horariosPorFila a partir de horarios
+        let tieneHorariosPorFila = datos.horariosPorFila && Object.keys(datos.horariosPorFila).length > 0;
+        
+        if (!tieneHorariosPorFila && datos.horarios && tieneCuatroParejasEnEstaZona) {
+            // Crear horariosPorFila a partir de horarios para zonas guardadas sin horariosPorFila
+            datos.horariosPorFila = {};
+            // Mapear según la estructura de 4 parejas:
+            // Fila 1: celda 2 (partido A), celda 3 (grupo libre), celda 10 (grupo libre en columna 4)
+            if (datos.horarios[2]) datos.horariosPorFila['fila1_celda2'] = datos.horarios[2];
+            if (datos.horarios[3]) datos.horariosPorFila['fila1_celda3'] = datos.horarios[3];
+            if (datos.horarios[10]) datos.horariosPorFila['fila1_celda10'] = datos.horarios[10];
+            // Fila 2: celda 4 (partido A), celda 6 (grupo libre), celda 11 (grupo libre en columna 4)
+            if (datos.horarios[4]) datos.horariosPorFila['fila2_celda4'] = datos.horarios[4];
+            if (datos.horarios[6]) datos.horariosPorFila['fila2_celda6'] = datos.horarios[6];
+            if (datos.horarios[11]) datos.horariosPorFila['fila2_celda11'] = datos.horarios[11];
+            // Fila 3: celda 7 (grupo libre), celda 8 (grupo libre), celda 15 (partido B en columna 4)
+            if (datos.horarios[7]) datos.horariosPorFila['fila3_celda7'] = datos.horarios[7];
+            if (datos.horarios[8]) datos.horariosPorFila['fila3_celda8'] = datos.horarios[8];
+            if (datos.horarios[15]) datos.horariosPorFila['fila3_celda15'] = datos.horarios[15];
+            // Fila 4: celda 10 (grupo libre en columna 1), celda 11 (grupo libre en columna 2), celda 15 (partido B en columna 3)
+            // Nota: las celdas 10, 11, 15 pueden tener valores diferentes en diferentes filas
+            // Por ahora, si hay datos en horarios[10], [11], [15], asumimos que son para la fila 4
+            // (esto puede necesitar ajuste según cómo se guardaron los datos)
+            if (datos.horarios[10] && !datos.horariosPorFila['fila1_celda10']) {
+                datos.horariosPorFila['fila4_celda10'] = datos.horarios[10];
+            }
+            if (datos.horarios[11] && !datos.horariosPorFila['fila2_celda11']) {
+                datos.horariosPorFila['fila4_celda11'] = datos.horarios[11];
+            }
+            if (datos.horarios[15] && !datos.horariosPorFila['fila3_celda15']) {
+                datos.horariosPorFila['fila4_celda15'] = datos.horarios[15];
+            }
+            tieneHorariosPorFila = true;
+        }
+        
+        if (tieneCuatroParejasEnEstaZona && !tieneCuatroParejasEliminatoria[zonaActual] && tieneHorariosPorFila) {
             let filas = $('tbody tr');
             
             // Fila 1 (pareja 1): celda 1 (img), celda 2 (partido A), celda 3 (grupo libre), celda 10 (grupo libre en columna 4)
             if (filas.length > 0) {
                 let fila1 = filas.eq(0);
                 if (datos.horariosPorFila['fila1_celda2']) {
-                    fila1.find('.seleccion-dia-horario[data-celda="2"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila1_celda2'].dia, datos.horariosPorFila['fila1_celda2'].horario, 2);
-                        }
-                    });
+                    // Buscar la celda 2 en la fila 1 (columna 2)
+                    let celda2Fila1 = fila1.find('.seleccion-dia-horario[data-celda="2"]').first();
+                    if (celda2Fila1.length && celda2Fila1.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda2Fila1, datos.horariosPorFila['fila1_celda2'].dia, datos.horariosPorFila['fila1_celda2'].horario, 2);
+                    }
                 }
                 if (datos.horariosPorFila['fila1_celda3']) {
-                    fila1.find('.seleccion-dia-horario[data-celda="3"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila1_celda3'].dia, datos.horariosPorFila['fila1_celda3'].horario, 3);
-                        }
-                    });
+                    let celda3Fila1 = fila1.find('.seleccion-dia-horario[data-celda="3"]').first();
+                    if (celda3Fila1.length && celda3Fila1.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda3Fila1, datos.horariosPorFila['fila1_celda3'].dia, datos.horariosPorFila['fila1_celda3'].horario, 3);
+                    }
                 }
                 if (datos.horariosPorFila['fila1_celda10']) {
-                    fila1.find('.seleccion-dia-horario[data-celda="10"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila1_celda10'].dia, datos.horariosPorFila['fila1_celda10'].horario, 10);
-                        }
-                    });
+                    let celda10Fila1 = fila1.find('.seleccion-dia-horario[data-celda="10"]').first();
+                    if (celda10Fila1.length && celda10Fila1.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda10Fila1, datos.horariosPorFila['fila1_celda10'].dia, datos.horariosPorFila['fila1_celda10'].horario, 10);
+                    }
                 }
             }
             
@@ -1434,28 +1542,22 @@
             if (filas.length > 1) {
                 let fila2 = filas.eq(1);
                 if (datos.horariosPorFila['fila2_celda4']) {
-                    fila2.find('.seleccion-dia-horario[data-celda="4"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila2_celda4'].dia, datos.horariosPorFila['fila2_celda4'].horario, 4);
-                        }
-                    });
+                    let celda4Fila2 = fila2.find('.seleccion-dia-horario[data-celda="4"]').first();
+                    if (celda4Fila2.length && celda4Fila2.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda4Fila2, datos.horariosPorFila['fila2_celda4'].dia, datos.horariosPorFila['fila2_celda4'].horario, 4);
+                    }
                 }
                 if (datos.horariosPorFila['fila2_celda6']) {
-                    fila2.find('.seleccion-dia-horario[data-celda="6"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila2_celda6'].dia, datos.horariosPorFila['fila2_celda6'].horario, 6);
-                        }
-                    });
+                    let celda6Fila2 = fila2.find('.seleccion-dia-horario[data-celda="6"]').first();
+                    if (celda6Fila2.length && celda6Fila2.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda6Fila2, datos.horariosPorFila['fila2_celda6'].dia, datos.horariosPorFila['fila2_celda6'].horario, 6);
+                    }
                 }
                 if (datos.horariosPorFila['fila2_celda11']) {
-                    fila2.find('.seleccion-dia-horario[data-celda="11"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila2_celda11'].dia, datos.horariosPorFila['fila2_celda11'].horario, 11);
-                        }
-                    });
+                    let celda11Fila2 = fila2.find('.seleccion-dia-horario[data-celda="11"]').first();
+                    if (celda11Fila2.length && celda11Fila2.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda11Fila2, datos.horariosPorFila['fila2_celda11'].dia, datos.horariosPorFila['fila2_celda11'].horario, 11);
+                    }
                 }
             }
             
@@ -1463,28 +1565,22 @@
             if (filas.length > 2) {
                 let fila3 = filas.eq(2);
                 if (datos.horariosPorFila['fila3_celda7']) {
-                    fila3.find('.seleccion-dia-horario[data-celda="7"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila3_celda7'].dia, datos.horariosPorFila['fila3_celda7'].horario, 7);
-                        }
-                    });
+                    let celda7Fila3 = fila3.find('.seleccion-dia-horario[data-celda="7"]').first();
+                    if (celda7Fila3.length && celda7Fila3.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda7Fila3, datos.horariosPorFila['fila3_celda7'].dia, datos.horariosPorFila['fila3_celda7'].horario, 7);
+                    }
                 }
                 if (datos.horariosPorFila['fila3_celda8']) {
-                    fila3.find('.seleccion-dia-horario[data-celda="8"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila3_celda8'].dia, datos.horariosPorFila['fila3_celda8'].horario, 8);
-                        }
-                    });
+                    let celda8Fila3 = fila3.find('.seleccion-dia-horario[data-celda="8"]').first();
+                    if (celda8Fila3.length && celda8Fila3.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda8Fila3, datos.horariosPorFila['fila3_celda8'].dia, datos.horariosPorFila['fila3_celda8'].horario, 8);
+                    }
                 }
                 if (datos.horariosPorFila['fila3_celda15']) {
-                    fila3.find('.seleccion-dia-horario[data-celda="15"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila3_celda15'].dia, datos.horariosPorFila['fila3_celda15'].horario, 15);
-                        }
-                    });
+                    let celda15Fila3 = fila3.find('.seleccion-dia-horario[data-celda="15"]').first();
+                    if (celda15Fila3.length && celda15Fila3.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda15Fila3, datos.horariosPorFila['fila3_celda15'].dia, datos.horariosPorFila['fila3_celda15'].horario, 15);
+                    }
                 }
             }
             
@@ -1492,28 +1588,22 @@
             if (filas.length > 3) {
                 let fila4 = filas.eq(3);
                 if (datos.horariosPorFila['fila4_celda10']) {
-                    fila4.find('.seleccion-dia-horario[data-celda="10"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila4_celda10'].dia, datos.horariosPorFila['fila4_celda10'].horario, 10);
-                        }
-                    });
+                    let celda10Fila4 = fila4.find('.seleccion-dia-horario[data-celda="10"]').first();
+                    if (celda10Fila4.length && celda10Fila4.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda10Fila4, datos.horariosPorFila['fila4_celda10'].dia, datos.horariosPorFila['fila4_celda10'].horario, 10);
+                    }
                 }
                 if (datos.horariosPorFila['fila4_celda11']) {
-                    fila4.find('.seleccion-dia-horario[data-celda="11"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila4_celda11'].dia, datos.horariosPorFila['fila4_celda11'].horario, 11);
-                        }
-                    });
+                    let celda11Fila4 = fila4.find('.seleccion-dia-horario[data-celda="11"]').first();
+                    if (celda11Fila4.length && celda11Fila4.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda11Fila4, datos.horariosPorFila['fila4_celda11'].dia, datos.horariosPorFila['fila4_celda11'].horario, 11);
+                    }
                 }
                 if (datos.horariosPorFila['fila4_celda15']) {
-                    fila4.find('.seleccion-dia-horario[data-celda="15"]').each(function() {
-                        let celda = $(this);
-                        if (celda.closest('td').is(':visible')) {
-                            mostrarHorarioEnCelda(celda, datos.horariosPorFila['fila4_celda15'].dia, datos.horariosPorFila['fila4_celda15'].horario, 15);
-                        }
-                    });
+                    let celda15Fila4 = fila4.find('.seleccion-dia-horario[data-celda="15"]').first();
+                    if (celda15Fila4.length && celda15Fila4.closest('td').is(':visible')) {
+                        mostrarHorarioEnCelda(celda15Fila4, datos.horariosPorFila['fila4_celda15'].dia, datos.horariosPorFila['fila4_celda15'].horario, 15);
+                    }
                 }
             }
         }
@@ -1666,141 +1756,282 @@
     function actualizarZona() {
         let zonaActual = zonas[zonaIndex];
         $('#zona-label').text('Zona ' + zonaActual);
+        $('#zona_actual').val(zonaActual);
+        
+        // PRIMERO: Ocultar TODAS las celdas para limpiar el estado anterior
+        for (let i = 1; i <= 15; i++) {
+            $('.seleccion-dia-horario[data-celda="' + i + '"]').closest('td').hide();
+        }
+        
+        // Limpiar todos los datos de jugadores y horarios
+        $('.img-jugador-arriba, .img-jugador-abajo').attr('src', '{{ asset('images/jugador_img.png') }}').removeAttr('data-id');
+        $('.nombre-jugador-arriba, .nombre-jugador-abajo').text('Seleccionar');
+        for (let i = 1; i <= 15; i++) {
+            $('.seleccion-dia-horario[data-celda="' + i + '"]').removeData('dia').removeData('horario');
+        }
+        
+        // Ocultar fila 4 y columna 4 por defecto
+        $('#fila-agregar-pareja').hide();
+        $('#fila-boton-agregar').show();
+        $('#columna-partido-4').hide();
+        $('.columna-partido-4').hide();
         
         // Asegurar que la columna 3 esté visible por defecto
         $('#columna-partido-3').show().text('3');
         $('.columna-partido-3').show();
         
-        // Verificar si esta zona tiene 4 parejas (eliminatoria o normal)
-        let tieneCuatroParejasZona = tieneCuatroParejasEliminatoria[zonaActual] || 
-                                     (datosZonas[zonaActual] && datosZonas[zonaActual].tieneCuatroParejas);
-        
-        // Establecer flag global si hay 4 parejas
-        if (tieneCuatroParejasZona) {
-            tieneCuatroParejas = true;
+        // CONSULTAR LA BASE DE DATOS para obtener los datos reales de esta zona
+        let torneoId = $('#torneo_id').val();
+        if (!torneoId) {
+            console.error('No hay torneo_id');
+            return;
         }
         
-        if (tieneCuatroParejasZona || tieneCuatroParejasEliminatoria[zonaActual]) {
-            // Formato eliminatoria: mostrar columna 4
+        $.ajax({
+            url: '{{ route("obtenerdatoszona") }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                torneo_id: torneoId,
+                zona: zonaActual
+            },
+            success: function(response) {
+                if (response.success && response.datos) {
+                    construirTablaDesdeBD(response.datos);
+                } else {
+                    // Si no hay datos, mostrar tabla vacía con formato por defecto (3 parejas)
+                    construirTablaVacia();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error al obtener datos de zona:', error);
+                // En caso de error, mostrar tabla vacía
+                construirTablaVacia();
+            }
+        });
+    }
+    
+    function construirTablaDesdeBD(datos) {
+        // Establecer flags globales
+        tieneCuatroParejas = datos.tieneCuatroParejas || false;
+        tieneCuatroParejasEliminatoria[datos.zona] = datos.tieneCuatroParejasEliminatoria || false;
+        
+        let numParejas = datos.parejas ? datos.parejas.length : 0;
+        
+        // Si tiene 4 parejas, mostrar fila 4 y columna 4
+        if (numParejas >= 4 && !datos.tieneCuatroParejasEliminatoria) {
             $('#fila-agregar-pareja').show();
             $('#fila-boton-agregar').hide();
             $('#columna-partido-4').show().text('4');
             $('.columna-partido-4').show();
             
-            // Ocultar celdas no usadas en formato eliminatoria
-            $('.seleccion-dia-horario[data-celda="3"]').closest('td').hide(); // Pareja 1 partido 3 (normal)
-            $('.seleccion-dia-horario[data-celda="6"]').closest('td').hide(); // Pareja 2 partido 3 (normal)
-            $('.seleccion-dia-horario[data-celda="7"]').closest('td').hide(); // Pareja 3 partido 1 (normal)
-            $('.seleccion-dia-horario[data-celda="8"]').closest('td').hide(); // Pareja 3 partido 2 (normal)
-            
-            // Mostrar celdas usadas en formato eliminatoria
-            // Columna 1: celda 1 (img Pareja 1), celda 4 (btn partido 1 Pareja 2), celda 11 (perdedores Pareja 3), celda 10 (ganadores Pareja 4)
-            $('.seleccion-dia-horario[data-celda="1"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="4"]').closest('td').show();
-            
-            // Columna 2: celda 2 (btn partido 1 Pareja 1), celda 5 (img Pareja 2), celda 12 (ganadores Pareja 3), celda 13 (perdedores Pareja 4)
-            $('.seleccion-dia-horario[data-celda="2"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="5"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="12"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="13"]').closest('td').show();
-            
-            // Columna 3: celda 11 (perdedores Pareja 1), celda 10 (ganadores Pareja 2), celda 9 (img Pareja 3), celda 15 (btn partido 2 Pareja 4)
-            $('.seleccion-dia-horario[data-celda="11"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="10"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="9"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="15"]').closest('td').show();
-            
-            // Columna 4: celda 10 (ganadores Pareja 1), celda 11 (perdedores Pareja 2), celda 15 (btn partido 2 Pareja 3), celda 14 (img Pareja 4)
-            $('.seleccion-dia-horario[data-celda="14"]').closest('td').show();
-        } else if (datosZonas[zonaActual] && datosZonas[zonaActual].tieneCuatroParejas && !tieneCuatroParejasEliminatoria[zonaActual]) {
-            // Formato con 4 parejas pero sin eliminatoria: mostrar fila 4 y columna 4
+            // Construir tabla con 4 parejas (formato normal)
+            construirTabla4Parejas(datos);
+        } else if (datos.tieneCuatroParejasEliminatoria) {
+            // Formato eliminatoria
             $('#fila-agregar-pareja').show();
             $('#fila-boton-agregar').hide();
             $('#columna-partido-4').show().text('4');
             $('.columna-partido-4').show();
-            
-            // Formato 4 parejas (no eliminatoria):
-            // Fila 1: img - partido A - partido 1 sin jugadores - partido 2 sin jugadores
-            // Fila 2: partido A - img - partido 1 sin jugadores - partido 2 sin jugadores
-            // Fila 3: partido 1 sin jugadores - partido 2 sin jugadores - img - partido B
-            // Fila 4: partido 1 sin jugadores - partido 2 sin jugadores - partido B - img
-            
-            // Fila 1: Columna 1 (celda 1) = img, Columna 2 (celda 2) = partido A, Columna 3 (celda 3) = grupo libre, Columna 4 (celda 10) = grupo libre
-            $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="1"]').closest('td').show();
-            $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="2"]').closest('td').show();
-            $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="3"]').closest('td').show();
-            $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="10"]').closest('td').show();
-            
-            // Fila 2: Columna 1 (celda 4) = partido A, Columna 2 (celda 5) = img, Columna 3 (celda 6) = grupo libre, Columna 4 (celda 11) = grupo libre
-            $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="4"]').closest('td').show();
-            $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="5"]').closest('td').show();
-            $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="6"]').closest('td').show();
-            $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="11"]').closest('td').show();
-            
-            // Fila 3: Columna 1 (celda 7) = grupo libre, Columna 2 (celda 8) = grupo libre, Columna 3 (celda 9) = img, Columna 4 (celda 15) = partido B
-            $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="7"]').closest('td').show();
-            $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="8"]').closest('td').show();
-            $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="9"]').closest('td').show();
-            $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="15"]').closest('td').show();
-            
-            // Fila 4: Columna 1 (celda 10) = grupo libre, Columna 2 (celda 11) = grupo libre, Columna 3 (celda 15) = partido B, Columna 4 (celda 14) = img
-            $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="10"]').closest('td').show();
-            $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="11"]').closest('td').show();
-            $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="15"]').closest('td').show();
-            $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="14"]').closest('td').show();
-            
-            // Ocultar celdas de eliminatoria que no se usan en formato normal
-            $('.seleccion-dia-horario[data-celda="12"]').closest('td').hide();
-            $('.seleccion-dia-horario[data-celda="13"]').closest('td').hide();
+            construirTablaEliminatoria(datos);
         } else {
-            // Formato normal: solo columnas 1, 2, 3 (3 partidos, 3 parejas)
+            // Formato normal con 3 parejas
             $('#fila-agregar-pareja').hide();
             $('#fila-boton-agregar').show();
             $('#columna-partido-4').hide();
             $('.columna-partido-4').hide();
-            $('.columna-partido[data-tipo="final"]').hide();
-            $('.columna-partido[data-tipo="consolacion"]').hide();
+            construirTabla3Parejas(datos);
+        }
+    }
+    
+    function construirTabla3Parejas(datos) {
+        // Mostrar celdas para 3 parejas
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="1"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="2"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="3"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="4"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="5"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="6"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="7"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="8"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="9"]').closest('td').show();
+        
+        // Cargar datos de parejas
+        if (datos.parejas && datos.parejas.length > 0) {
+            datos.parejas.forEach(function(pareja, index) {
+                if (index >= 3) return; // Solo procesar primeras 3 parejas
+                
+                let celda = 'celda' + (index + 1);
+                cargarJugadoresEnCelda(celda, pareja.jugador_1, pareja.jugador_2, datos.jugadores);
+                
+                // Cargar horarios según el formato de 3 parejas
+                // Pareja 1: grupos[0] -> celda 2, grupos[1] -> celda 3
+                // Pareja 2: grupos[0] -> celda 4, grupos[1] -> celda 6
+                // Pareja 3: grupos[0] -> celda 7, grupos[1] -> celda 8
+                if (pareja.grupos && pareja.grupos.length > 0) {
+                    if (index === 0) {
+                        if (pareja.grupos[0]) cargarHorarioEnCelda(2, pareja.grupos[0].fecha, pareja.grupos[0].horario);
+                        if (pareja.grupos[1]) cargarHorarioEnCelda(3, pareja.grupos[1].fecha, pareja.grupos[1].horario);
+                    } else if (index === 1) {
+                        if (pareja.grupos[0]) cargarHorarioEnCelda(4, pareja.grupos[0].fecha, pareja.grupos[0].horario);
+                        if (pareja.grupos[1]) cargarHorarioEnCelda(6, pareja.grupos[1].fecha, pareja.grupos[1].horario);
+                    } else if (index === 2) {
+                        if (pareja.grupos[0]) cargarHorarioEnCelda(7, pareja.grupos[0].fecha, pareja.grupos[0].horario);
+                        if (pareja.grupos[1]) cargarHorarioEnCelda(8, pareja.grupos[1].fecha, pareja.grupos[1].horario);
+                    }
+                }
+            });
+        }
+    }
+    
+    function construirTabla4Parejas(datos) {
+        // Mostrar celdas para 4 parejas (formato normal)
+        // Fila 1: celda 1, 2, 3, 10
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="1"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="2"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="3"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="10"]').closest('td').show();
+        
+        // Fila 2: celda 4, 5, 6, 11
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="4"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="5"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="6"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="11"]').closest('td').show();
+        
+        // Fila 3: celda 7, 8, 9, 15
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="7"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="8"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="9"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="15"]').closest('td').show();
+        
+        // Fila 4: celda 10, 11, 15, 14
+        $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="10"]').closest('td').show();
+        $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="11"]').closest('td').show();
+        $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="15"]').closest('td').show();
+        $('#fila-agregar-pareja').find('.seleccion-dia-horario[data-celda="14"]').closest('td').show();
+        
+        // Cargar datos de parejas
+        if (datos.parejas && datos.parejas.length > 0) {
+            datos.parejas.forEach(function(pareja, index) {
+                if (index >= 4) return;
+                
+                let celda = index < 3 ? ('celda' + (index + 1)) : 'celda4';
+                cargarJugadoresEnCelda(celda, pareja.jugador_1, pareja.jugador_2, datos.jugadores);
+                
+                // Mapear grupos según el formato de 4 parejas
+                // Cada pareja tiene su partido principal (el primer grupo guardado)
+                if (pareja.grupos && pareja.grupos.length > 0) {
+                    if (index === 0) {
+                        // Pareja 1: partido A (primer grupo) -> celda 2
+                        if (pareja.grupos[0]) cargarHorarioEnCelda(2, pareja.grupos[0].fecha, pareja.grupos[0].horario, 0);
+                    } else if (index === 1) {
+                        // Pareja 2: partido A (primer grupo) -> celda 4
+                        if (pareja.grupos[0]) cargarHorarioEnCelda(4, pareja.grupos[0].fecha, pareja.grupos[0].horario, 1);
+                    } else if (index === 3) {
+                        // Pareja 4: partido B (primer grupo) -> celda 15 (fila 3, columna 4) y también en fila 4, columna 3
+                        if (pareja.grupos[0]) {
+                            cargarHorarioEnCelda(15, pareja.grupos[0].fecha, pareja.grupos[0].horario, 2);
+                            cargarHorarioEnCelda(15, pareja.grupos[0].fecha, pareja.grupos[0].horario, 3);
+                        }
+                    }
+                    // Pareja 3 no tiene partido propio, solo grupos libres
+                }
+            });
             
-            // Asegurar que la columna 3 esté visible
-            $('#columna-partido-3').show().text('3');
-            $('.columna-partido-3').show();
+            // Cargar grupos libres (jugador_1 = 0 o jugador_2 = 0)
+            // Formato según especificación:
+            // Fila 1: img - partido A - partido 1 sin jugadores (gruposLibres[0]) - partido 2 sin jugadores (gruposLibres[1])
+            // Fila 2: partido A - img - partido 1 sin jugadores (gruposLibres[2]) - partido 2 sin jugadores (gruposLibres[3])
+            // Fila 3: partido 1 sin jugadores (gruposLibres[4]) - partido 2 sin jugadores (gruposLibres[5]) - img - partido B
+            // Fila 4: partido 1 sin jugadores (gruposLibres[6]) - partido 2 sin jugadores (gruposLibres[7]) - partido B - img
             
-            // Ocultar celdas que no se usan en formato normal (eliminatoria)
-            $('.seleccion-dia-horario[data-celda="10"]').closest('td').hide();
-            $('.seleccion-dia-horario[data-celda="11"]').closest('td').hide();
-            $('.seleccion-dia-horario[data-celda="12"]').closest('td').hide();
-            $('.seleccion-dia-horario[data-celda="13"]').closest('td').hide();
-            $('.seleccion-dia-horario[data-celda="14"]').closest('td').hide();
-            $('.seleccion-dia-horario[data-celda="15"]').closest('td').hide();
-            
-            // Mostrar todas las celdas de partidos normales (3 partidos, 3 parejas)
-            // Formato por defecto:
-            // Columna 1 (Partido 1): celda 1 (img pareja 1), celda 4 (btn pareja 2), celda 7 (btn pareja 3)
-            // Columna 2 (Partido 2): celda 2 (btn pareja 1), celda 5 (img pareja 2), celda 8 (btn pareja 3)
-            // Columna 3 (Partido 3): celda 3 (btn pareja 1), celda 6 (btn pareja 2), celda 9 (img pareja 3)
-            
-            // Pareja 1: celda 1 (imagen), celda 2 (partido 1), celda 3 (partido 2)
-            $('.seleccion-dia-horario[data-celda="1"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="2"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="3"]').closest('td').show();
-            
-            // Pareja 2: celda 4 (partido 1), celda 5 (imagen), celda 6 (partido 2)
-            $('.seleccion-dia-horario[data-celda="4"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="5"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="6"]').closest('td').show();
-            
-            // Pareja 3: celda 7 (partido 1), celda 8 (partido 2), celda 9 (imagen)
-            $('.seleccion-dia-horario[data-celda="7"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="8"]').closest('td').show();
-            $('.seleccion-dia-horario[data-celda="9"]').closest('td').show();
+            if (datos.gruposLibres && datos.gruposLibres.length > 0) {
+                // Fila 1: columna 3 (celda 3) y columna 4 (celda 10)
+                if (datos.gruposLibres.length > 0) {
+                    cargarHorarioEnCelda(3, datos.gruposLibres[0].fecha, datos.gruposLibres[0].horario, 0);
+                }
+                if (datos.gruposLibres.length > 1) {
+                    cargarHorarioEnCelda(10, datos.gruposLibres[1].fecha, datos.gruposLibres[1].horario, 0);
+                }
+                
+                // Fila 2: columna 3 (celda 6) y columna 4 (celda 11)
+                if (datos.gruposLibres.length > 2) {
+                    cargarHorarioEnCelda(6, datos.gruposLibres[2].fecha, datos.gruposLibres[2].horario, 1);
+                }
+                if (datos.gruposLibres.length > 3) {
+                    cargarHorarioEnCelda(11, datos.gruposLibres[3].fecha, datos.gruposLibres[3].horario, 1);
+                }
+                
+                // Fila 3: columna 1 (celda 7) y columna 2 (celda 8)
+                if (datos.gruposLibres.length > 4) {
+                    cargarHorarioEnCelda(7, datos.gruposLibres[4].fecha, datos.gruposLibres[4].horario, 2);
+                }
+                if (datos.gruposLibres.length > 5) {
+                    cargarHorarioEnCelda(8, datos.gruposLibres[5].fecha, datos.gruposLibres[5].horario, 2);
+                }
+                
+                // Fila 4: columna 1 (celda 10) y columna 2 (celda 11)
+                if (datos.gruposLibres.length > 6) {
+                    cargarHorarioEnCelda(10, datos.gruposLibres[6].fecha, datos.gruposLibres[6].horario, 3);
+                }
+                if (datos.gruposLibres.length > 7) {
+                    cargarHorarioEnCelda(11, datos.gruposLibres[7].fecha, datos.gruposLibres[7].horario, 3);
+                }
+            }
+        }
+    }
+    
+    function construirTablaEliminatoria(datos) {
+        // Implementar si es necesario
+        construirTablaVacia();
+    }
+    
+    function construirTablaVacia() {
+        // Mostrar solo formato de 3 parejas vacío
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="1"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="2"]').closest('td').show();
+        $('tbody tr').eq(0).find('.seleccion-dia-horario[data-celda="3"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="4"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="5"]').closest('td').show();
+        $('tbody tr').eq(1).find('.seleccion-dia-horario[data-celda="6"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="7"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="8"]').closest('td').show();
+        $('tbody tr').eq(2).find('.seleccion-dia-horario[data-celda="9"]').closest('td').show();
+    }
+    
+    function cargarJugadoresEnCelda(celda, jugador1Id, jugador2Id, jugadoresInfo) {
+        if (jugador1Id && jugadoresInfo[jugador1Id]) {
+            let jugador1 = jugadoresInfo[jugador1Id];
+            $(`.img-jugador-arriba[data-celda="${celda}"]`).attr('src', jugador1.foto).attr('data-id', jugador1.id);
+            $(`.nombre-jugador-arriba[data-celda="${celda}"]`).text(jugador1.nombre + ' ' + jugador1.apellido);
+        }
+        if (jugador2Id && jugadoresInfo[jugador2Id]) {
+            let jugador2 = jugadoresInfo[jugador2Id];
+            $(`.img-jugador-abajo[data-celda="${celda}"]`).attr('src', jugador2.foto).attr('data-id', jugador2.id);
+            $(`.nombre-jugador-abajo[data-celda="${celda}"]`).text(jugador2.nombre + ' ' + jugador2.apellido);
+        }
+    }
+    
+    function cargarHorarioEnCelda(celdaId, fecha, horario, filaIndex) {
+        if (!fecha || fecha === '2000-01-01' || !horario || horario === '00:00') {
+            return; // No cargar fechas/horarios por defecto
         }
         
-        // Asegurar que los nombres de las columnas sean correctos
-        $('#tabla-header th[data-tipo="normal"]').eq(0).text('1');
-        $('#tabla-header th[data-tipo="normal"]').eq(1).text('2');
-        $('#columna-partido-3').text('3').show();
+        let celda = null;
+        if (filaIndex !== undefined && filaIndex !== null) {
+            let fila = $('tbody tr').eq(filaIndex);
+            celda = fila.find('.seleccion-dia-horario[data-celda="' + celdaId + '"]').filter(function() {
+                return $(this).closest('td').is(':visible');
+            }).first();
+        } else {
+            celda = $('.seleccion-dia-horario[data-celda="' + celdaId + '"]').filter(function() {
+                return $(this).closest('td').is(':visible');
+            }).first();
+        }
         
-        restaurarDatosZona(datosZonas[zonaActual]);
+        if (celda && celda.length) {
+            mostrarHorarioEnCelda(celda, fecha, horario, celdaId);
+        }
     }
     
     // Inicializar estado de partido 3 para todas las zonas existentes
@@ -2028,10 +2259,16 @@
 
     $('#btn-zona-anterior').on('click', function() {
         if (zonaIndex > 0) {
-            // Guardar la zona actual antes de cambiar
-            let datosGuardados = obtenerDatosZona();
-            datosZonas[zonas[zonaIndex]] = datosGuardados;
-            guardarZonaEnBD(zonas[zonaIndex], datosGuardados);
+            try {
+                // Guardar la zona actual antes de cambiar
+                let datosGuardados = obtenerDatosZona();
+                if (datosGuardados) {
+                    datosZonas[zonas[zonaIndex]] = datosGuardados;
+                    guardarZonaEnBD(zonas[zonaIndex], datosGuardados);
+                }
+            } catch (error) {
+                console.error('Error al guardar datos de zona antes de retroceder:', error);
+            }
             
             zonaIndex--;
             actualizarZona();
@@ -2040,10 +2277,16 @@
 
     $('#btn-zona-siguiente').on('click', function() {
         if (zonaIndex < zonas.length - 1) {
-            // Guardar la zona actual antes de cambiar
-            let datosGuardados = obtenerDatosZona();
-            datosZonas[zonas[zonaIndex]] = datosGuardados;
-            guardarZonaEnBD(zonas[zonaIndex], datosGuardados);
+            try {
+                // Guardar la zona actual antes de cambiar
+                let datosGuardados = obtenerDatosZona();
+                if (datosGuardados) {
+                    datosZonas[zonas[zonaIndex]] = datosGuardados;
+                    guardarZonaEnBD(zonas[zonaIndex], datosGuardados);
+                }
+            } catch (error) {
+                console.error('Error al guardar datos de zona antes de avanzar:', error);
+            }
             
             zonaIndex++;
             actualizarZona();

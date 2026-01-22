@@ -4,6 +4,59 @@
 
 @section('contenedor')
 
+<style>
+    /* Estilos para scroll horizontal en partidos */
+    .partidos-container-scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .partidos-container-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .partidos-container-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .partidos-container-scroll::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+    
+    .partidos-container-scroll::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    
+    .partidos-container-scroll .d-flex {
+        min-width: max-content;
+        gap: 1rem;
+    }
+    
+    .partido-item {
+        min-width: 280px;
+        flex-shrink: 0;
+    }
+    
+    /* En pantallas pequeñas, hacer el scroll más visible */
+    @media (max-width: 768px) {
+        .partidos-container-scroll {
+            margin-left: -15px;
+            margin-right: -15px;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        
+        .partido-item {
+            min-width: 260px;
+        }
+    }
+</style>
+
 <div class="container body_admin">
     <div class="row justify-content-center">
         <input hidden id="torneo_id" value="{{$torneo->id}}">            
@@ -62,7 +115,19 @@
                     <div class="card shadow bg-white px-5 py-3">
                         <h3 class="mb-4 text-center" style="color:#4e73df;">Zona {{ $zona }}</h3>
                         
+                        @php
+                            $numPartidos = count($partidos);
+                            $tieneCuatroPartidos = $numPartidos == 4;
+                        @endphp
+                        
+                        @if($tieneCuatroPartidos)
+                        <!-- Contenedor con scroll horizontal para 4 partidos -->
+                        <div class="partidos-container-scroll" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; margin-bottom: 1rem;">
+                            <div class="d-flex" style="min-width: max-content; gap: 1rem;">
+                        @else
+                        <!-- Contenedor normal para menos de 4 partidos -->
                         <div class="row">
+                        @endif
                             @foreach($partidos as $partidoId => $partidoData)
                             @php
                                 $resultados = $partidoData['resultados'];
@@ -71,10 +136,23 @@
                                 $fecha = $partidoData['fecha'] ?? null;
                                 $horario = $partidoData['horario'] ?? null;
                                 
-                                $jugador1 = $jugadoresMap[$pareja1['jugador_1']] ?? null;
-                                $jugador2 = $jugadoresMap[$pareja1['jugador_2']] ?? null;
-                                $jugador3 = $pareja2 ? ($jugadoresMap[$pareja2['jugador_1']] ?? null) : null;
-                                $jugador4 = $pareja2 ? ($jugadoresMap[$pareja2['jugador_2']] ?? null) : null;
+                                // Verificar si las parejas tienen jugadores asignados (no son 0)
+                                $tienePareja1 = $pareja1 && $pareja1['jugador_1'] != 0 && $pareja1['jugador_1'] !== null && $pareja1['jugador_2'] != 0 && $pareja1['jugador_2'] !== null;
+                                $tienePareja2 = $pareja2 && $pareja2['jugador_1'] != 0 && $pareja2['jugador_1'] !== null && $pareja2['jugador_2'] != 0 && $pareja2['jugador_2'] !== null;
+                                
+                                // Verificar si es un partido de Ganador o Perdedor (tiene jugador_1 = 0 o jugador_2 = 0)
+                                $esPartidoGanadorPerdedor = ($pareja1 && ($pareja1['jugador_1'] == 0 || $pareja1['jugador_2'] == 0)) || 
+                                                           ($pareja2 && ($pareja2['jugador_1'] == 0 || $pareja2['jugador_2'] == 0));
+                                
+                                // Mostrar el partido si tiene parejas asignadas O si es un partido de Ganador/Perdedor (aunque aún no tenga jugadores)
+                                if (!$tienePareja1 && !$tienePareja2 && !$esPartidoGanadorPerdedor) {
+                                    continue;
+                                }
+                                
+                                $jugador1 = $tienePareja1 ? ($jugadoresMap[$pareja1['jugador_1']] ?? null) : null;
+                                $jugador2 = $tienePareja1 ? ($jugadoresMap[$pareja1['jugador_2']] ?? null) : null;
+                                $jugador3 = $tienePareja2 ? ($jugadoresMap[$pareja2['jugador_1']] ?? null) : null;
+                                $jugador4 = $tienePareja2 ? ($jugadoresMap[$pareja2['jugador_2']] ?? null) : null;
                                 
                                 // Formatear fecha
                                 $fechaFormateada = '';
@@ -87,10 +165,30 @@
                                 }
                             @endphp
                             
+                            @if($tieneCuatroPartidos)
+                            <!-- Partido en fila horizontal (4 partidos) -->
+                            <div class="partido-item" style="min-width: 280px; flex-shrink: 0;">
+                                <div class="card border" style="height: 100%;">
+                                    <div class="card-body">
+                            @else
+                            <!-- Partido en grid normal (menos de 4) -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border" style="height: 100%;">
                                     <div class="card-body">
-                                        <h5 class="card-title text-center mb-2">Partido {{ $loop->iteration }}</h5>
+                            @endif
+                                        @php
+                                            // Determinar el título del partido
+                                            $tipoPartido = $partidoData['tipo'] ?? 'normal';
+                                            
+                                            if ($tipoPartido === 'ganador') {
+                                                $tituloPartido = 'Partido 3 - Ganador';
+                                            } else if ($tipoPartido === 'perdedor') {
+                                                $tituloPartido = 'Partido 4 - Perdedor';
+                                            } else {
+                                                $tituloPartido = 'Partido ' . $loop->iteration;
+                                            }
+                                        @endphp
+                                        <h5 class="card-title text-center mb-2">{{ $tituloPartido }}</h5>
                                         @if($fechaFormateada || $horario)
                                         <div class="text-center mb-3" style="font-size:0.85rem; color:#555;">
                                             @if($fechaFormateada)
@@ -106,7 +204,7 @@
                                         <div class="d-flex justify-content-around align-items-center mb-3">
                                             <!-- Pareja 1 -->
                                             <div class="text-center pareja-container pareja-1-container" data-partido-id="{{ $partidoId }}" style="position: relative; padding: 10px; border-radius: 8px; transition: all 0.3s;">
-                                                @if($jugador1)
+                                                @if($tienePareja1 && $jugador1)
                                                 <div class="mb-2">
                                                     <img src="{{ asset($jugador1->foto ?? 'images/jugador_img.png') }}" 
                                                         class="rounded-circle" 
@@ -115,14 +213,32 @@
                                                         {{ $jugador1->nombre ?? '' }} {{ $jugador1->apellido ?? '' }}
                                                     </div>
                                                 </div>
+                                                @elseif($esPartidoGanadorPerdedor && $pareja1 && ($pareja1['jugador_1'] == 0 || $pareja1['jugador_2'] == 0))
+                                                <div class="mb-2">
+                                                    <div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;">
+                                                        <span style="font-size:0.7rem; color:#666;">?</span>
+                                                    </div>
+                                                    <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
+                                                        Por determinar
+                                                    </div>
+                                                </div>
                                                 @endif
-                                                @if($jugador2)
+                                                @if($tienePareja1 && $jugador2)
                                                 <div>
                                                     <img src="{{ asset($jugador2->foto ?? 'images/jugador_img.png') }}" 
                                                         class="rounded-circle" 
                                                         style="width:70px; height:70px; object-fit:cover; border: 2px solid #4e73df;">
                                                     <div style="font-size:0.75rem; font-weight:600; margin-top:5px;">
                                                         {{ $jugador2->nombre ?? '' }} {{ $jugador2->apellido ?? '' }}
+                                                    </div>
+                                                </div>
+                                                @elseif($esPartidoGanadorPerdedor && $pareja1 && ($pareja1['jugador_1'] == 0 || $pareja1['jugador_2'] == 0) && !$tienePareja1)
+                                                <div>
+                                                    <div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;">
+                                                        <span style="font-size:0.7rem; color:#666;">?</span>
+                                                    </div>
+                                                    <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
+                                                        Por determinar
                                                     </div>
                                                 </div>
                                                 @endif
@@ -135,7 +251,7 @@
                                             
                                             <!-- Pareja 2 -->
                                             <div class="text-center pareja-container pareja-2-container" data-partido-id="{{ $partidoId }}" style="position: relative; padding: 10px; border-radius: 8px; transition: all 0.3s;">
-                                                @if($jugador3)
+                                                @if($tienePareja2 && $jugador3)
                                                 <div class="mb-2">
                                                     <img src="{{ asset($jugador3->foto ?? 'images/jugador_img.png') }}" 
                                                         class="rounded-circle" 
@@ -144,14 +260,32 @@
                                                         {{ $jugador3->nombre ?? '' }} {{ $jugador3->apellido ?? '' }}
                                                     </div>
                                                 </div>
+                                                @elseif($esPartidoGanadorPerdedor && $pareja2 && ($pareja2['jugador_1'] == 0 || $pareja2['jugador_2'] == 0))
+                                                <div class="mb-2">
+                                                    <div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;">
+                                                        <span style="font-size:0.7rem; color:#666;">?</span>
+                                                    </div>
+                                                    <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
+                                                        Por determinar
+                                                    </div>
+                                                </div>
                                                 @endif
-                                                @if($jugador4)
+                                                @if($tienePareja2 && $jugador4)
                                                 <div>
                                                     <img src="{{ asset($jugador4->foto ?? 'images/jugador_img.png') }}" 
                                                         class="rounded-circle" 
                                                         style="width:70px; height:70px; object-fit:cover; border: 2px solid #1a8917;">
                                                     <div style="font-size:0.75rem; font-weight:600; margin-top:5px;">
                                                         {{ $jugador4->nombre ?? '' }} {{ $jugador4->apellido ?? '' }}
+                                                    </div>
+                                                </div>
+                                                @elseif($esPartidoGanadorPerdedor && $pareja2 && ($pareja2['jugador_1'] == 0 || $pareja2['jugador_2'] == 0) && !$tienePareja2)
+                                                <div>
+                                                    <div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;">
+                                                        <span style="font-size:0.7rem; color:#666;">?</span>
+                                                    </div>
+                                                    <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
+                                                        Por determinar
                                                     </div>
                                                 </div>
                                                 @endif
@@ -298,9 +432,18 @@
                                         </div>
                                     </div>
                                 </div>
+                            @if($tieneCuatroPartidos)
                             </div>
+                            @else
+                            </div>
+                            @endif
                             @endforeach
+                        @if($tieneCuatroPartidos)
                         </div>
+                        </div>
+                        @else
+                        </div>
+                        @endif
                     </div>
                 </div>
                 @endforeach
@@ -434,6 +577,30 @@ $(document).ready(function() {
         var partidoId = $(this).data('partido-id');
         var resultadoPartido = $(this).closest('.resultado-partido');
         
+        console.log('=== INICIANDO GUARDAR RESULTADO ===');
+        console.log('Partido ID obtenido del botón:', partidoId);
+        console.log('Tipo de partidoId:', typeof partidoId);
+        console.log('Partido ID es null/undefined?:', partidoId === null || partidoId === undefined);
+        console.log('Partido ID es string vacío?:', partidoId === '');
+        console.log('Partido ID es "null"?:', partidoId === 'null');
+        
+        // Verificar que el partidoId sea válido
+        if (!partidoId || partidoId === null || partidoId === undefined || partidoId === '' || partidoId === 'null') {
+            console.error('ERROR: Partido ID inválido:', partidoId);
+            alert('Error: No se pudo obtener el ID del partido. Por favor, recarga la página.');
+            return;
+        }
+        
+        // Verificar que el elemento resultadoPartido existe
+        if (!resultadoPartido || resultadoPartido.length === 0) {
+            console.error('ERROR: No se encontró el contenedor de resultados');
+            alert('Error: No se pudo encontrar el contenedor de resultados.');
+            return;
+        }
+        
+        console.log('Contenedor de resultados encontrado:', resultadoPartido);
+        console.log('Buscando inputs con data-partido-id="' + partidoId + '"');
+        
         var datos = {
             partido_id: partidoId,
             pareja_1_set_1: resultadoPartido.find('input[name="pareja_1_set_1"][data-partido-id="' + partidoId + '"]').val() || 0,
@@ -453,20 +620,58 @@ $(document).ready(function() {
             _token: '{{csrf_token()}}'
         };
         
+        console.log('=== DATOS A ENVIAR ===');
+        console.log('Datos completos:', datos);
+        console.log('partido_id en datos:', datos.partido_id);
+        console.log('Tipo de partido_id en datos:', typeof datos.partido_id);
+        
         var btn = $(this);
         btn.prop('disabled', true).text('Guardando...');
+        
+        console.log('=== ENVIANDO REQUEST AJAX ===');
+        console.log('URL:', '{{ route("guardarresultadopartido") }}');
+        console.log('Método: POST');
+        console.log('Datos enviados:', JSON.stringify(datos, null, 2));
         
         $.ajax({
             type: 'POST',
             dataType: 'JSON',
             url: '{{ route("guardarresultadopartido") }}',
             data: datos,
+            beforeSend: function() {
+                console.log('=== REQUEST ENVIADO ===');
+                console.log('Esperando respuesta del servidor...');
+            },
             success: function(data) {
+                console.log('=== RESPUESTA DEL SERVIDOR ===');
+                console.log('Respuesta completa:', data);
+                console.log('Success:', data.success);
+                console.log('Recargar:', data.recargar);
+                if (data.debug) {
+                    console.log('=== DEBUG INFO ===');
+                    console.log('Debug:', data.debug);
+                }
+                if (data.error) {
+                    console.error('Error:', data.error);
+                }
+                
                 if (data.success) {
+                    console.log('✓ Resultado guardado exitosamente');
                     btn.removeClass('btn-primary').addClass('btn-success').text('✓ Guardado');
                     
                     // Determinar ganador y aplicar estilo verde
                     determinarGanador(partidoId, resultadoPartido);
+                    
+                    // Si se actualizaron partidos de Ganador/Perdedor, recargar la página
+                    if (data.recargar) {
+                        console.log('⚠️ Se actualizaron partidos de Ganador/Perdedor. Recargando página...');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1000);
+                        return;
+                    } else {
+                        console.log('No se requiere recargar la página');
+                    }
                     
                     // Verificar si todos los partidos están completos
                     verificarYCalcularClasificacion();
@@ -480,12 +685,35 @@ $(document).ready(function() {
                         btn.removeClass('btn-success').addClass('btn-primary').text('Guardar Resultado');
                     }, 2000);
                 } else {
-                    alert('Error al guardar el resultado');
+                    console.error('=== ERROR AL GUARDAR ===');
+                    console.error('Success: false');
+                    console.error('Mensaje:', data.message || 'Error desconocido');
+                    console.error('Datos completos de error:', data);
+                    alert('Error al guardar el resultado: ' + (data.message || 'Error desconocido'));
                     btn.prop('disabled', false).text('Guardar Resultado');
                 }
             },
-            error: function() {
-                alert('Error al guardar el resultado');
+            error: function(xhr, status, error) {
+                console.error('=== ERROR EN AJAX ===');
+                console.error('Status HTTP:', status);
+                console.error('Error:', error);
+                console.error('Status Code:', xhr.status);
+                console.error('Response Text:', xhr.responseText);
+                console.error('Response JSON:', xhr.responseJSON);
+                console.error('Request URL:', xhr.responseURL || '{{ route("guardarresultadopartido") }}');
+                
+                // Intentar parsear la respuesta si es JSON
+                try {
+                    var errorResponse = JSON.parse(xhr.responseText);
+                    console.error('Error parseado:', errorResponse);
+                    if (errorResponse.message) {
+                        console.error('Mensaje de error:', errorResponse.message);
+                    }
+                } catch(e) {
+                    console.error('No se pudo parsear la respuesta como JSON');
+                }
+                
+                alert('Error al guardar el resultado. Revisa la consola para más detalles.');
                 btn.prop('disabled', false).text('Guardar Resultado');
             }
         });
