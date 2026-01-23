@@ -3098,11 +3098,40 @@ class HomeController extends Controller
                         ->where('grupos.torneo_id', $torneoId)
                         ->whereNull('grupos.partido_id')
                         ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
-                        ->whereNotNull('grupos.jugador_1')
-                        ->whereNotNull('grupos.jugador_2')
+                        ->where(function($query) {
+                            $query->whereNotNull('grupos.jugador_1')
+                                  ->whereNotNull('grupos.jugador_2')
+                                  ->where('grupos.jugador_1', '!=', 0)
+                                  ->where('grupos.jugador_2', '!=', 0);
+                        })
                         ->orderBy('grupos.zona')
                         ->orderBy('grupos.id')
                         ->get();
+        
+        // Obtener todos los jugadores necesarios
+        $jugadoresIds = [];
+        foreach ($grupos as $grupo) {
+            if ($grupo->jugador_1) $jugadoresIds[] = $grupo->jugador_1;
+            if ($grupo->jugador_2) $jugadoresIds[] = $grupo->jugador_2;
+        }
+        $jugadoresIds = array_unique($jugadoresIds);
+        
+        $jugadores = [];
+        if (count($jugadoresIds) > 0) {
+            $jugadoresData = DB::table('jugadores')
+                                ->whereIn('id', $jugadoresIds)
+                                ->where('activo', 1)
+                                ->get();
+            
+            foreach ($jugadoresData as $jugador) {
+                $jugadores[$jugador->id] = [
+                    'id' => $jugador->id,
+                    'nombre' => $jugador->nombre,
+                    'apellido' => $jugador->apellido,
+                    'foto' => $jugador->foto
+                ];
+            }
+        }
         
         // Agrupar por zona
         $gruposPorZona = [];
@@ -3121,7 +3150,8 @@ class HomeController extends Controller
         
         return response()->json([
             'success' => true,
-            'gruposPorZona' => $gruposPorZona
+            'gruposPorZona' => $gruposPorZona,
+            'jugadores' => $jugadores
         ]);
     }
 

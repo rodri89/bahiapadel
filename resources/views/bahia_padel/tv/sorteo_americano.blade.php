@@ -222,7 +222,7 @@
     <script>
         $(document).ready(function() {
             const torneoId = {{ $torneo->id ?? 0 }};
-            const jugadores = @json($jugadores ?? []);
+            let jugadores = @json($jugadores ?? []);
             let intervaloActualizacion = null;
             
             // Actualizar grupos cada 3 segundos
@@ -238,12 +238,16 @@
                     },
                     success: function(response) {
                         if (response.success && response.gruposPorZona) {
+                            // Actualizar el objeto jugadores con la respuesta del servidor
+                            if (response.jugadores) {
+                                jugadores = Object.assign({}, jugadores, response.jugadores);
+                            }
+                            
                             const container = $('#grupos-container');
                             let html = '';
                             
                             // Ordenar zonas alfabéticamente
                             const zonas = Object.keys(response.gruposPorZona).sort();
-                            let todasLasParejasCargadas = true;
                             
                             zonas.forEach(function(zona) {
                                 const grupos = response.gruposPorZona[zona];
@@ -262,16 +266,19 @@
                                         const jugador2 = jugadores[grupo.jugador_2];
                                         
                                         if (jugador1 && jugador2) {
+                                            const foto1 = jugador1.foto ? (jugador1.foto.startsWith('/') ? jugador1.foto : '/' + jugador1.foto) : '/images/jugador_img.png';
+                                            const foto2 = jugador2.foto ? (jugador2.foto.startsWith('/') ? jugador2.foto : '/' + jugador2.foto) : '/images/jugador_img.png';
+                                            
                                             html += `
                                                 <div class="pareja-item animate-fade-in">
-                                                    <img src="${jugador1.foto || '/images/jugador_img.png'}" 
+                                                    <img src="${foto1}" 
                                                          alt="${jugador1.nombre} ${jugador1.apellido}" 
                                                          class="player-img">
                                                     <div class="player-info">
                                                         <div class="player-name">${jugador1.nombre} ${jugador1.apellido}</div>
                                                     </div>
                                                     <span class="player-plus">+</span>
-                                                    <img src="${jugador2.foto || '/images/jugador_img.png'}" 
+                                                    <img src="${foto2}" 
                                                          alt="${jugador2.nombre} ${jugador2.apellido}" 
                                                          class="player-img">
                                                     <div class="player-info">
@@ -279,20 +286,10 @@
                                                     </div>
                                                 </div>
                                             `;
-                                        } else {
-                                            // Si falta algún jugador, no todas las parejas están cargadas
-                                            todasLasParejasCargadas = false;
                                         }
                                     });
-                                    
-                                    // Si hay grupos pero alguno no tiene pareja completa, no están todas cargadas
-                                    if (grupos.length > 0 && grupos.some(g => !jugadores[g.jugador_1] || !jugadores[g.jugador_2])) {
-                                        todasLasParejasCargadas = false;
-                                    }
                                 } else {
                                     html += '<div class="grupo-vacio">Esperando parejas...</div>';
-                                    // Si no hay grupos en esta zona, no todas las parejas están cargadas
-                                    todasLasParejasCargadas = false;
                                 }
                                 
                                 html += `
@@ -312,18 +309,12 @@
                                         </div>
                                     </div>
                                 `;
-                                todasLasParejasCargadas = false;
                             }
                             
                             container.html(html);
                             
-                            // Si todas las parejas están cargadas, detener la actualización automática
-                            if (todasLasParejasCargadas && zonas.length > 0) {
-                                if (intervaloActualizacion) {
-                                    clearInterval(intervaloActualizacion);
-                                    intervaloActualizacion = null;
-                                }
-                            }
+                            // NO detener la actualización automática - siempre seguir actualizando
+                            // Esto permite que se reflejen cambios si se agregan más parejas o se modifican
                         }
                     },
                     error: function() {
