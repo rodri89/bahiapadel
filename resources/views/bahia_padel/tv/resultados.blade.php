@@ -212,9 +212,32 @@
             z-index: 9999;
             transition: width 1s linear;
         }
+        
+        .btn-navegar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2d2d2d;
+            color: #fff;
+            border: 1px solid #3d3d3d;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .btn-navegar:hover {
+            background-color: #353535;
+            color: #fff;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
+    <a href="{{ route('tvtorneoamericanocruces') }}?torneo_id={{ $torneo->id ?? 0 }}" class="btn-navegar">></a>
     <div class="progress-bar-top" id="progress-bar"></div>
 
     <div id="app-container">

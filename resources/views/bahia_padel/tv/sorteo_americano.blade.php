@@ -123,10 +123,34 @@
             color: #888;
             font-size: 1.2rem;
         }
+        
+        .btn-navegar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2d2d2d;
+            color: #fff;
+            border: 1px solid #3d3d3d;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .btn-navegar:hover {
+            background-color: #353535;
+            color: #fff;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body class="dark-mode">
     <input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">
+    
+    <a href="{{ route('tvtorneoamericano') }}?torneo_id={{ $torneo->id ?? 0 }}" class="btn-navegar">></a>
     
     <div class="tv-header">
         {{ $torneo->nombre ?? 'Sorteo Torneo' }}
@@ -199,6 +223,7 @@
         $(document).ready(function() {
             const torneoId = {{ $torneo->id ?? 0 }};
             const jugadores = @json($jugadores ?? []);
+            let intervaloActualizacion = null;
             
             // Actualizar grupos cada 3 segundos
             function actualizarGrupos() {
@@ -218,6 +243,7 @@
                             
                             // Ordenar zonas alfabéticamente
                             const zonas = Object.keys(response.gruposPorZona).sort();
+                            let todasLasParejasCargadas = true;
                             
                             zonas.forEach(function(zona) {
                                 const grupos = response.gruposPorZona[zona];
@@ -253,10 +279,20 @@
                                                     </div>
                                                 </div>
                                             `;
+                                        } else {
+                                            // Si falta algún jugador, no todas las parejas están cargadas
+                                            todasLasParejasCargadas = false;
                                         }
                                     });
+                                    
+                                    // Si hay grupos pero alguno no tiene pareja completa, no están todas cargadas
+                                    if (grupos.length > 0 && grupos.some(g => !jugadores[g.jugador_1] || !jugadores[g.jugador_2])) {
+                                        todasLasParejasCargadas = false;
+                                    }
                                 } else {
                                     html += '<div class="grupo-vacio">Esperando parejas...</div>';
+                                    // Si no hay grupos en esta zona, no todas las parejas están cargadas
+                                    todasLasParejasCargadas = false;
                                 }
                                 
                                 html += `
@@ -276,9 +312,18 @@
                                         </div>
                                     </div>
                                 `;
+                                todasLasParejasCargadas = false;
                             }
                             
                             container.html(html);
+                            
+                            // Si todas las parejas están cargadas, detener la actualización automática
+                            if (todasLasParejasCargadas && zonas.length > 0) {
+                                if (intervaloActualizacion) {
+                                    clearInterval(intervaloActualizacion);
+                                    intervaloActualizacion = null;
+                                }
+                            }
                         }
                     },
                     error: function() {
@@ -288,7 +333,7 @@
             }
             
             // Actualizar cada 3 segundos
-            setInterval(actualizarGrupos, 3000);
+            intervaloActualizacion = setInterval(actualizarGrupos, 3000);
             // Primera actualización después de 3 segundos
             setTimeout(actualizarGrupos, 3000);
         });

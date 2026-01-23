@@ -347,12 +347,25 @@
                                 $jugador1_2 = $jugador1PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador1PartnerId) : null;
                                 $jugador2_1 = $jugador2Id !== null ? $jugadoresCollection->firstWhere('id', $jugador2Id) : null;
                                 $jugador2_2 = $jugador2PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador2PartnerId) : null;
+                                
+                                // Buscar resultado guardado para este cruce
+                                $resultadoCruce = null;
+                                $cruceId = $cruce['id'] ?? $index;
+                                foreach($resultadosGuardados ?? [] as $resultado) {
+                                    if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == 'cuartos') {
+                                        $resultadoCruce = $resultado;
+                                        break;
+                                    }
+                                }
+                                $score1 = $resultadoCruce['pareja_1_set_1'] ?? 0;
+                                $score2 = $resultadoCruce['pareja_2_set_1'] ?? 0;
                             @endphp
-                            <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="cuartos">
+                            <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="cuartos" @if($score1 > 0 || $score2 > 0) class="match-card winner" @endif>
                                 <div class="player-pair pareja-cruce"
                                      data-pareja="1"
                                      data-jugador-1="{{ $pareja1['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}">
+                                     data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}"
+                                     @if($score1 > $score2) class="player-pair pareja-cruce winner" @endif>
                                     <div class="player-pair-content">
                                         <div class="player-images">
                                             <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_1)->nombre ?? '') . ' ' . (optional($jugador1_1)->apellido ?? '')) }}">
@@ -367,14 +380,15 @@
                                         @endif
                                     </div>
                                     <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">0</span>
+                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">{{ $score1 }}</span>
                                     </div>
                                 </div>
 
                                 <div class="player-pair pareja-cruce"
                                      data-pareja="2"
                                      data-jugador-1="{{ $pareja2['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}">
+                                     data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}"
+                                     @if($score2 > $score1) class="player-pair pareja-cruce winner" @endif>
                                     <div class="player-pair-content">
                                         <div class="player-images">
                                             <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_1)->nombre ?? '') . ' ' . (optional($jugador2_1)->apellido ?? '')) }}">
@@ -389,7 +403,7 @@
                                         @endif
                                     </div>
                                     <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">0</span>
+                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">{{ $score2 }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -426,12 +440,25 @@
                                 $jugador1_2 = $jugador1PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador1PartnerId) : null;
                                 $jugador2_1 = $jugador2Id !== null ? $jugadoresCollection->firstWhere('id', $jugador2Id) : null;
                                 $jugador2_2 = $jugador2PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador2PartnerId) : null;
+                                
+                                // Buscar resultado guardado para este cruce
+                                $resultadoCruce = null;
+                                $cruceId = $cruce['id'] ?? $index;
+                                foreach($resultadosGuardados ?? [] as $resultado) {
+                                    if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == 'semifinales') {
+                                        $resultadoCruce = $resultado;
+                                        break;
+                                    }
+                                }
+                                $score1 = $resultadoCruce['pareja_1_set_1'] ?? 0;
+                                $score2 = $resultadoCruce['pareja_2_set_1'] ?? 0;
                             @endphp
-                            <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="semifinales">
+                            <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="semifinales" @if($score1 > 0 || $score2 > 0) class="match-card winner" @endif>
                                 <div class="player-pair pareja-cruce"
                                      data-pareja="1"
                                      data-jugador-1="{{ $pareja1['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}">
+                                     data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}"
+                                     @if($score1 > $score2) class="player-pair pareja-cruce winner" @endif>
                                     <div class="player-pair-content">
                                         <div class="player-images">
                                             <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_1)->nombre ?? '') . ' ' . (optional($jugador1_1)->apellido ?? '')) }}">
@@ -446,14 +473,15 @@
                                         @endif
                                     </div>
                                     <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">0</span>
+                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">{{ $score1 }}</span>
                                     </div>
                                 </div>
 
                                 <div class="player-pair pareja-cruce"
                                      data-pareja="2"
                                      data-jugador-1="{{ $pareja2['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}">
+                                     data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}"
+                                     @if($score2 > $score1) class="player-pair pareja-cruce winner" @endif>
                                     <div class="player-pair-content">
                                         <div class="player-images">
                                             <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_1)->nombre ?? '') . ' ' . (optional($jugador2_1)->apellido ?? '')) }}">
@@ -468,7 +496,7 @@
                                         @endif
                                     </div>
                                     <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">0</span>
+                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">{{ $score2 }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -505,13 +533,26 @@
                                     $jugador1_2 = $jugador1PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador1PartnerId) : null;
                                     $jugador2_1 = $jugador2Id !== null ? $jugadoresCollection->firstWhere('id', $jugador2Id) : null;
                                     $jugador2_2 = $jugador2PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador2PartnerId) : null;
+                                    
+                                    // Buscar resultado guardado para este cruce
+                                    $resultadoCruce = null;
+                                    $cruceId = $cruce['id'] ?? $index;
+                                    foreach($resultadosGuardados ?? [] as $resultado) {
+                                        if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == 'final') {
+                                            $resultadoCruce = $resultado;
+                                            break;
+                                        }
+                                    }
+                                    $score1 = $resultadoCruce['pareja_1_set_1'] ?? 0;
+                                    $score2 = $resultadoCruce['pareja_2_set_1'] ?? 0;
                                 @endphp
-                                <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="final">
+                                <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="final" @if($score1 > 0 || $score2 > 0) class="match-card winner" @endif>
                                     <!-- Pareja 1 -->
                                     <div class="player-pair pareja-cruce" 
                                          data-pareja="1"
                                          data-jugador-1="{{ $pareja1['jugador_1'] ?? '' }}"
-                                         data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}">
+                                         data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}"
+                                         @if($score1 > $score2) class="player-pair pareja-cruce winner" @endif>
                                         <div class="player-pair-content">
                                             <div class="player-images">
                                                 <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_1)->nombre ?? '') . ' ' . (optional($jugador1_1)->apellido ?? '')) }}">
@@ -526,7 +567,7 @@
                                             @endif
                                         </div>
                                         <div class="player-pair-input">
-                                            <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">0</span>
+                                            <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">{{ $score1 }}</span>
                                         </div>
                                     </div>
                                     
@@ -534,7 +575,8 @@
                                     <div class="player-pair pareja-cruce" 
                                          data-pareja="2"
                                          data-jugador-1="{{ $pareja2['jugador_1'] ?? '' }}"
-                                         data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}">
+                                         data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}"
+                                         @if($score2 > $score1) class="player-pair pareja-cruce winner" @endif>
                                         <div class="player-pair-content">
                                             <div class="player-images">
                                                 <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_1)->nombre ?? '') . ' ' . (optional($jugador2_1)->apellido ?? '')) }}">
@@ -549,7 +591,7 @@
                                             @endif
                                         </div>
                                         <div class="player-pair-input">
-                                            <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">0</span>
+                                            <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">{{ $score2 }}</span>
                                         </div>
                                     </div>
                                     
