@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('css/bracket.css') }}">
     <link rel="stylesheet" href="{{ asset('css/dark-mode.css') }}">
     <style>
-        /* Estilos optimizados para vista TV sin scroll */
+        /* Estilos optimizados para vista TV sin scroll - MAXIMIZADO */
         * {
             box-sizing: border-box;
         }
@@ -33,28 +33,30 @@
         /* Header con título */
         .header-tv {
             flex: 0 0 auto;
-            padding: 0.8vw 1.2vw;
+            padding: 1vw 1.5vw;
             background: rgba(0, 0, 0, 0.2);
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 3px solid rgba(255, 255, 255, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 1vw;
+            gap: 1.5vw;
         }
         
         h2.torneo-title {
-            font-size: 1.8vw;
+            font-size: 3vw;
             color: rgba(255, 255, 255, 0.95);
             letter-spacing: 0.12em;
             text-transform: uppercase;
             margin: 0;
             flex: 1;
             text-align: center;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         
         .header-tv .btn {
-            font-size: 0.9vw;
-            padding: 0.5vw 1vw;
+            font-size: 1.5vw;
+            padding: 0.8vw 1.5vw;
             flex: 0 0 auto;
         }
         
@@ -66,7 +68,7 @@
             justify-content: center;
             overflow: hidden;
             width: 100%;
-            padding: 0.2vw 0.3vw;
+            padding: 0.5vw 0.5vw;
             min-height: 0;
         }
         
@@ -83,7 +85,7 @@
         .bracket-row {
             display: flex;
             flex-wrap: nowrap;
-            gap: 0.3vw;
+            gap: 0.5vw;
             align-items: stretch;
             height: 100%;
             margin: 0;
@@ -96,14 +98,14 @@
             justify-content: center;
             flex: 1;
             min-width: 0;
-            padding: 0.3vw 0.2vw;
+            padding: 0.5vw;
             overflow: visible;
         }
         
         .bracket-column--cuartos,
         .bracket-column--semis,
         .bracket-column--final {
-            padding: 0.3vw 0.2vw;
+            padding: 0.5vw;
         }
         
         /* Ronda */
@@ -116,47 +118,53 @@
         }
         
         .bracket-round-title {
-            font-size: 1.2vw;
+            font-size: 2.2vh; /* VH para consistencia */
             letter-spacing: 0.08em;
             color: rgba(255, 255, 255, 0.85);
             text-transform: uppercase;
             text-align: center;
-            margin: 0 0 0.6vw 0;
+            margin: 0 0 1vh 0;
             flex: 0 0 auto;
             white-space: nowrap;
             padding: 0;
+            font-weight: 700;
         }
         
         /* Cuerpo de la ronda con matches */
         .bracket-round-body {
             display: flex;
             flex-direction: column;
-            gap: 0.5vw;
-            justify-content: flex-start;
-            overflow: visible;
+            gap: 0.5vh; /* Mínimo espacio entre cards para aprovechar verticalidad */
+            justify-content: space-around;
+            overflow: hidden;
             flex: 1;
+            padding: 0.2vh 0;
         }
         
         /* Centrar semifinales y final verticalmente */
         .bracket-round--semis .bracket-round-body,
         .bracket-round--final .bracket-round-body {
             justify-content: center;
+            gap: 2vh; 
         }
         
-        /* Tarjeta de partido */
+        /* Tarjeta de partido flexible */
         .match-card {
             display: flex;
             flex-direction: column;
-            height: 8.5vw;
-            flex: 0 0 8.5vw;
-            padding: 0.4vw;
-            border-radius: 0.6vw;
+            flex: 1;
+            min-height: 0;
+            max-height: 16vh; /* Permitimos que crezca un poco más si hay espacio */
+            padding: 0.5vh 0.4vw; /* Menos padding lateral para dar lugar al contenido */
+            border-radius: 1vh;
             background: rgba(255, 255, 255, 0.93);
-            border: 2px solid rgba(15, 23, 42, 0.4);
-            box-shadow: 0 0.8vw 1.8vw rgba(17, 24, 39, 0.25);
-            backdrop-filter: blur(6px);
+            border: 0.3vh solid rgba(15, 23, 42, 0.4);
+            box-shadow: 0 0.5vh 1vh rgba(17, 24, 39, 0.3);
+            backdrop-filter: blur(8px);
             transition: box-shadow 0.3s ease;
-            overflow: visible;
+            overflow: hidden;
+            justify-content: center;
+            gap: 0.5vh;
         }
         
         .match-card.winner {
@@ -167,7 +175,7 @@
             justify-content: center;
             text-align: center;
             background: rgba(255, 255, 255, 0.45);
-            border: 2px dashed rgba(148, 163, 184, 0.55);
+            border: 0.3vh dashed rgba(148, 163, 184, 0.55);
             box-shadow: none;
         }
         
@@ -175,14 +183,16 @@
         .player-pair {
             display: flex;
             align-items: center;
-            gap: 0.25vw;
+            gap: 0.3vw;
             flex: 1;
             min-height: 0;
+            max-height: 100%; 
             background: rgba(248, 250, 252, 0.85);
-            border-radius: 0.5vw;
-            padding: 0.2vw 0.25vw;
-            border: 1px solid rgba(226, 232, 240, 0.6);
-            margin-bottom: 0.25vw;
+            border-radius: 0.8vh;
+            padding: 0.2vh 0.3vw;
+            border: 0.2vh solid rgba(226, 232, 240, 0.6);
+            margin-bottom: 0;
+            overflow: hidden;
         }
         
         .player-pair:last-child {
@@ -192,15 +202,16 @@
         .player-pair.winner {
             background: rgba(46, 204, 113, 0.25);
             border-color: rgba(46, 204, 113, 0.6);
-            box-shadow: inset 0 0 0.6vw rgba(46, 204, 113, 0.3);
+            box-shadow: inset 0 0 1vh rgba(46, 204, 113, 0.3);
         }
         
         .player-pair-content {
             display: flex;
             align-items: center;
-            gap: 0.25vw;
+            gap: 0.5vw;
             flex: 1;
             min-width: 0;
+            height: 100%;
         }
         
         .match-card.placeholder .player-pair-content {
@@ -210,26 +221,35 @@
         /* Imágenes de jugadores */
         .player-images {
             display: flex;
-            gap: 0.15vw;
+            gap: 0.3vw;
             flex: 0 0 auto;
+            align-items: center;
+            height: 100%;
+            padding-left: 0;
         }
         
         .player-images img {
-            width: 1.5vw;
-            height: 1.5vw;
+            width: 5.5vh; /* FOTO MÁS GRANDE */
+            height: 5.5vh;
             border-radius: 50%;
             object-fit: cover;
-            border: 1px solid rgba(148, 163, 184, 0.65);
-            box-shadow: 0 0.4vw 1vw rgba(15, 23, 42, 0.25);
+            border: 0.2vh solid rgba(148, 163, 184, 0.65);
+            box-shadow: 0 0.2vh 0.5vh rgba(15, 23, 42, 0.25);
         }
         
         /* Nombres de jugadores */
         .player-names {
-            font-size: 0.7vw;
-            font-weight: 500;
+            font-size: 2.6vh; /* FUENTE MÁS GRANDE */
+            font-weight: 800;
             line-height: 1.1;
             flex: 1;
             min-width: 0;
+            display: flex;
+            flex-direction: column; /* Stackeados para ganar espacio horizontal y tamaño */
+            justify-content: center;
+            align-items: flex-start;
+            padding-left: 0.5vw;
+            gap: 0; 
         }
         
         .player-name {
@@ -238,11 +258,14 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            width: 100%;
         }
         
         .match-card.placeholder .player-names {
-            font-size: 0.85vw;
+            font-size: 2.2vh;
             color: rgba(15, 23, 42, 0.65);
+            justify-content: center;
+            align-items: center;
         }
         
         /* Input de puntuación */
@@ -251,27 +274,30 @@
             justify-content: center;
             align-items: center;
             flex: 0 0 auto;
-            padding-left: 0.3vw;
+            padding-left: 0.5vw;
         }
         
         .score-display {
-            font-size: 0.9vw;
-            font-weight: 700;
-            color: #0b1120;
-            background: rgba(11, 17, 32, 0.55);
-            padding: 0.1vw 0.25vw;
-            border-radius: 0.3vw;
-            min-width: 2vw;
-            text-align: center;
+            font-size: 3vh;
+            font-weight: 800;
+            color: #fff;
+            background: rgba(11, 17, 32, 0.7);
+            padding: 0 0.5vw;
+            height: 4.5vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.6vh;
+            min-width: 3.5vw;
             line-height: 1;
             flex: 0 0 auto;
         }
         
         /* Badge de posición */
         .badge {
-            font-size: 0.6vw;
-            padding: 0.1vw 0.3vw;
-            border-radius: 0.3vw;
+            font-size: 1.2vh;
+            padding: 0.2vh 0.5vw;
+            border-radius: 0.4vh;
             letter-spacing: 0.02em;
             flex: 0 0 auto;
             white-space: nowrap;
@@ -280,21 +306,21 @@
         /* Botón de tema */
         .theme-toggle {
             position: fixed;
-            top: 0.8vw;
-            right: 0.8vw;
+            top: 1.5vw;
+            right: 1.5vw;
             z-index: 1001;
             background-color: #4e73df;
             color: white;
             border: none;
             border-radius: 50%;
-            width: 2.8vw;
-            height: 2.8vw;
-            font-size: 1.4vw;
+            width: 4vw;
+            height: 4vw;
+            font-size: 2vw;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0.3vw 0.8vw rgba(0,0,0,0.3);
+            box-shadow: 0 0.5vw 1vw rgba(0,0,0,0.3);
             transition: background-color 0.3s ease;
         }
         
