@@ -204,24 +204,42 @@ class AdminController extends Controller
         $jugadorId = $request->id_jugador;
         if($jugadorId != null){
             if($request->hasfile('image')) {
-                $image = $request->file('image');
-                $name  = $image->getClientOriginalName().time().'.'.$image->getClientOriginalExtension();
-                $path = 'images/jugadores/'.$name;                    
-                Image::make($image->getRealPath())->save($path);
-                /* $storageName = Image::make($image->getRealPath())->save($path);
-
-                $image = $request->file('r_imagen');
-                $auxStorageName = explode('/', $storageName);
-                $name  = $auxStorageName[1];
-                $path = 'images/recipes/'.$name;
-                $request->file('r_imagen')->store('images');      */                     
+                try {
+                    $image = $request->file('image');
+                    
+                    // Sanitizar nombre del archivo
+                    $originalName = $image->getClientOriginalName();
+                    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
+                    $extension = $image->getClientOriginalExtension();
+                    $name = time() . '_' . $safeName . '.' . $extension;
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Crear directorio si no existe
+                    $directory = public_path('images/jugadores');
+                    if (!file_exists($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    
+                    // Guardar en la ruta correcta usando public_path
+                    Image::make($image->getRealPath())->save(public_path($path));
+                    
+                    \Log::info('Foto guardada: ' . $path);
+                    \Log::info('Ruta completa: ' . public_path($path));
+                    \Log::info('Archivo existe: ' . (file_exists(public_path($path)) ? 'SÍ' : 'NO'));
+                } catch (\Exception $e) {
+                    \Log::error('Error al procesar imagen en cargarImagenJugador: ' . $e->getMessage());
+                    $path = 'images/jugador_img.png';
+                }                     
             } else {
                 $path = 'images/jugador_img.png';
             }
             
             $jugador = Jugadore::find($jugadorId);
-            $jugador->foto = $path;
-            $jugador->save();
+            if ($jugador) {
+                $jugador->foto = $path;
+                $jugador->save();
+                \Log::info('Foto actualizada en BD para jugador ' . $jugadorId . ': ' . $path);
+            }
         }
     }
 
