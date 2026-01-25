@@ -42,9 +42,10 @@
         }
     @endphp
 
-    <!-- Contenedor con scroll horizontal -->
+    <!-- Contenedor con tablas de posiciones a la izquierda y tabla de cruces a la derecha -->
     <div class="row justify-content-center">
-        <div class="col-12">
+        <!-- Tablas de posiciones (scroll horizontal) -->
+        <div class="col-lg-8">
             <div style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
                 <div style="display: flex; flex-direction: row; min-width: max-content; padding-bottom: 20px;">
                     @foreach($zonasArray as $zona)
@@ -113,6 +114,81 @@
                         </div>
                     </div>
                     @endforeach
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabla de selección de cruces a la derecha -->
+        <div class="col-lg-4">
+            <div class="card shadow bg-white px-4 py-3" style="border-radius: 12px; border: 1px solid #e3e6f0;">
+                <h3 class="text-center mb-4" style="color:#4e73df; font-weight:700;">Armar Cruces</h3>
+                
+                <!-- Tabla de selección 4x2 -->
+                <div class="table-responsive">
+                    <table class="table table-bordered" style="font-size: 0.9rem;">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="text-align: center; width: 50%;">Pareja 1</th>
+                                <th style="text-align: center; width: 50%;">Pareja 2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="1" data-columna="1">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="1" data-columna="2">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="2" data-columna="1">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="2" data-columna="2">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="3" data-columna="1">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="3" data-columna="2">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="4" data-columna="1">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                                <td style="text-align: center; padding: 8px;">
+                                    <select class="form-control form-control-sm select-pareja-cruce" data-fila="4" data-columna="2">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <button type="button" class="btn btn-primary btn-lg" id="btn-armar-cruces">
+                        Armar
+                    </button>
                 </div>
             </div>
         </div>
@@ -279,17 +355,246 @@
     }
 </style>
 
-@if(count($crucesPropuestos) > 0)
 <script>
 $(document).ready(function() {
     var posiciones = @json($posicionesJS);
-    var cruces = @json($crucesPropuestos);
+    var cruces = @json($crucesPropuestos ?? []);
     var jugadores = @json($jugadores);
     var jugadoresMap = {};
+    var crucesGenerados = [];
     
     // Crear mapa de jugadores
     jugadores.forEach(function(j) {
         jugadoresMap[j.id] = j;
+    });
+    
+    // Poblar los selectores con opciones dinámicas
+    function poblarSelectoresParejas() {
+        var opcionesHTML = '<option value="">Seleccionar...</option>';
+        
+        // Recorrer todas las zonas y posiciones
+        for (var zona in posiciones) {
+            for (var pos in posiciones[zona]) {
+                var pareja = posiciones[zona][pos];
+                var jugador1 = jugadoresMap[pareja.jugador_1] || {};
+                var jugador2 = jugadoresMap[pareja.jugador_2] || {};
+                var nombrePareja = (jugador1.nombre || '') + ' ' + (jugador1.apellido || '') + ' / ' + 
+                                   (jugador2.nombre || '') + ' ' + (jugador2.apellido || '');
+                var valor = zona + '_' + pos;
+                var texto = pos + zona + ' - ' + nombrePareja;
+                opcionesHTML += '<option value="' + valor + '">' + texto + '</option>';
+            }
+        }
+        
+        // Aplicar a todos los selectores
+        $('.select-pareja-cruce').html(opcionesHTML);
+    }
+    
+    // Llamar a poblar selectores al cargar
+    poblarSelectoresParejas();
+    
+    // Función para generar cruces desde la tabla
+    function generarCrucesDesdeTabla() {
+        crucesGenerados = [];
+        var crucesTemp = [];
+        
+        // Leer las selecciones de la tabla 4x2 (4 filas, 2 columnas)
+        // Cada fila es un cruce: pareja1 (columna 1) vs pareja2 (columna 2)
+        
+        for (var fila = 1; fila <= 4; fila++) {
+            var pareja1Select = $('.select-pareja-cruce[data-fila="' + fila + '"][data-columna="1"]');
+            var pareja2Select = $('.select-pareja-cruce[data-fila="' + fila + '"][data-columna="2"]');
+            
+            var valor1 = pareja1Select.val();
+            var valor2 = pareja2Select.val();
+            
+            if (valor1 && valor2) {
+                var partes1 = valor1.split('_');
+                var partes2 = valor2.split('_');
+                var zona1 = partes1[0];
+                var pos1 = parseInt(partes1[1]);
+                var zona2 = partes2[0];
+                var pos2 = parseInt(partes2[1]);
+                
+                var pareja1Data = posiciones[zona1][pos1];
+                var pareja2Data = posiciones[zona2][pos2];
+                
+                crucesTemp.push({
+                    id: 'cruce_manual_' + fila,
+                    ronda: 'cuartos',
+                    pareja_1: {
+                        jugador_1: pareja1Data.jugador_1,
+                        jugador_2: pareja1Data.jugador_2,
+                        zona: zona1,
+                        posicion: pos1
+                    },
+                    pareja_2: {
+                        jugador_1: pareja2Data.jugador_1,
+                        jugador_2: pareja2Data.jugador_2,
+                        zona: zona2,
+                        posicion: pos2
+                    }
+                });
+            }
+        }
+        
+        crucesGenerados = crucesTemp;
+        return crucesTemp;
+    }
+    
+    // Función para renderizar cruces generados
+    function renderizarCrucesGenerados(crucesData) {
+        var container = $('#cruces-container');
+        container.empty();
+        
+        if (!crucesData || crucesData.length === 0) {
+            container.html('<p class="text-center text-muted">No hay cruces para mostrar. Selecciona parejas en la tabla superior.</p>');
+            return;
+        }
+        
+        // Mostrar el título "Cuartos:" si hay cruces
+        if (crucesData.length > 0) {
+            var cardContainer = container.closest('.card');
+            var tituloCuartos = cardContainer.find('h4');
+            if (tituloCuartos.length === 0) {
+                container.before('<h4 class="mb-3" style="color:#4e73df; font-weight:600;">Cuartos:</h4>');
+            }
+        }
+        
+        crucesData.forEach(function(cruce) {
+            var jugador1_p1 = jugadoresMap[cruce.pareja_1.jugador_1] || null;
+            var jugador2_p1 = jugadoresMap[cruce.pareja_1.jugador_2] || null;
+            var jugador1_p2 = jugadoresMap[cruce.pareja_2.jugador_1] || null;
+            var jugador2_p2 = jugadoresMap[cruce.pareja_2.jugador_2] || null;
+            
+            var nombreP1 = '';
+            var nombreP2 = '';
+            
+            if (jugador1_p1 && jugador2_p1) {
+                nombreP1 = (jugador1_p1.nombre || '') + ' ' + (jugador1_p1.apellido || '') + ' / ' + 
+                          (jugador2_p1.nombre || '') + ' ' + (jugador2_p1.apellido || '');
+            }
+            
+            if (jugador1_p2 && jugador2_p2) {
+                nombreP2 = (jugador1_p2.nombre || '') + ' ' + (jugador1_p2.apellido || '') + ' / ' + 
+                          (jugador2_p2.nombre || '') + ' ' + (jugador2_p2.apellido || '');
+            }
+            
+            var foto1_p1 = jugador1_p1 && jugador1_p1.foto ? '{{ url("/") }}/' + jugador1_p1.foto : '{{ url("/") }}/images/jugador_img.png';
+            var foto2_p1 = jugador2_p1 && jugador2_p1.foto ? '{{ url("/") }}/' + jugador2_p1.foto : '{{ url("/") }}/images/jugador_img.png';
+            var foto1_p2 = jugador1_p2 && jugador1_p2.foto ? '{{ url("/") }}/' + jugador1_p2.foto : '{{ url("/") }}/images/jugador_img.png';
+            var foto2_p2 = jugador2_p2 && jugador2_p2.foto ? '{{ url("/") }}/' + jugador2_p2.foto : '{{ url("/") }}/images/jugador_img.png';
+            
+            var posicion1 = cruce.pareja_1.posicion + cruce.pareja_1.zona;
+            var posicion2 = cruce.pareja_2.posicion + cruce.pareja_2.zona;
+            
+            var cruceHTML = `
+                <div class="card border mb-3 cruce-item" data-cruce-id="${cruce.id}" style="border-radius: 8px;">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <!-- Pareja 1 -->
+                            <div class="col-md-5">
+                                <div class="d-flex align-items-center">
+                                    <div class="text-center mr-3">
+                                        ${jugador1_p1 ? '<img src="' + foto1_p1 + '" class="rounded-circle mb-1" style="width:50px; height:50px; object-fit:cover; border: 2px solid #4e73df;">' : ''}
+                                        ${jugador2_p1 ? '<img src="' + foto2_p1 + '" class="rounded-circle" style="width:50px; height:50px; object-fit:cover; border: 2px solid #4e73df;">' : ''}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="font-weight-bold" style="color:#4e73df; font-size: 1.1rem;">
+                                            ${posicion1}
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            ${nombreP1 || 'Pareja 1'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- VS -->
+                            <div class="col-md-2 text-center">
+                                <h4 style="color:#dc3545; font-weight:bold; font-size: 1.2rem;">VS</h4>
+                            </div>
+                            
+                            <!-- Pareja 2 -->
+                            <div class="col-md-5">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 text-right mr-3">
+                                        <div class="font-weight-bold" style="color:#1a8917; font-size: 1.1rem;">
+                                            ${posicion2}
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            ${nombreP2 || 'Pareja 2'}
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        ${jugador1_p2 ? '<img src="' + foto1_p2 + '" class="rounded-circle mb-1" style="width:50px; height:50px; object-fit:cover; border: 2px solid #1a8917;">' : ''}
+                                        ${jugador2_p2 ? '<img src="' + foto2_p2 + '" class="rounded-circle" style="width:50px; height:50px; object-fit:cover; border: 2px solid #1a8917;">' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.append(cruceHTML);
+        });
+        
+        // Mostrar el contenedor
+        // Actualizar el array de cruces para que funcione con el botón de confirmar existente
+        cruces = crucesData;
+    }
+    
+    // Botón Generar Cruces
+    $('#btn-armar-cruces').on('click', function() {
+        var cruces = generarCrucesDesdeTabla();
+        if (cruces.length === 0) {
+            alert('Por favor, selecciona al menos un cruce completo (pareja 1 y pareja 2 en la misma fila)');
+            return;
+        }
+        renderizarCrucesGenerados(cruces);
+    });
+    
+    // Botón Confirmar Cruces Generados
+    $('#btn-confirmar-cruces-generados').on('click', function() {
+        if (crucesGenerados.length === 0) {
+            alert('No hay cruces para confirmar');
+            return;
+        }
+        
+        if (confirm('¿Estás seguro de confirmar estos cruces? Una vez confirmados, se crearán los partidos eliminatorios.')) {
+            var torneoId = '{{ $torneo->id }}';
+            var btn = $(this);
+            btn.prop('disabled', true).text('Guardando...');
+            
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '{{ route("confirmarcruces") }}',
+                data: {
+                    torneo_id: torneoId,
+                    cruces: JSON.stringify(crucesGenerados),
+                    _token: '{{csrf_token()}}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Redirigir a la pantalla de cruces puntuable
+                        window.location.href = '{{ route("admintorneopuntuablecruces") }}?torneo_id=' + torneoId;
+                    } else {
+                        alert('Error al confirmar los cruces: ' + (response.message || 'Error desconocido'));
+                        btn.prop('disabled', false).text('Confirmar Cruces');
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'Error al confirmar los cruces';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg += ': ' + xhr.responseJSON.message;
+                    }
+                    alert(errorMsg);
+                    btn.prop('disabled', false).text('Confirmar Cruces');
+                }
+            });
+        }
     });
     
     // Función para transformar grupos individuales en cruces
@@ -628,6 +933,257 @@ $(document).ready(function() {
     // O directamente si ya tienes el JSON:
     // var gruposJSON = [{id: 1061, jugador_1: 1, jugador_2: 5, fecha: "2026-01-16", horario: "01:00", partido_id: 1159}, ...];
     // window.procesarGruposJSON(gruposJSON);
+});
+</script>
+@else
+<script>
+$(document).ready(function() {
+    var posiciones = @json($posicionesJS);
+    var jugadores = @json($jugadores);
+    var jugadoresMap = {};
+    var crucesGenerados = [];
+    
+    // Crear mapa de jugadores
+    jugadores.forEach(function(j) {
+        jugadoresMap[j.id] = j;
+    });
+    
+    // Poblar los selectores con opciones dinámicas
+    function poblarSelectoresParejas() {
+        var opcionesHTML = '<option value="">Seleccionar...</option>';
+        
+        // Recorrer todas las zonas y posiciones
+        for (var zona in posiciones) {
+            for (var pos in posiciones[zona]) {
+                var pareja = posiciones[zona][pos];
+                var jugador1 = jugadoresMap[pareja.jugador_1] || {};
+                var jugador2 = jugadoresMap[pareja.jugador_2] || {};
+                var nombrePareja = (jugador1.nombre || '') + ' ' + (jugador1.apellido || '') + ' / ' + 
+                                   (jugador2.nombre || '') + ' ' + (jugador2.apellido || '');
+                var valor = zona + '_' + pos;
+                var texto = pos + zona + ' - ' + nombrePareja;
+                opcionesHTML += '<option value="' + valor + '">' + texto + '</option>';
+            }
+        }
+        
+        // Aplicar a todos los selectores
+        $('.select-pareja-cruce').html(opcionesHTML);
+    }
+    
+    // Llamar a poblar selectores al cargar
+    poblarSelectoresParejas();
+    
+    // Función para generar cruces desde la tabla
+    function generarCrucesDesdeTabla() {
+        crucesGenerados = [];
+        var crucesTemp = [];
+        
+        // Leer las selecciones de la tabla 2x4
+        var selecciones = [];
+        $('.select-pareja-cruce').each(function() {
+            var fila = $(this).data('fila');
+            var columna = $(this).data('columna');
+            var valor = $(this).val();
+            selecciones.push({
+                fila: fila,
+                columna: columna,
+                valor: valor
+            });
+        });
+        
+        // Formar cruces: pareja de fila 1 columna X vs pareja de fila 2 columna X
+        for (var col = 1; col <= 4; col++) {
+            var pareja1 = selecciones.find(function(s) { return s.fila == 1 && s.columna == col; });
+            var pareja2 = selecciones.find(function(s) { return s.fila == 2 && s.columna == col; });
+            
+            if (pareja1 && pareja1.valor && pareja2 && pareja2.valor) {
+                var partes1 = pareja1.valor.split('_');
+                var partes2 = pareja2.valor.split('_');
+                var zona1 = partes1[0];
+                var pos1 = parseInt(partes1[1]);
+                var zona2 = partes2[0];
+                var pos2 = parseInt(partes2[1]);
+                
+                var pareja1Data = posiciones[zona1][pos1];
+                var pareja2Data = posiciones[zona2][pos2];
+                
+                crucesTemp.push({
+                    id: 'cruce_manual_' + col,
+                    ronda: 'cuartos',
+                    pareja_1: {
+                        jugador_1: pareja1Data.jugador_1,
+                        jugador_2: pareja1Data.jugador_2,
+                        zona: zona1,
+                        posicion: pos1
+                    },
+                    pareja_2: {
+                        jugador_1: pareja2Data.jugador_1,
+                        jugador_2: pareja2Data.jugador_2,
+                        zona: zona2,
+                        posicion: pos2
+                    }
+                });
+            }
+        }
+        
+        crucesGenerados = crucesTemp;
+        return crucesTemp;
+    }
+    
+    // Función para renderizar cruces generados
+    function renderizarCrucesGenerados(crucesData) {
+        var container = $('#cruces-container');
+        container.empty();
+        
+        if (!crucesData || crucesData.length === 0) {
+            container.html('<p class="text-center text-muted">No hay cruces para mostrar. Selecciona parejas en la tabla superior.</p>');
+            return;
+        }
+        
+        // Mostrar el título "Cuartos:" si hay cruces
+        if (crucesData.length > 0) {
+            var cardContainer = container.closest('.card');
+            var tituloCuartos = cardContainer.find('h4');
+            if (tituloCuartos.length === 0) {
+                container.before('<h4 class="mb-3" style="color:#4e73df; font-weight:600;">Cuartos:</h4>');
+            }
+        }
+        
+        crucesData.forEach(function(cruce) {
+            var jugador1_p1 = jugadoresMap[cruce.pareja_1.jugador_1] || null;
+            var jugador2_p1 = jugadoresMap[cruce.pareja_1.jugador_2] || null;
+            var jugador1_p2 = jugadoresMap[cruce.pareja_2.jugador_1] || null;
+            var jugador2_p2 = jugadoresMap[cruce.pareja_2.jugador_2] || null;
+            
+            var nombreP1 = '';
+            var nombreP2 = '';
+            
+            if (jugador1_p1 && jugador2_p1) {
+                nombreP1 = (jugador1_p1.nombre || '') + ' ' + (jugador1_p1.apellido || '') + ' / ' + 
+                          (jugador2_p1.nombre || '') + ' ' + (jugador2_p1.apellido || '');
+            }
+            
+            if (jugador1_p2 && jugador2_p2) {
+                nombreP2 = (jugador1_p2.nombre || '') + ' ' + (jugador1_p2.apellido || '') + ' / ' + 
+                          (jugador2_p2.nombre || '') + ' ' + (jugador2_p2.apellido || '');
+            }
+            
+            var foto1_p1 = jugador1_p1 && jugador1_p1.foto ? '{{ url("/") }}/' + jugador1_p1.foto : '{{ url("/") }}/images/jugador_img.png';
+            var foto2_p1 = jugador2_p1 && jugador2_p1.foto ? '{{ url("/") }}/' + jugador2_p1.foto : '{{ url("/") }}/images/jugador_img.png';
+            var foto1_p2 = jugador1_p2 && jugador1_p2.foto ? '{{ url("/") }}/' + jugador1_p2.foto : '{{ url("/") }}/images/jugador_img.png';
+            var foto2_p2 = jugador2_p2 && jugador2_p2.foto ? '{{ url("/") }}/' + jugador2_p2.foto : '{{ url("/") }}/images/jugador_img.png';
+            
+            var posicion1 = cruce.pareja_1.posicion + cruce.pareja_1.zona;
+            var posicion2 = cruce.pareja_2.posicion + cruce.pareja_2.zona;
+            
+            var cruceHTML = `
+                <div class="card border mb-3 cruce-item" data-cruce-id="${cruce.id}" style="border-radius: 8px;">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <!-- Pareja 1 -->
+                            <div class="col-md-5">
+                                <div class="d-flex align-items-center">
+                                    <div class="text-center mr-3">
+                                        ${jugador1_p1 ? '<img src="' + foto1_p1 + '" class="rounded-circle mb-1" style="width:50px; height:50px; object-fit:cover; border: 2px solid #4e73df;">' : ''}
+                                        ${jugador2_p1 ? '<img src="' + foto2_p1 + '" class="rounded-circle" style="width:50px; height:50px; object-fit:cover; border: 2px solid #4e73df;">' : ''}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="font-weight-bold" style="color:#4e73df; font-size: 1.1rem;">
+                                            ${posicion1}
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            ${nombreP1 || 'Pareja 1'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- VS -->
+                            <div class="col-md-2 text-center">
+                                <h4 style="color:#dc3545; font-weight:bold; font-size: 1.2rem;">VS</h4>
+                            </div>
+                            
+                            <!-- Pareja 2 -->
+                            <div class="col-md-5">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 text-right mr-3">
+                                        <div class="font-weight-bold" style="color:#1a8917; font-size: 1.1rem;">
+                                            ${posicion2}
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            ${nombreP2 || 'Pareja 2'}
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        ${jugador1_p2 ? '<img src="' + foto1_p2 + '" class="rounded-circle mb-1" style="width:50px; height:50px; object-fit:cover; border: 2px solid #1a8917;">' : ''}
+                                        ${jugador2_p2 ? '<img src="' + foto2_p2 + '" class="rounded-circle" style="width:50px; height:50px; object-fit:cover; border: 2px solid #1a8917;">' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.append(cruceHTML);
+        });
+        
+        // Mostrar el contenedor
+        // Actualizar el array de cruces para que funcione con el botón de confirmar existente
+        cruces = crucesData;
+    }
+    
+    // Botón Generar Cruces
+    $('#btn-armar-cruces').on('click', function() {
+        var cruces = generarCrucesDesdeTabla();
+        if (cruces.length === 0) {
+            alert('Por favor, selecciona al menos un cruce completo (pareja 1 y pareja 2 en la misma fila)');
+            return;
+        }
+        renderizarCrucesGenerados(cruces);
+    });
+    
+    // Botón Confirmar Cruces Generados
+    $('#btn-confirmar-cruces-generados').on('click', function() {
+        if (crucesGenerados.length === 0) {
+            alert('No hay cruces para confirmar');
+            return;
+        }
+        
+        if (confirm('¿Estás seguro de confirmar estos cruces? Una vez confirmados, se crearán los partidos eliminatorios.')) {
+            var torneoId = '{{ $torneo->id }}';
+            var btn = $(this);
+            btn.prop('disabled', true).text('Guardando...');
+            
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '{{ route("confirmarcruces") }}',
+                data: {
+                    torneo_id: torneoId,
+                    cruces: JSON.stringify(crucesGenerados),
+                    _token: '{{csrf_token()}}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Redirigir a la pantalla de cruces puntuable
+                        window.location.href = '{{ route("admintorneopuntuablecruces") }}?torneo_id=' + torneoId;
+                    } else {
+                        alert('Error al confirmar los cruces: ' + (response.message || 'Error desconocido'));
+                        btn.prop('disabled', false).text('Confirmar Cruces');
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'Error al confirmar los cruces';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg += ': ' + xhr.responseJSON.message;
+                    }
+                    alert(errorMsg);
+                    btn.prop('disabled', false).text('Confirmar Cruces');
+                }
+            });
+        }
+    });
 });
 </script>
 @endif
