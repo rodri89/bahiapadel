@@ -370,11 +370,12 @@ class HomeController extends Controller
                     
                     // Sanitizar nombre del archivo
                     $originalName = $image->getClientOriginalName();
-                    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
-                    $name = time() . '_' . $safeName;
+                    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
+                    $extension = $image->getClientOriginalExtension();
+                    $name = time() . '_' . $safeName . '.' . $extension;
                     $path = 'images/jugadores/' . $name;
                     
-                    // Obtener rutas usando base_path para mayor compatibilidad
+                    // Obtener rutas usando public_path para asegurar la ubicación correcta
                     $directory = public_path('images/jugadores');
                     $imgPath = public_path($path);
                     
@@ -435,13 +436,23 @@ class HomeController extends Controller
                     
                     do {
                         try {
-                            $img->save($imgPath, $quality);
+                            // Asegurar que la ruta sea absoluta y correcta
+                            $rutaCompleta = public_path($path);
+                            \Log::info('Intentando guardar en: ' . $rutaCompleta);
+                            \Log::info('Directorio padre existe: ' . (file_exists(dirname($rutaCompleta)) ? 'SÍ' : 'NO'));
+                            \Log::info('Directorio padre es escribible: ' . (is_writable(dirname($rutaCompleta)) ? 'SÍ' : 'NO'));
                             
-                            if (!file_exists($imgPath)) {
-                                throw new \Exception('No se pudo guardar el archivo en: ' . $imgPath);
+                            // Guardar usando la ruta relativa desde public_path
+                            $img->save($rutaCompleta, $quality);
+                            
+                            // Verificar que el archivo se guardó
+                            if (!file_exists($rutaCompleta)) {
+                                \Log::error('ERROR: Archivo no existe después de save() en: ' . $rutaCompleta);
+                                throw new \Exception('No se pudo guardar el archivo en: ' . $rutaCompleta);
                             }
                             
-                            $fileSize = filesize($imgPath);
+                            \Log::info('Archivo guardado exitosamente en: ' . $rutaCompleta);
+                            $fileSize = filesize($rutaCompleta);
                             
                             // Si el archivo es menor a 5MB, salir del bucle
                             if ($fileSize <= $maxSize) {
@@ -462,6 +473,8 @@ class HomeController extends Controller
                                     $constraint->aspectRatio();
                                 });
                                 $quality = 75; // Resetear calidad después de redimensionar
+                                // Actualizar ruta completa después de redimensionar
+                                $rutaCompleta = public_path($path);
                             }
                             
                         } catch (\Exception $saveError) {
@@ -474,31 +487,68 @@ class HomeController extends Controller
                         
                     } while ($fileSize > $maxSize && $quality >= 40 && $attempt < $maxAttempts);
                     
-                    // Verificar que el archivo se guardó correctamente
-                    if (!file_exists($imgPath)) {
-                        \Log::error('ERROR: El archivo no existe después de guardar: ' . $imgPath);
-                        throw new \Exception('El archivo no se guardó correctamente en: ' . $imgPath);
+                    // Verificar que el archivo se guardó correctamente usando la ruta completa
+                    $rutaFinal = public_path($path);
+                    if (!file_exists($rutaFinal)) {
+                        \Log::error('ERROR: El archivo no existe después de guardar: ' . $rutaFinal);
+                        \Log::error('Ruta relativa: ' . $path);
+                        \Log::error('public_path(): ' . public_path());
+                        throw new \Exception('El archivo no se guardó correctamente en: ' . $rutaFinal);
                     }
                     
-                    \Log::info('Archivo guardado exitosamente en: ' . $imgPath);
-                    \Log::info('Tamaño del archivo: ' . filesize($imgPath) . ' bytes');
+                    \Log::info('Archivo guardado exitosamente en: ' . $rutaFinal);
+                    \Log::info('Tamaño del archivo: ' . filesize($rutaFinal) . ' bytes');
+                    
+                    // Asegurar que la ruta sea relativa y no contenga rutas absolutas
+                    $rutaFinalBD = $path;
+                    // Eliminar cualquier barra inicial
+                    $rutaFinalBD = ltrim($rutaFinalBD, '/');
+                    // Asegurar que no tenga rutas absolutas
+                    if (strpos($rutaFinalBD, public_path()) !== false) {
+                        // Si contiene la ruta absoluta, extraer solo la parte relativa
+                        $rutaFinalBD = str_replace(public_path() . '/', '', $rutaFinalBD);
+                        $rutaFinalBD = ltrim($rutaFinalBD, '/');
+                    }
+                    
+                    // Verificar que el archivo existe antes de guardar en BD
+                    $rutaVerificacionBD = public_path($rutaFinalBD);
+                    if (!file_exists($rutaVerificacionBD)) {
+                        \Log::error('ERROR: Archivo no existe antes de guardar en BD: ' . $rutaVerificacionBD);
+                        throw new \Exception('El archivo no existe antes de guardar en BD: ' . $rutaVerificacionBD);
+                    }
                     
                     // Verificar que el archivo es accesible vía HTTP
-                    $urlPublica = asset($path);
+                    $urlPublica = asset($rutaFinalBD);
                     \Log::info('URL pública generada: ' . $urlPublica);
                     \Log::info('APP_URL desde env: ' . env('APP_URL'));
                     
-                    $jugador->foto = $path;
-                    \Log::info('Ruta guardada en BD: ' . $jugador->foto);
+                    // Guardar la ruta relativa en BD
+                    $jugador->foto = $rutaFinalBD;
+                    \Log::info('Ruta guardada en BD (relativa): ' . $jugador->foto);
+                    \Log::info('Ruta completa verificada: ' . public_path($jugador->foto));
+                    \Log::info('Archivo existe en ruta BD: ' . (file_exists(public_path($jugador->foto)) ? 'SÍ' : 'NO'));
                     
                     // Verificar archivo después de guardar en BD
                     $filePathVerificacion = public_path($jugador->foto);
+                    \Log::info('Verificación post-BD - Ruta guardada en BD: ' . $jugador->foto);
                     \Log::info('Verificación post-BD - Ruta completa: ' . $filePathVerificacion);
                     \Log::info('Verificación post-BD - Existe: ' . (file_exists($filePathVerificacion) ? 'SÍ' : 'NO'));
                     
-                    // Listar archivos en el directorio para debugging
+                    // Listar archivos en el directorio para debugging (últimos 10 archivos ordenados por fecha)
                     $archivosEnDirectorio = scandir($directory);
-                    \Log::info('Archivos en directorio ' . $directory . ': ' . json_encode($archivosEnDirectorio));
+                    $archivosFiltrados = array_filter($archivosEnDirectorio, function($file) use ($directory) {
+                        return $file !== '.' && $file !== '..' && is_file($directory . '/' . $file);
+                    });
+                    // Ordenar por fecha de modificación (más recientes primero)
+                    usort($archivosFiltrados, function($a, $b) use ($directory) {
+                        return filemtime($directory . '/' . $b) - filemtime($directory . '/' . $a);
+                    });
+                    $ultimosArchivos = array_slice($archivosFiltrados, 0, 10);
+                    \Log::info('Últimos 10 archivos en directorio ' . $directory . ': ' . json_encode($ultimosArchivos));
+                    foreach ($ultimosArchivos as $archivo) {
+                        $rutaArchivo = $directory . '/' . $archivo;
+                        \Log::info('  - ' . $archivo . ' (modificado: ' . date('Y-m-d H:i:s', filemtime($rutaArchivo)) . ')');
+                    }
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
                     \Log::error('Stack: ' . $e->getTraceAsString());

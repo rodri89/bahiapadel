@@ -50,8 +50,8 @@
                                      data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
                                     <div class="player-pair-content">
                                         <div class="player-images">
-                                            <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_1->nombre ?? '' }}">
-                                            <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_2->nombre ?? '' }}">
+                                            <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador1_1->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                            <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador1_2->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                         </div>
                                         <div class="player-names">
                                             <div class="player-name">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</div>
@@ -78,8 +78,8 @@
                                      data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
                                     <div class="player-pair-content">
                                         <div class="player-images">
-                                            <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_1->nombre ?? '' }}">
-                                            <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_2->nombre ?? '' }}">
+                                            <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador2_1->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                            <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador2_2->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                         </div>
                                         <div class="player-names">
                                             <div class="player-name">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
@@ -157,8 +157,8 @@
                                      data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
                                     <div class="player-pair-content">
                                         <div class="player-images">
-                                            <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_1->nombre ?? '' }}">
-                                            <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador1_2->nombre ?? '' }}">
+                                            <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador1_1->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                            <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador1_2->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                         </div>
                                         <div class="player-names">
                                             <div class="player-name">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</div>
@@ -187,8 +187,8 @@
                                      data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
                                     <div class="player-pair-content">
                                         <div class="player-images">
-                                            <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_1->nombre ?? '' }}">
-                                            <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" alt="{{ $jugador2_2->nombre ?? '' }}">
+                                            <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador2_1->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                            <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador2_2->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                         </div>
                                         <div class="player-names">
                                             <div class="player-name">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
@@ -357,6 +357,20 @@
     let baseUrl = '{{ url("/") }}';
     let resultadosCuartos = {};
     let resultadosSemifinales = {};
+    
+    // Función helper para obtener URL de foto con timestamp para evitar caché
+    function getFotoUrlWithCache(foto) {
+        if (!foto || foto === '') {
+            return baseUrl + '/images/jugador_img.png?v=' + Date.now();
+        }
+        // Si ya es una URL completa, agregar timestamp
+        if (foto.startsWith('http://') || foto.startsWith('https://')) {
+            return foto + (foto.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now();
+        }
+        // Construir URL completa con timestamp
+        let ruta = foto.startsWith('/') ? foto.substring(1) : foto;
+        return baseUrl + '/' + ruta + (ruta.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now();
+    }
     let resultadoFinal = null;
     
     // Cargar resultados guardados al iniciar
@@ -595,14 +609,9 @@
             badgeHtml = `<span class="badge badge-info">${pareja.zona}${pareja.posicion}º</span>`;
         }
         
-        // Construir rutas de imágenes correctamente
-        let foto1 = jugador1 && jugador1.foto ? jugador1.foto : 'images/jugador_img.png';
-        let foto2 = jugador2 && jugador2.foto ? jugador2.foto : 'images/jugador_img.png';
-        
-        // Asegurar que la ruta no tenga doble barra
-        if (foto1.startsWith('/')) foto1 = foto1.substring(1);
-        if (foto2.startsWith('/')) foto2 = foto2.substring(1);
-        if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+        // Construir rutas de imágenes correctamente con timestamp para evitar caché
+        let foto1Url = getFotoUrlWithCache(jugador1 && jugador1.foto ? jugador1.foto : 'images/jugador_img.png');
+        let foto2Url = getFotoUrlWithCache(jugador2 && jugador2.foto ? jugador2.foto : 'images/jugador_img.png');
         
         return `
             <div class="player-pair${claseGanador}" 
@@ -611,8 +620,8 @@
                  data-jugador-2="${pareja ? pareja.jugador_2 : ''}">
                 <div class="player-pair-content">
                     <div class="player-images">
-                        <img src="${baseUrl}/${foto1}" alt="${jugador1 ? (jugador1.nombre || '') + ' ' + (jugador1.apellido || '') : ''}">
-                        <img src="${baseUrl}/${foto2}" alt="${jugador2 ? (jugador2.nombre || '') + ' ' + (jugador2.apellido || '') : ''}">
+                        <img src="${foto1Url}" alt="${jugador1 ? (jugador1.nombre || '') + ' ' + (jugador1.apellido || '') : ''}" onerror="this.src='${baseUrl}/images/jugador_img.png?v=' + Date.now()">
+                        <img src="${foto2Url}" alt="${jugador2 ? (jugador2.nombre || '') + ' ' + (jugador2.apellido || '') : ''}" onerror="this.src='${baseUrl}/images/jugador_img.png?v=' + Date.now()">
                     </div>
                     <div class="player-names">
                         <div class="player-name">${jugador1 ? ((jugador1.nombre || '') + ' ' + (jugador1.apellido || '')) : ''}</div>
@@ -1215,7 +1224,7 @@
         if (jugador1) {
             html += `
                 <div class="ganador-foto">
-                    <img src="${baseUrl}/${jugador1.foto || 'images/jugador_img.png'}" alt="${jugador1.nombre}">
+                    <img src="${getFotoUrlWithCache(jugador1.foto || 'images/jugador_img.png')}" alt="${jugador1.nombre}" onerror="this.src='${baseUrl}/images/jugador_img.png?v=' + Date.now()">
                     <div class="nombre">${jugador1.nombre} ${jugador1.apellido}</div>
                 </div>
             `;
@@ -1223,7 +1232,7 @@
         if (jugador2) {
             html += `
                 <div class="ganador-foto">
-                    <img src="${baseUrl}/${jugador2.foto || 'images/jugador_img.png'}" alt="${jugador2.nombre}">
+                    <img src="${getFotoUrlWithCache(jugador2.foto || 'images/jugador_img.png')}" alt="${jugador2.nombre}" onerror="this.src='${baseUrl}/images/jugador_img.png?v=' + Date.now()">
                     <div class="nombre">${jugador2.nombre} ${jugador2.apellido}</div>
                 </div>
             `;
