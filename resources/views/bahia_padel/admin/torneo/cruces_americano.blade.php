@@ -348,6 +348,7 @@
     });
     
     let cruces = @json($cruces ?? []);
+    let cuartosCompletos = @json($cuartosCompletos ?? false);
     let jugadores = @json($jugadores ?? []);
     let resultadosGuardados = @json($resultadosGuardados ?? []);
     let primerosClasificados = @json($primerosClasificados ?? []);
@@ -777,6 +778,14 @@
                             matchCard.find('.pareja-cruce[data-pareja="1"]').removeClass('winner');
                         }
                         
+                        // Verificar si todos los cuartos están completos antes de recargar
+                        verificarCuartosCompletos();
+                        
+                        // Si todos los cuartos están completos, actualizar semifinales antes de recargar
+                        if (cuartosCompletos) {
+                            actualizarSemifinales();
+                        }
+                        
                         // Recargar la página para mostrar las semifinales actualizadas correctamente
                         setTimeout(function() {
                             window.location.reload();
@@ -855,8 +864,40 @@
         });
     });
     
+    // Función para verificar en tiempo real si todos los cuartos tienen resultados
+    function verificarCuartosCompletos() {
+        // Obtener todos los inputs de resultados de cuartos
+        let todosCompletos = true;
+        let partidosCuartos = $('.resultado-cruce[data-ronda="cuartos"]').closest('.match-card');
+        
+        if (partidosCuartos.length === 0) {
+            cuartosCompletos = false;
+            return;
+        }
+        
+        partidosCuartos.each(function() {
+            let pareja1Input = $(this).find('.resultado-cruce[data-pareja="1"]');
+            let pareja2Input = $(this).find('.resultado-cruce[data-pareja="2"]');
+            
+            let valor1 = parseInt(pareja1Input.val()) || 0;
+            let valor2 = parseInt(pareja2Input.val()) || 0;
+            
+            // Si ambos valores son 0, el partido no está completo
+            if (valor1 === 0 && valor2 === 0) {
+                todosCompletos = false;
+                return false; // Salir del each
+            }
+        });
+        
+        // Actualizar la variable global
+        cuartosCompletos = todosCompletos;
+        
+        return todosCompletos;
+    }
+    
     function verificarAvance() {
-        // Actualizar semifinales cada vez que se guarda un resultado de cuartos
+        // Verificar si los cuartos están completos y actualizar semifinales
+        verificarCuartosCompletos();
         actualizarSemifinales();
         
         // Actualizar final cada vez que se guarda un resultado de semifinales
@@ -864,6 +905,16 @@
     }
     
     function actualizarSemifinales() {
+        // Verificar si los cuartos están completos antes de mostrar semifinales
+        // Primero verificar en tiempo real si todos los cuartos tienen resultados
+        verificarCuartosCompletos();
+        
+        if (!cuartosCompletos) {
+            // Mantener el contenedor visible pero mostrar mensaje
+            $('#semifinales-content').html('<p class="text-center text-muted p-3">Completa todos los partidos de cuartos para ver las semifinales</p>');
+            return;
+        }
+        
         // PRIMERO: Verificar si ya hay semifinales del backend con partido_id
         // Si las hay, agruparlas por partido_id y renderizarlas directamente
         let semifinalesBackend = cruces.filter(c => c.ronda === 'semifinales' && c.partido_id);
@@ -1221,13 +1272,19 @@
     
     // Inicializar al cargar la página
     $(document).ready(function() {
-        // Mostrar contenedores de semifinales y final si hay cruces existentes
+        // Siempre mostrar el contenedor de semifinales (el título debe estar visible)
+        $('#semifinales-container').show();
+        
+        // Verificar si los cuartos están completos en tiempo real
+        verificarCuartosCompletos();
+        
+        // Mostrar contenedores de semifinales y final solo si los cuartos están completos
         let crucesSemifinales = cruces.filter(c => c.ronda === 'semifinales');
         let crucesFinal = cruces.filter(c => c.ronda === 'final');
         
         // Renderizar cruces de semifinales que vienen de la base de datos
-        if (crucesSemifinales.length > 0) {
-            $('#semifinales-container').show();
+        // SOLO si los cuartos están completos
+        if (crucesSemifinales.length > 0 && cuartosCompletos) {
             let htmlSemifinales = '';
             crucesSemifinales.forEach(function(sf) {
                 if (sf.pareja_1 && sf.pareja_2) {
@@ -1282,7 +1339,16 @@
                         }
                     }
                 });
+            } else if (cuartosCompletos) {
+                // Si los cuartos están completos pero no hay semifinales del backend, generarlas
+                actualizarSemifinales();
             }
+        } else if (cuartosCompletos) {
+            // Si los cuartos están completos pero no hay semifinales del backend, generarlas
+            actualizarSemifinales();
+        } else {
+            // Si los cuartos no están completos, mostrar mensaje
+            $('#semifinales-content').html('<p class="text-center text-muted p-3">Completa todos los partidos de cuartos para ver las semifinales</p>');
         }
         
         // Renderizar cruces de final que vienen de la base de datos
