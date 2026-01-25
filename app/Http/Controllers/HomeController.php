@@ -5366,13 +5366,7 @@ class HomeController extends Controller
             // Agregar los cruces de cuartos generados a los cruces existentes
             // Ordenar cada ronda por partido_id para mantener orden consistente
             usort($crucesPorRonda['cuartos'], function($a, $b) {
-                return $a['partido_id'] <=> $b['partido_id'];
-            });
-            usort($crucesPorRonda['semifinales'], function($a, $b) {
-                return $a['partido_id'] <=> $b['partido_id'];
-            });
-            usort($crucesPorRonda['final'], function($a, $b) {
-                return $a['partido_id'] <=> $b['partido_id'];
+                return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
             
             $cruces = array_merge($crucesPorRonda['cuartos'], $crucesCuartos, $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
@@ -5380,16 +5374,62 @@ class HomeController extends Controller
             // Si ya hay cruces de cuartos en la base de datos, usar todos los cruces existentes
             // Ordenar cada ronda por partido_id para mantener orden consistente
             usort($crucesPorRonda['cuartos'], function($a, $b) {
-                return $a['partido_id'] <=> $b['partido_id'];
+                return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
             usort($crucesPorRonda['semifinales'], function($a, $b) {
-                return $a['partido_id'] <=> $b['partido_id'];
+                return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
             usort($crucesPorRonda['final'], function($a, $b) {
-                return $a['partido_id'] <=> $b['partido_id'];
+                return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
             
             $cruces = array_merge($crucesPorRonda['cuartos'], $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
+        }
+        
+        // Verificar si todos los cuartos tienen resultados antes de mostrar semifinales
+        // Buscar directamente en la base de datos todos los partidos de cuartos
+        $gruposCuartos = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where(function($query) {
+                $query->where('zona', 'cuartos final')
+                      ->orWhere('zona', 'like', 'cuartos final|%');
+            })
+            ->whereNotNull('partido_id')
+            ->select('partido_id')
+            ->distinct()
+            ->pluck('partido_id');
+        
+        $cuartosCompletos = true;
+        
+        if (count($gruposCuartos) > 0) {
+            // Obtener todos los partidos de cuartos
+            $partidosCuartos = DB::table('partidos')
+                ->whereIn('id', $gruposCuartos)
+                ->get();
+            
+            // Verificar que todos los partidos de cuartos tengan resultados (al menos un set > 0)
+            foreach ($partidosCuartos as $partido) {
+                $set1Pareja1 = $partido->pareja_1_set_1 ?? 0;
+                $set1Pareja2 = $partido->pareja_2_set_1 ?? 0;
+                
+                // Si ambos sets son 0, el partido no tiene resultado
+                if ($set1Pareja1 == 0 && $set1Pareja2 == 0) {
+                    $cuartosCompletos = false;
+                    break;
+                }
+            }
+        } else {
+            // Si no hay partidos de cuartos en la BD, no están completos
+            $cuartosCompletos = false;
+        }
+        
+        // Si los cuartos no están completos, filtrar semifinales y final de los cruces
+        if (!$cuartosCompletos) {
+            $cruces = array_filter($cruces, function($cruce) {
+                return isset($cruce['ronda']) && $cruce['ronda'] === 'cuartos';
+            });
+            // Reindexar el array
+            $cruces = array_values($cruces);
         }
         
         // Separar primeros para pasarlos a la vista (necesario para el caso de 6 clasificados)
@@ -5408,7 +5448,8 @@ class HomeController extends Controller
                     ->with('posicionesPorZona', $posicionesPorZona)
                     ->with('resultadosGuardados', $resultadosGuardados)
                     ->with('primerosClasificados', $primerosClasificados)
-                    ->with('totalClasificados', count($clasificados));
+                    ->with('totalClasificados', count($clasificados))
+                    ->with('cuartosCompletos', $cuartosCompletos);
     }
 
     public function guardarResultadoCruceAmericano(Request $request) {
