@@ -589,7 +589,7 @@
     // Botón cruces
     $('#btn-cruces').on('click', function() {
         let torneoId = $('#torneo_id').val();
-        window.location.href = '{{ route("admintorneoamericanocruces") }}?torneo_id=' + torneoId;
+        window.location.href = '{{ route("admintorneovalidarcruces") }}?torneo_id=' + torneoId;
     });
     
     // Inicializar

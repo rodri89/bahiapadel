@@ -40,34 +40,34 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .tv-header { 
-            font-size: clamp(1.5rem, 3vw, 2.5rem); 
+            font-size: 4vh; 
             margin: 0.5vh 0 1vh 0; 
             text-align: center; 
             color: #fff; 
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0.1em;
             font-weight: 800;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0.2vh 0.2vh 0.4vh rgba(0,0,0,0.5);
             flex-shrink: 0;
         }
         
         .tv-card { 
             background-color: #252525; 
-            border: 1px solid #3d3d3d; 
-            border-radius: 15px; 
+            border: 0.1vh solid #3d3d3d; 
+            border-radius: 1.5vh; 
             height: 0;
             flex: 1;
             min-height: 0;
             overflow: hidden; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 1vh 2vh rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
         }
 
         .tv-card-header {
             background-color: #1f1f1f;
-            padding: 1vh 1vw;
-            border-bottom: 2px solid #3d3d3d;
+            padding: 1.5vh 1vw;
+            border-bottom: 0.2vh solid #3d3d3d;
             text-align: center;
             flex-shrink: 0;
         }
@@ -76,33 +76,15 @@
             margin: 0;
             color: #4e73df;
             font-weight: 700;
-            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            font-size: 3vh;
         }
 
         .tv-card-body {
             flex: 1;
             min-height: 0;
-            overflow: auto;
+            overflow: hidden;
             padding: 0;
             display: block;
-        }
-        
-        .tv-card-body::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        .tv-card-body::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-        
-        .tv-card-body::-webkit-scrollbar-thumb {
-            background: #4e73df;
-            border-radius: 4px;
-        }
-        
-        .tv-card-body::-webkit-scrollbar-thumb:hover {
-            background: #375a7f;
         }
         
         .tv-table { 
@@ -115,7 +97,7 @@
             background-color: #2d2d2d; 
             color: #aaa; 
             text-transform: uppercase;
-            font-size: clamp(0.8rem, 1.2vw, 1.1rem);
+            font-size: 1.8vh;
             padding: 1vh 1vw;
             position: sticky;
             top: 0;
@@ -123,9 +105,10 @@
         }
         
         .tv-table td { 
-            padding: clamp(0.8vh, 1.2vh, 1.5vh) clamp(0.8vw, 1.2vw, 1.5vw); 
-            border-bottom: 1px solid #333;
+            padding: 1.2vh 1.2vw; 
+            border-bottom: 0.1vh solid #333;
             vertical-align: middle;
+            font-size: 2vh;
         }
         
         .tv-table tr:nth-child(even) {
@@ -133,18 +116,18 @@
         }
         
         .player-img { 
-            width: clamp(40px, 4vw, 60px); 
-            height: clamp(40px, 4vw, 60px); 
+            width: 5vh; 
+            height: 5vh; 
             border-radius: 50%; 
             object-fit: cover; 
-            border: 2px solid #555; 
+            border: 0.2vh solid #555; 
             margin-right: 0.8vw; 
             flex-shrink: 0;
         }
         
         .player-img-overlap {
-            margin-left: -20px;
-            border: 3px solid #252525;
+            margin-left: -2.5vh;
+            border: 0.3vh solid #252525;
             position: relative;
             z-index: 1;
         }
@@ -212,9 +195,32 @@
             z-index: 9999;
             transition: width 1s linear;
         }
+        
+        .btn-navegar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2d2d2d;
+            color: #fff;
+            border: 1px solid #3d3d3d;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .btn-navegar:hover {
+            background-color: #353535;
+            color: #fff;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
+    <a href="{{ route('tvtorneoamericanocruces') }}?torneo_id={{ $torneo->id ?? 0 }}" class="btn-navegar">></a>
     <div class="progress-bar-top" id="progress-bar"></div>
 
     <div id="app-container">
@@ -517,9 +523,9 @@
                                 '</div>' +
                             '</div>' +
                         '</td>' +
-                                                        '<td class="text-center"><span style="font-size:clamp(1.2rem, 2vw, 1.5rem); font-weight:bold;">' + (pos.partidos_ganados || 0) + '</span></td>' +
+                                                        '<td class="text-center"><span style="font-size:2.5vh; font-weight:bold;">' + (pos.partidos_ganados || 0) + '</span></td>' +
                         '<td class="text-center">' +
-                            '<span style="font-size:clamp(1.2rem, 2vw, 1.5rem); font-weight:bold; ' + diferenciaClass + '">' + diferenciaTexto + '</span>' +
+                            '<span style="font-size:2.5vh; font-weight:bold; ' + diferenciaClass + '">' + diferenciaTexto + '</span>' +
                         '</td>' +
                     '</tr>';
                     
