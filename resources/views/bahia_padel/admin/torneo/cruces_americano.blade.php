@@ -29,8 +29,121 @@
         </div>
         
         <div class="row">
+            <!-- Octavos de Final -->
+            @php
+                $tieneOctavos = $tieneOctavos ?? false;
+                $octavosAgrupados = [];
+                \Log::info('Total cruces recibidos en vista: ' . count($cruces));
+                foreach($cruces as $index => $cruce) {
+                    \Log::info('Cruce ' . $index . ': ronda=' . ($cruce['ronda'] ?? 'NO DEFINIDA') . ', partido_id=' . ($cruce['partido_id'] ?? 'NO DEFINIDO'));
+                    if(isset($cruce['ronda']) && $cruce['ronda'] == 'octavos') {
+                        $tieneOctavos = true;
+                        $partidoId = $cruce['partido_id'] ?? null;
+                        if($partidoId) {
+                            if(!isset($octavosAgrupados[$partidoId])) {
+                                $octavosAgrupados[$partidoId] = $cruce;
+                            }
+                        } else {
+                            $octavosAgrupados['sin_partido_' . $index] = $cruce;
+                        }
+                    }
+                }
+                \Log::info('Octavos agrupados: ' . count($octavosAgrupados) . ', tieneOctavos=' . ($tieneOctavos ? 'true' : 'false'));
+            @endphp
+            @if($tieneOctavos)
+            <div class="col-md-3" id="octavos-container">
+                <div class="bracket-round">
+                    <div class="bracket-round-title">OCTAVOS DE FINAL</div>
+                    <div id="octavos-content">
+                        @foreach($octavosAgrupados as $partidoId => $cruce)
+                            @php
+                                $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
+                                $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
+                                $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
+                                $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
+                            @endphp
+                            <div class="match-card" data-cruce-id="{{ $cruce['id'] }}" data-ronda="octavos" data-partido-id="{{ $partidoId }}">
+                                <!-- Pareja 1 -->
+                                <div class="player-pair pareja-cruce" 
+                                     data-pareja="1"
+                                     data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
+                                     data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
+                                    <div class="player-pair-content">
+                                        <div class="player-images">
+                                            <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador1_1->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                            <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador1_2->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                        </div>
+                                        <div class="player-names">
+                                            <div class="player-name">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</div>
+                                            <div class="player-name">{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}</div>
+                                        </div>
+                                        @if(isset($cruce['pareja_1']['zona']) && isset($cruce['pareja_1']['posicion']))
+                                            <span class="badge badge-info">{{ $cruce['pareja_1']['zona'] }}{{ $cruce['pareja_1']['posicion'] }}º</span>
+                                        @endif
+                                    </div>
+                                    <div class="player-pair-input">
+                                        <input type="number" 
+                                               class="form-control resultado-cruce" 
+                                               data-cruce-id="{{ $cruce['id'] }}"
+                                               data-pareja="1"
+                                               data-ronda="octavos"
+                                               min="0"
+                                               max="99"
+                                               placeholder="0">
+                                    </div>
+                                </div>
+                                
+                                <!-- Pareja 2 -->
+                                <div class="player-pair pareja-cruce" 
+                                     data-pareja="2"
+                                     data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
+                                     data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
+                                    <div class="player-pair-content">
+                                        <div class="player-images">
+                                            <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador2_1->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                            <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}?v={{ time() }}" alt="{{ $jugador2_2->nombre ?? '' }}" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                        </div>
+                                        <div class="player-names">
+                                            <div class="player-name">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
+                                            <div class="player-name">{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}</div>
+                                        </div>
+                                        @if(isset($cruce['pareja_2']['zona']) && isset($cruce['pareja_2']['posicion']))
+                                            <span class="badge badge-info">{{ $cruce['pareja_2']['zona'] }}{{ $cruce['pareja_2']['posicion'] }}º</span>
+                                        @endif
+                                    </div>
+                                    <div class="player-pair-input">
+                                        <input type="number" 
+                                               class="form-control resultado-cruce" 
+                                               data-cruce-id="{{ $cruce['id'] }}"
+                                               data-pareja="2"
+                                               data-ronda="octavos"
+                                               min="0"
+                                               max="99"
+                                               placeholder="0">
+                                    </div>
+                                </div>
+                                
+                                <!-- Botón guardar -->
+                                <div class="text-center mt-2">
+                                    <button type="button" 
+                                            class="btn btn-primary btn-sm guardar-cruce" 
+                                            data-cruce-id="{{ $cruce['id'] }}"
+                                            data-ronda="octavos">
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                        @if(count($octavosAgrupados) == 0)
+                            <p class="text-center text-muted p-3">No hay cruces de octavos de final</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endif
+            
             <!-- Cuartos de Final -->
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="bracket-round">
                     <div class="bracket-round-title">CUARTOS DE FINAL</div>
                     @foreach($cruces as $index => $cruce)
@@ -120,7 +233,7 @@
             </div>
             
             <!-- Semifinales -->
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="bracket-round" id="semifinales-container">
                     <div class="bracket-round-title">SEMIFINALES</div>
                     <div id="semifinales-content">
@@ -226,7 +339,7 @@
             </div>
             
             <!-- Final -->
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="bracket-round" id="final-container">
                     <div class="bracket-round-title">FINAL</div>
                     <div id="final-content">
@@ -355,6 +468,7 @@
     let totalClasificados = {{ $totalClasificados ?? 0 }};
     let torneoId = $('#torneo_id').val();
     let baseUrl = '{{ url("/") }}';
+    let resultadosOctavos = {};
     let resultadosCuartos = {};
     let resultadosSemifinales = {};
     
@@ -482,7 +596,26 @@
                         });
                         
                         // Guardar resultado localmente y aplicar estilo de ganador
-                        if (resultado.ronda === 'semifinales') {
+                        if (resultado.ronda === 'octavos') {
+                            resultadosOctavos[cruceId] = {
+                                ganador: resultado.pareja_1_set_1 > resultado.pareja_2_set_1 ? cruce.pareja_1 : cruce.pareja_2,
+                                perdedor: resultado.pareja_1_set_1 > resultado.pareja_2_set_1 ? cruce.pareja_2 : cruce.pareja_1,
+                                score1: resultado.pareja_1_set_1,
+                                score2: resultado.pareja_2_set_1
+                            };
+                            
+                            // Aplicar estilo de ganador
+                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"][data-ronda="octavos"]`);
+                            if (matchCard.length > 0) {
+                                matchCard.addClass('winner');
+                                matchCard.find('.player-pair').removeClass('winner');
+                                if (resultado.pareja_1_set_1 > resultado.pareja_2_set_1) {
+                                    matchCard.find('.player-pair[data-pareja="1"]').addClass('winner');
+                                } else {
+                                    matchCard.find('.player-pair[data-pareja="2"]').addClass('winner');
+                                }
+                            }
+                        } else if (resultado.ronda === 'semifinales') {
                             let ganador = resultado.pareja_1_set_1 > resultado.pareja_2_set_1 ? cruce.pareja_1 : cruce.pareja_2;
                             resultadosSemifinales[cruceId] = {
                                 ganador: ganador,
@@ -787,18 +920,53 @@
                             matchCard.find('.pareja-cruce[data-pareja="1"]').removeClass('winner');
                         }
                         
-                        // Verificar si todos los cuartos están completos antes de recargar
-                        verificarCuartosCompletos();
-                        
-                        // Si todos los cuartos están completos, actualizar semifinales antes de recargar
-                        if (cuartosCompletos) {
-                            actualizarSemifinales();
+                        // Si es octavos, verificar octavos primero
+                        if (ronda === 'octavos') {
+                            // Guardar resultado localmente para octavos
+                            resultadosOctavos[cruceId] = {
+                                ganador: pareja1Puntos > pareja2Puntos ? pareja1Obj : pareja2Obj,
+                                perdedor: pareja1Puntos > pareja2Puntos ? pareja2Obj : pareja1Obj,
+                                score1: pareja1Puntos,
+                                score2: pareja2Puntos
+                            };
+                            
+                            // Actualizar visualización
+                            let matchCard = $(`.match-card[data-cruce-id="${cruceId}"]`);
+                            matchCard.addClass('winner');
+                            
+                            if (pareja1Puntos > pareja2Puntos) {
+                                matchCard.find('.pareja-cruce[data-pareja="1"]').addClass('winner');
+                                matchCard.find('.pareja-cruce[data-pareja="2"]').removeClass('winner');
+                            } else {
+                                matchCard.find('.pareja-cruce[data-pareja="2"]').addClass('winner');
+                                matchCard.find('.pareja-cruce[data-pareja="1"]').removeClass('winner');
+                            }
+                            
+                            // Verificar si los octavos están completos
+                            verificarOctavosCompletos();
+                            
+                            // Si los octavos están completos, generar cuartos automáticamente
+                            if (octavosCompletos) {
+                                generarCuartosDesdeOctavos();
+                                return; // La función generarCuartosDesdeOctavos recargará la página
+                            } else {
+                                // Si no están completos, solo mostrar mensaje de éxito
+                                mostrarSnackbar('Resultado guardado correctamente');
+                            }
+                        } else {
+                            // Verificar si todos los cuartos están completos antes de recargar
+                            verificarCuartosCompletos();
+                            
+                            // Si todos los cuartos están completos, actualizar semifinales antes de recargar
+                            if (cuartosCompletos) {
+                                actualizarSemifinales();
+                            }
+                            
+                            // Recargar la página para mostrar las actualizaciones
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 500);
                         }
-                        
-                        // Recargar la página para mostrar las semifinales actualizadas correctamente
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 500);
                     } else if (ronda === 'semifinales') {
                         resultadosSemifinales[cruceId] = {
                             ganador: pareja1Puntos > pareja2Puntos ? pareja1Obj : pareja2Obj,
@@ -874,6 +1042,87 @@
     });
     
     // Función para verificar en tiempo real si todos los cuartos tienen resultados
+    let octavosCompletos = false;
+    
+    function verificarOctavosCompletos() {
+        let crucesOctavos = cruces.filter(c => c.ronda === 'octavos');
+        if (crucesOctavos.length === 0) {
+            octavosCompletos = false;
+            return false;
+        }
+        
+        let todosCompletos = true;
+        crucesOctavos.forEach(function(cruce) {
+            let pareja1Input = $(`.resultado-cruce[data-cruce-id="${cruce.id}"][data-pareja="1"][data-ronda="octavos"]`);
+            let pareja2Input = $(`.resultado-cruce[data-cruce-id="${cruce.id}"][data-pareja="2"][data-ronda="octavos"]`);
+            
+            let valor1 = pareja1Input.val();
+            let valor2 = pareja2Input.val();
+            
+            if (!valor1 || valor1 === '' || !valor2 || valor2 === '' || valor1 === valor2) {
+                todosCompletos = false;
+                return false; // Salir del each
+            }
+        });
+        
+        octavosCompletos = todosCompletos;
+        
+        // Si los octavos están completos, generar cuartos automáticamente
+        if (octavosCompletos) {
+            generarCuartosDesdeOctavos();
+        }
+        
+        return todosCompletos;
+    }
+    
+    function generarCuartosDesdeOctavos() {
+        // Obtener ganadores de octavos
+        let ganadoresOctavos = [];
+        let crucesOctavos = cruces.filter(c => c.ronda === 'octavos');
+        
+        crucesOctavos.forEach(function(cruce) {
+            let pareja1Input = $(`.resultado-cruce[data-cruce-id="${cruce.id}"][data-pareja="1"][data-ronda="octavos"]`);
+            let pareja2Input = $(`.resultado-cruce[data-cruce-id="${cruce.id}"][data-pareja="2"][data-ronda="octavos"]`);
+            
+            let valor1 = parseInt(pareja1Input.val()) || 0;
+            let valor2 = parseInt(pareja2Input.val()) || 0;
+            
+            if (valor1 > valor2) {
+                ganadoresOctavos.push(cruce.pareja_1);
+            } else if (valor2 > valor1) {
+                ganadoresOctavos.push(cruce.pareja_2);
+            }
+        });
+        
+        // Si tenemos 8 ganadores, crear 4 cruces de cuartos
+        if (ganadoresOctavos.length === 8) {
+            // Crear cruces de cuartos: 1vs2, 3vs4, 5vs6, 7vs8
+            let crucesCuartos = [
+                { pareja_1: ganadoresOctavos[0], pareja_2: ganadoresOctavos[1] },
+                { pareja_1: ganadoresOctavos[2], pareja_2: ganadoresOctavos[3] },
+                { pareja_1: ganadoresOctavos[4], pareja_2: ganadoresOctavos[5] },
+                { pareja_1: ganadoresOctavos[6], pareja_2: ganadoresOctavos[7] }
+            ];
+            
+            // Enviar al servidor para crear los partidos de cuartos
+            $.ajax({
+                url: '{{ route("crearcuartosdesdeoctavos") }}',
+                method: 'POST',
+                data: {
+                    torneo_id: $('#torneo_id').val(),
+                    cruces: JSON.stringify(crucesCuartos),
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Recargar la página para mostrar los nuevos cruces de cuartos
+                        location.reload();
+                    }
+                }
+            });
+        }
+    }
+    
     function verificarCuartosCompletos() {
         // Obtener todos los inputs de resultados de cuartos
         let todosCompletos = true;
@@ -1281,11 +1530,24 @@
     
     // Inicializar al cargar la página
     $(document).ready(function() {
+        // Verificar si hay cruces de octavos y mostrar la columna
+        let crucesOctavos = cruces.filter(c => c.ronda === 'octavos');
+        console.log('Cruces totales:', cruces.length);
+        console.log('Cruces de octavos encontrados:', crucesOctavos.length);
+        console.log('Cruces con ronda:', cruces.map(c => ({id: c.id, ronda: c.ronda})));
+        if (crucesOctavos.length > 0 || {{ ($tieneOctavos ?? false) ? 'true' : 'false' }}) {
+            $('#octavos-container').show();
+        }
+        
         // Siempre mostrar el contenedor de semifinales (el título debe estar visible)
         $('#semifinales-container').show();
         
-        // Verificar si los cuartos están completos en tiempo real
-        verificarCuartosCompletos();
+        // Verificar si los octavos están completos (si existen) o los cuartos
+        if (crucesOctavos.length > 0) {
+            verificarOctavosCompletos();
+        } else {
+            verificarCuartosCompletos();
+        }
         
         // Mostrar contenedores de semifinales y final solo si los cuartos están completos
         let crucesSemifinales = cruces.filter(c => c.ronda === 'semifinales');

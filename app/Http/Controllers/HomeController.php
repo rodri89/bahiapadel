@@ -2540,51 +2540,313 @@ class HomeController extends Controller
                     'fecha' => $grupo->fecha,
                     'horario' => $grupo->horario,
                     'resultados' => $grupo,
-                    'tipo' => $esGanador ? 'ganador' : ($esPerdedor ? 'perdedor' : 'normal')
+                    'tipo' => $esGanador ? 'ganador' : ($esPerdedor ? 'perdedor' : 'normal'),
+                    'grupos' => [] // Almacenar todos los grupos para este partido
                 ];
             }
             
-            // Asignar parejas (cada partido tiene 2 grupos con las dos parejas)
-            // Incluir todos los grupos, incluso los que tienen jugador_1 = 0 y jugador_2 = 0 (partidos de Ganador/Perdedor)
-            if (!$partidosPorZona[$zonaBase][$partidoId]['pareja_1']) {
-                $partidosPorZona[$zonaBase][$partidoId]['pareja_1'] = [
-                    'jugador_1' => $grupo->jugador_1,
-                    'jugador_2' => $grupo->jugador_2
-                ];
-            } else if (!$partidosPorZona[$zonaBase][$partidoId]['pareja_2']) {
-                $partidosPorZona[$zonaBase][$partidoId]['pareja_2'] = [
-                    'jugador_1' => $grupo->jugador_1,
-                    'jugador_2' => $grupo->jugador_2
-                ];
+            // Agregar este grupo a la lista de grupos del partido
+            $partidosPorZona[$zonaBase][$partidoId]['grupos'][] = [
+                'jugador_1' => $grupo->jugador_1,
+                'jugador_2' => $grupo->jugador_2,
+                'fecha' => $grupo->fecha,
+                'horario' => $grupo->horario
+            ];
+        }
+        
+        // Procesar grupos para cada partido y asignar parejas correctamente
+        // Esto asegura que cuando hay múltiples grupos para el mismo partido, se prioricen los que tienen jugadores asignados
+        foreach ($partidosPorZona as $zona => &$partidos) {
+            foreach ($partidos as $partidoId => $partidoDataOriginal) {
+                // Crear una copia del partido para procesar sin afectar el original hasta el final
+                $partidoData = $partidoDataOriginal;
+                if (isset($partidoData['grupos']) && count($partidoData['grupos']) > 0) {
+                    // Log para debugging
+                    \Log::info("Procesando partido {$partidoId} en zona {$zona}. Total grupos: " . count($partidoData['grupos']));
+                    
+                    // Separar grupos con jugadores asignados de los que tienen jugadores = 0
+                    $gruposConJugadores = [];
+                    $gruposSinJugadores = [];
+                    
+                    foreach ($partidoData['grupos'] as $grupo) {
+                        $tieneJugadores = ($grupo['jugador_1'] != 0 && $grupo['jugador_1'] !== null) && 
+                                         ($grupo['jugador_2'] != 0 && $grupo['jugador_2'] !== null);
+                        if ($tieneJugadores) {
+                            $gruposConJugadores[] = $grupo;
+                            \Log::info("  Grupo con jugadores: J1={$grupo['jugador_1']}, J2={$grupo['jugador_2']}");
+                        } else {
+                            $gruposSinJugadores[] = $grupo;
+                        }
+                    }
+                    
+                    \Log::info("  Grupos con jugadores: " . count($gruposConJugadores) . ", Grupos sin jugadores: " . count($gruposSinJugadores));
+                    
+                    // Eliminar grupos duplicados (misma pareja) - importante para zonas de 3 parejas
+                    // Cada partido debe tener exactamente 2 grupos únicos (una por cada pareja)
+                    $parejasUnicas = [];
+                    $gruposUnicos = [];
+                    
+                    foreach ($gruposConJugadores as $grupo) {
+                        // Crear una clave única para la pareja (ordenar jugadores para evitar duplicados)
+                        $jugadorMin = min($grupo['jugador_1'], $grupo['jugador_2']);
+                        $jugadorMax = max($grupo['jugador_1'], $grupo['jugador_2']);
+                        $keyPareja = $jugadorMin . '_' . $jugadorMax;
+                        
+                        if (!isset($parejasUnicas[$keyPareja])) {
+                            $parejasUnicas[$keyPareja] = $grupo;
+                            $gruposUnicos[] = $grupo;
+                        }
+                    }
+                    
+                    // Si no hay grupos con jugadores únicos, usar los grupos sin jugadores (pero también eliminar duplicados)
+                    if (empty($gruposUnicos)) {
+                        $parejasUnicasSinJugadores = [];
+                        foreach ($gruposSinJugadores as $grupo) {
+                            $jugadorMin = min($grupo['jugador_1'], $grupo['jugador_2']);
+                            $jugadorMax = max($grupo['jugador_1'], $grupo['jugador_2']);
+                            $keyPareja = $jugadorMin . '_' . $jugadorMax;
+                            
+                            if (!isset($parejasUnicasSinJugadores[$keyPareja])) {
+                                $parejasUnicasSinJugadores[$keyPareja] = true;
+                                $gruposUnicos[] = $grupo;
+                            }
+                        }
+                    }
+                    
+                    // Asignar parejas: usar solo grupos únicos
+                    // Cada partido debe tener exactamente 2 parejas diferentes
+                    // Limpiar parejas anteriores
+                    $partidoData['pareja_1'] = null;
+                    $partidoData['pareja_2'] = null;
+                    
+                    // Verificar que tenemos exactamente 2 parejas únicas
+                    // Cada partido debe tener 2 grupos diferentes (una por cada pareja)
+                    // IMPORTANTE: Crear copias explícitas de los valores para evitar referencias compartidas
+                    if (count($gruposUnicos) >= 1) {
+                        $jugador1Pareja1 = (int)$gruposUnicos[0]['jugador_1'];
+                        $jugador2Pareja1 = (int)$gruposUnicos[0]['jugador_2'];
+                        $partidoData['pareja_1'] = [
+                            'jugador_1' => $jugador1Pareja1,
+                            'jugador_2' => $jugador2Pareja1
+                        ];
+                        // Actualizar fecha y horario del primer grupo con jugadores
+                        if (!empty($gruposConJugadores)) {
+                            $partidoData['fecha'] = $gruposUnicos[0]['fecha'];
+                            $partidoData['horario'] = $gruposUnicos[0]['horario'];
+                        }
+                    }
+                    
+                    // Buscar la segunda pareja que sea diferente de la primera
+                    $pareja1Key = null;
+                    if (count($gruposUnicos) >= 1) {
+                        $pareja1Key = min($gruposUnicos[0]['jugador_1'], $gruposUnicos[0]['jugador_2']) . '_' . 
+                                     max($gruposUnicos[0]['jugador_1'], $gruposUnicos[0]['jugador_2']);
+                    }
+                    
+                    // Buscar la segunda pareja única diferente
+                    for ($i = 1; $i < count($gruposUnicos); $i++) {
+                        $parejaActualKey = min($gruposUnicos[$i]['jugador_1'], $gruposUnicos[$i]['jugador_2']) . '_' . 
+                                          max($gruposUnicos[$i]['jugador_1'], $gruposUnicos[$i]['jugador_2']);
+                        
+                        // Si encontramos una pareja diferente, asignarla como pareja_2
+                        // IMPORTANTE: Crear copias explícitas de los valores
+                        if ($pareja1Key && $pareja1Key != $parejaActualKey) {
+                            $jugador1Pareja2 = (int)$gruposUnicos[$i]['jugador_1'];
+                            $jugador2Pareja2 = (int)$gruposUnicos[$i]['jugador_2'];
+                            $partidoData['pareja_2'] = [
+                                'jugador_1' => $jugador1Pareja2,
+                                'jugador_2' => $jugador2Pareja2
+                            ];
+                            break; // Solo necesitamos 2 parejas diferentes
+                        }
+                    }
+                    
+                    // Log detallado para debugging
+                    \Log::info("  Grupos únicos encontrados: " . count($gruposUnicos));
+                    foreach ($gruposUnicos as $idx => $grupo) {
+                        \Log::info("    Grupo único {$idx}: J1={$grupo['jugador_1']}, J2={$grupo['jugador_2']}");
+                    }
+                    
+                    if ($partidoData['pareja_1']) {
+                        \Log::info("  Pareja 1 asignada: J1={$partidoData['pareja_1']['jugador_1']}, J2={$partidoData['pareja_1']['jugador_2']}");
+                    }
+                    if ($partidoData['pareja_2']) {
+                        \Log::info("  Pareja 2 asignada: J1={$partidoData['pareja_2']['jugador_1']}, J2={$partidoData['pareja_2']['jugador_2']}");
+                    }
+                    
+                    // Log para debugging si un partido no tiene 2 parejas diferentes
+                    if (!$partidoData['pareja_2'] && count($gruposUnicos) > 0) {
+                        \Log::warning("Partido {$partidoId} en zona {$zona} no tiene 2 parejas diferentes. Grupos únicos: " . count($gruposUnicos));
+                        foreach ($gruposUnicos as $idx => $grupo) {
+                            \Log::warning("  Grupo único {$idx}: J1={$grupo['jugador_1']}, J2={$grupo['jugador_2']}");
+                        }
+                    }
+                    
+                    // Limpiar el array de grupos después de procesarlo
+                    unset($partidoData['grupos']);
+                    
+                    // IMPORTANTE: Asignar los valores procesados de vuelta al array original
+                    // Hacer copia profunda para evitar referencias compartidas
+                    $partidos[$partidoId]['pareja_1'] = $partidoData['pareja_1'] ? [
+                        'jugador_1' => (int)$partidoData['pareja_1']['jugador_1'],
+                        'jugador_2' => (int)$partidoData['pareja_1']['jugador_2']
+                    ] : null;
+                    $partidos[$partidoId]['pareja_2'] = $partidoData['pareja_2'] ? [
+                        'jugador_1' => (int)$partidoData['pareja_2']['jugador_1'],
+                        'jugador_2' => (int)$partidoData['pareja_2']['jugador_2']
+                    ] : null;
+                    $partidos[$partidoId]['fecha'] = $partidoData['fecha'];
+                    $partidos[$partidoId]['horario'] = $partidoData['horario'];
+                    if (isset($partidos[$partidoId]['grupos'])) {
+                        unset($partidos[$partidoId]['grupos']);
+                    }
+                    
+                    // Log inmediatamente después de procesar para verificar valores
+                    if ($zona == 'C' && $partidoId == 2077) {
+                        $pareja1Info = $partidos[$partidoId]['pareja_1'] ? "J1={$partidos[$partidoId]['pareja_1']['jugador_1']}, J2={$partidos[$partidoId]['pareja_1']['jugador_2']}" : "Sin pareja 1";
+                        $pareja2Info = $partidos[$partidoId]['pareja_2'] ? "J1={$partidos[$partidoId]['pareja_2']['jugador_1']}, J2={$partidos[$partidoId]['pareja_2']['jugador_2']}" : "Sin pareja 2";
+                        \Log::info("  INMEDIATAMENTE DESPUÉS DE PROCESAR partido 2077: Pareja 1: {$pareja1Info}, Pareja 2: {$pareja2Info}");
+                    }
+                }
+            }
+            
+            // Log después de procesar todos los partidos de la zona pero antes de separarlos
+            if ($zona == 'C') {
+                \Log::info("=== DESPUÉS DE PROCESAR TODOS LOS PARTIDOS DE ZONA C (antes de separar) ===");
+                foreach ($partidos as $partidoId => $partidoData) {
+                    $pareja1Info = $partidoData['pareja_1'] ? "J1={$partidoData['pareja_1']['jugador_1']}, J2={$partidoData['pareja_1']['jugador_2']}" : "Sin pareja 1";
+                    $pareja2Info = $partidoData['pareja_2'] ? "J1={$partidoData['pareja_2']['jugador_1']}, J2={$partidoData['pareja_2']['jugador_2']}" : "Sin pareja 2";
+                    \Log::info("  Partido ID {$partidoId}: Pareja 1: {$pareja1Info}, Pareja 2: {$pareja2Info}");
+                }
             }
         }
+        unset($partidos); // Liberar referencia
+        
+        // NO eliminar partidos completos - cada partido_id es único y debe mostrarse
+        // La eliminación de duplicados ya se hizo a nivel de grupos dentro de cada partido
+        // Si hay múltiples partido_id con el mismo par de parejas, eso es un problema de la BD
+        // pero no debemos ocultar partidos válidos aquí
         
         // Ordenar los partidos por zona: primero los normales, luego ganador, luego perdedor
         // Mantener las claves originales (partido_id) para que el frontend pueda identificarlos
         foreach ($partidosPorZona as $zona => &$partidos) {
-            // Separar partidos normales, ganador y perdedor
+            // IMPORTANTE: Primero procesar y asignar parejas a todos los partidos
+            // Luego separar en normales, ganador y perdedor haciendo copias profundas
+            
+            // Separar partidos normales, ganador y perdedor DESPUÉS de procesar
+            // Hacer copias profundas para evitar problemas de referencias
             $partidosNormales = [];
             $partidoGanador = null;
             $partidoPerdedor = null;
             
             foreach ($partidos as $partidoId => $partidoData) {
+                // Hacer copia profunda del partido para evitar referencias
+                $partidoCopia = [
+                    'partido_id' => $partidoData['partido_id'],
+                    'pareja_1' => $partidoData['pareja_1'] ? [
+                        'jugador_1' => $partidoData['pareja_1']['jugador_1'],
+                        'jugador_2' => $partidoData['pareja_1']['jugador_2']
+                    ] : null,
+                    'pareja_2' => $partidoData['pareja_2'] ? [
+                        'jugador_1' => $partidoData['pareja_2']['jugador_1'],
+                        'jugador_2' => $partidoData['pareja_2']['jugador_2']
+                    ] : null,
+                    'fecha' => $partidoData['fecha'],
+                    'horario' => $partidoData['horario'],
+                    'resultados' => $partidoData['resultados'],
+                    'tipo' => $partidoData['tipo']
+                ];
+                
                 if ($partidoData['tipo'] === 'ganador') {
-                    $partidoGanador = [$partidoId => $partidoData];
+                    $partidoGanador = [$partidoId => $partidoCopia];
                 } else if ($partidoData['tipo'] === 'perdedor') {
-                    $partidoPerdedor = [$partidoId => $partidoData];
+                    $partidoPerdedor = [$partidoId => $partidoCopia];
                 } else {
-                    $partidosNormales[$partidoId] = $partidoData;
+                    $partidosNormales[$partidoId] = $partidoCopia;
                 }
             }
             
             // Reconstruir el array: normales primero, luego ganador, luego perdedor
-            // Usar array_merge con claves preservadas usando el operador + para mantener las claves numéricas
-            $partidos = $partidosNormales;
-            if ($partidoGanador) {
-                $partidos = $partidos + $partidoGanador; // Preservar claves
+            // IMPORTANTE: Crear un nuevo array para evitar problemas de referencias
+            $partidosFinales = [];
+            
+            // Agregar partidos normales (hacer copia profunda para evitar referencias)
+            foreach ($partidosNormales as $partidoId => $partidoData) {
+                $partidosFinales[$partidoId] = [
+                    'partido_id' => $partidoData['partido_id'],
+                    'pareja_1' => $partidoData['pareja_1'] ? [
+                        'jugador_1' => $partidoData['pareja_1']['jugador_1'],
+                        'jugador_2' => $partidoData['pareja_1']['jugador_2']
+                    ] : null,
+                    'pareja_2' => $partidoData['pareja_2'] ? [
+                        'jugador_1' => $partidoData['pareja_2']['jugador_1'],
+                        'jugador_2' => $partidoData['pareja_2']['jugador_2']
+                    ] : null,
+                    'fecha' => $partidoData['fecha'],
+                    'horario' => $partidoData['horario'],
+                    'resultados' => $partidoData['resultados'],
+                    'tipo' => $partidoData['tipo']
+                ];
             }
+            
+            // Agregar partido ganador si existe
+            if ($partidoGanador) {
+                foreach ($partidoGanador as $partidoId => $partidoData) {
+                    $partidosFinales[$partidoId] = [
+                        'partido_id' => $partidoData['partido_id'],
+                        'pareja_1' => $partidoData['pareja_1'] ? [
+                            'jugador_1' => $partidoData['pareja_1']['jugador_1'],
+                            'jugador_2' => $partidoData['pareja_1']['jugador_2']
+                        ] : null,
+                        'pareja_2' => $partidoData['pareja_2'] ? [
+                            'jugador_1' => $partidoData['pareja_2']['jugador_1'],
+                            'jugador_2' => $partidoData['pareja_2']['jugador_2']
+                        ] : null,
+                        'fecha' => $partidoData['fecha'],
+                        'horario' => $partidoData['horario'],
+                        'resultados' => $partidoData['resultados'],
+                        'tipo' => $partidoData['tipo']
+                    ];
+                }
+            }
+            
+            // Agregar partido perdedor si existe
             if ($partidoPerdedor) {
-                $partidos = $partidos + $partidoPerdedor; // Preservar claves
+                foreach ($partidoPerdedor as $partidoId => $partidoData) {
+                    $partidosFinales[$partidoId] = [
+                        'partido_id' => $partidoData['partido_id'],
+                        'pareja_1' => $partidoData['pareja_1'] ? [
+                            'jugador_1' => $partidoData['pareja_1']['jugador_1'],
+                            'jugador_2' => $partidoData['pareja_1']['jugador_2']
+                        ] : null,
+                        'pareja_2' => $partidoData['pareja_2'] ? [
+                            'jugador_1' => $partidoData['pareja_2']['jugador_1'],
+                            'jugador_2' => $partidoData['pareja_2']['jugador_2']
+                        ] : null,
+                        'fecha' => $partidoData['fecha'],
+                        'horario' => $partidoData['horario'],
+                        'resultados' => $partidoData['resultados'],
+                        'tipo' => $partidoData['tipo']
+                    ];
+                }
+            }
+            
+            // Ordenar los partidos por partido_id para asegurar orden consistente
+            // Esto es importante para zonas de 3 parejas donde el orden importa
+            uksort($partidosFinales, function($a, $b) {
+                return $a - $b; // Ordenar por partido_id (clave del array)
+            });
+            
+            $partidos = $partidosFinales;
+            
+            // Log final para verificar el orden y contenido de los partidos
+            if ($zona == 'C') {
+                \Log::info("=== Partidos finales para zona C ===");
+                foreach ($partidos as $partidoId => $partidoData) {
+                    $pareja1Info = $partidoData['pareja_1'] ? "J1={$partidoData['pareja_1']['jugador_1']}, J2={$partidoData['pareja_1']['jugador_2']}" : "Sin pareja 1";
+                    $pareja2Info = $partidoData['pareja_2'] ? "J1={$partidoData['pareja_2']['jugador_1']}, J2={$partidoData['pareja_2']['jugador_2']}" : "Sin pareja 2";
+                    \Log::info("  Partido ID {$partidoId}: Pareja 1: {$pareja1Info}, Pareja 2: {$pareja2Info}");
+                }
             }
         }
         unset($partidos); // Liberar referencia
@@ -2702,10 +2964,14 @@ class HomeController extends Controller
             $debugInfo['partido_id'] = $partidoId;
             $resultadoActualizacion = $this->actualizarPartidosGanadorPerdedor($partidoId, $partido, $grupo->torneo_id, $grupo->zona);
             
-            // El resultado ahora es un array con 'actualizado' y 'debug'
+            // El resultado ahora es un array con 'actualizado', 'debug' y 'partidos_actualizados'
             if (is_array($resultadoActualizacion)) {
                 $recargar = $resultadoActualizacion['actualizado'];
                 $debugInfo = array_merge($debugInfo, $resultadoActualizacion['debug']);
+                // Incluir información de partidos actualizados en la respuesta
+                if (isset($resultadoActualizacion['partidos_actualizados'])) {
+                    $debugInfo['partidos_actualizados'] = $resultadoActualizacion['partidos_actualizados'];
+                }
             } else {
                 // Compatibilidad con versión anterior
                 $recargar = $resultadoActualizacion;
@@ -2720,12 +2986,20 @@ class HomeController extends Controller
             }
         }
         
-            return response()->json([
+            // Preparar respuesta con información de partidos actualizados
+            $response = [
                 'success' => true, 
                 'partido' => $partido, 
                 'recargar' => $recargar,
                 'debug' => $debugInfo
-            ]);
+            ];
+            
+            // Incluir información de partidos actualizados si existe
+            if (isset($debugInfo['partidos_actualizados'])) {
+                $response['partidos_actualizados'] = $debugInfo['partidos_actualizados'];
+            }
+            
+            return response()->json($response);
         } catch (\Exception $e) {
             \Log::error('Error en guardarResultadoPartido: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -2862,74 +3136,42 @@ class HomeController extends Controller
         
         \Log::info('Partido identificado: ' . ($esPartidoA ? 'A' : 'B') . ' (ID: ' . $partidoId . ')');
         
-        // Obtener los partidos de Ganador y Perdedor (tienen jugador_1 = 0 y jugador_2 = 0)
-        // Buscar todos los partidos con jugador_1 = 0 y jugador_2 = 0 en esta zona
-        // Usar whereRaw para manejar posibles problemas de tipo de dato
-        $partidosGanadorPerdedor = DB::table('grupos')
+        // Obtener los partidos de Ganador y Perdedor buscando directamente por zona
+        // Buscar partidos que tengan grupos en las zonas 'ganador X' y 'perdedor X'
+        $partidosGanadorPerdedor = collect();
+        
+        // Buscar partido Ganador directamente por zona
+        $gruposGanador = DB::table('grupos')
             ->where('torneo_id', $torneoId)
-            ->where('zona', $zona)
-            ->whereRaw('(jugador_1 = 0 OR jugador_1 IS NULL)')
-            ->whereRaw('(jugador_2 = 0 OR jugador_2 IS NULL)')
+            ->where('zona', 'ganador ' . $zona)
             ->whereNotNull('partido_id')
-            ->select('partido_id')
+            ->select('partido_id', 'zona')
             ->distinct()
-            ->orderBy('partido_id')
-            ->get();
+            ->first();
+        
+        if ($gruposGanador) {
+            $partidosGanadorPerdedor->push((object)['partido_id' => $gruposGanador->partido_id, 'zona' => $gruposGanador->zona]);
+            \Log::info('Partido Ganador encontrado: ID ' . $gruposGanador->partido_id);
+        }
+        
+        // Buscar partido Perdedor directamente por zona
+        $gruposPerdedor = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('zona', 'perdedor ' . $zona)
+            ->whereNotNull('partido_id')
+            ->select('partido_id', 'zona')
+            ->distinct()
+            ->first();
+        
+        if ($gruposPerdedor) {
+            $partidosGanadorPerdedor->push((object)['partido_id' => $gruposPerdedor->partido_id, 'zona' => $gruposPerdedor->zona]);
+            \Log::info('Partido Perdedor encontrado: ID ' . $gruposPerdedor->partido_id);
+        }
         
         \Log::info('Partidos Ganador/Perdedor encontrados: ' . $partidosGanadorPerdedor->count());
-        \Log::info('Partidos IDs: ' . json_encode($partidosGanadorPerdedor->pluck('partido_id')->toArray()));
-        
-        // Si no encontramos partidos con jugador_1=0 y jugador_2=0, buscar todos los partidos de la zona
-        // y verificar cuáles tienen grupos con jugador_1=0 y jugador_2=0
-        if ($partidosGanadorPerdedor->count() == 0) {
-            \Log::info('No se encontraron partidos con jugador_1=0 y jugador_2=0. Buscando todos los partidos de la zona...');
-            $todosPartidosZona = DB::table('grupos')
-                ->where('torneo_id', $torneoId)
-                ->where(function($q) use ($zona) {
-                    $q->where('zona', $zona)
-                      ->orWhere('zona', 'ganador ' . $zona)
-                      ->orWhere('zona', 'perdedor ' . $zona);
-                })
-                ->whereNotNull('partido_id')
-                ->select('partido_id', 'zona')
-                ->distinct()
-                ->orderBy('partido_id')
-                ->get();
-            
-            \Log::info('Todos los partidos de la zona: ' . json_encode($todosPartidosZona->pluck('partido_id')->toArray()));
-            
-            // Verificar cada partido para ver si tiene grupos con jugador_1=0 y jugador_2=0
-            foreach ($todosPartidosZona as $partidoInfo) {
-                $gruposPartido = DB::table('grupos')
-                    ->where('partido_id', $partidoInfo->partido_id)
-                    ->where('torneo_id', $torneoId)
-                    ->where(function($q) use ($zona) {
-                        $q->where('zona', $zona)
-                          ->orWhere('zona', 'ganador ' . $zona)
-                          ->orWhere('zona', 'perdedor ' . $zona);
-                    })
-                    ->get();
-                
-                $tieneJugador0 = false;
-                $zonaPartido = null;
-                foreach ($gruposPartido as $grupo) {
-                    if ($grupo->jugador_1 == 0 && $grupo->jugador_2 == 0) {
-                        $tieneJugador0 = true;
-                        $zonaPartido = $grupo->zona;
-                        break;
-                    }
-                }
-                
-                if ($tieneJugador0) {
-                    $partidosGanadorPerdedor->push((object)['partido_id' => $partidoInfo->partido_id, 'zona' => $zonaPartido]);
-                    \Log::info('Encontrado partido con jugador 0: ' . $partidoInfo->partido_id . ' - Zona: ' . $zonaPartido);
-                }
-            }
-            
-            // Reordenar por partido_id
-            $partidosGanadorPerdedor = $partidosGanadorPerdedor->sortBy('partido_id')->values();
-            \Log::info('Partidos Ganador/Perdedor después de búsqueda alternativa: ' . $partidosGanadorPerdedor->count());
-        }
+        \Log::info('Partidos IDs con zonas: ' . json_encode($partidosGanadorPerdedor->map(function($p) {
+            return ['partido_id' => $p->partido_id, 'zona' => $p->zona];
+        })->toArray()));
         
         $partidoGanador = null;
         $partidoPerdedor = null;
@@ -2945,13 +3187,18 @@ class HomeController extends Controller
             }
         }
         
-        // Actualizar Partido Ganador
+        // Crear o actualizar Partido Ganador
         if ($partidoGanador) {
             $gruposGanador = DB::table('grupos')
                 ->where('partido_id', $partidoGanador->partido_id)
                 ->where('torneo_id', $torneoId)
-                ->where('zona', $zona)
+                ->where(function($q) use ($zona) {
+                    $q->where('zona', $zona)
+                      ->orWhere('zona', 'ganador ' . $zona);
+                })
                 ->get();
+            
+            \Log::info('Grupos Ganador encontrados: ' . $gruposGanador->count() . ' para partido ID: ' . $partidoGanador->partido_id);
             
             // Obtener ganadores de Partido A y B
             $ganadorA = null;
@@ -3003,66 +3250,110 @@ class HomeController extends Controller
                 }
             }
             
-            // Actualizar grupos del partido Ganador
-            if ($gruposGanador->count() >= 1) {
-                $gruposGanadorArray = $gruposGanador->values();
+            // Crear o actualizar grupos del partido Ganador
+            // Obtener la zona correcta para el grupo ganador
+            $zonaGrupoGanador = 'ganador ' . $zona;
+            
+            // Obtener fecha y horario del primer grupo si existe, o usar valores por defecto
+            $fechaGanador = null;
+            $horarioGanador = null;
+            if ($gruposGanador->count() > 0) {
+                $fechaGanador = $gruposGanador->first()->fecha;
+                $horarioGanador = $gruposGanador->first()->horario;
+            } else {
+                // Si no hay grupos, obtener fecha y horario de algún grupo de la zona base
+                $grupoBase = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zona)
+                    ->whereNotNull('partido_id')
+                    ->first();
+                if ($grupoBase) {
+                    $fechaGanador = $grupoBase->fecha;
+                    $horarioGanador = $grupoBase->horario;
+                } else {
+                    $fechaGanador = '2000-01-01';
+                    $horarioGanador = '00:00';
+                }
+            }
+            
+            // Si es Partido A, crear o actualizar el primer grupo
+            if ($ganadorA) {
+                // Verificar si ya existe un grupo con estos jugadores para este partido
+                $grupoExistente = DB::table('grupos')
+                    ->where('partido_id', $partidoGanador->partido_id)
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zonaGrupoGanador)
+                    ->where('jugador_1', $ganadorA['jugador_1'])
+                    ->where('jugador_2', $ganadorA['jugador_2'])
+                    ->first();
                 
-                // Si solo hay 1 grupo y necesitamos 2, crear el segundo grupo
-                if ($gruposGanador->count() == 1 && $ganadorB) {
-                    // Crear el segundo grupo para el partido Ganador
-                    $segundoGrupoGanador = DB::table('grupos')->insertGetId([
+                if ($grupoExistente) {
+                    // Ya existe, solo loggear
+                    \Log::info('Grupo Ganador A ya existe: ID ' . $grupoExistente->id);
+                    $debugInfo['actualizacionGanador1'] = [
+                        'grupoId' => $grupoExistente->id,
+                        'jugadores' => $ganadorA['jugador_1'] . '/' . $ganadorA['jugador_2'],
+                        'accion' => 'ya_existia'
+                    ];
+                } else {
+                    // Crear nuevo grupo para ganador A
+                    $nuevoGrupoId = DB::table('grupos')->insertGetId([
                         'torneo_id' => $torneoId,
-                        'zona' => $zona,
-                        'fecha' => $gruposGanadorArray[0]->fecha,
-                        'horario' => $gruposGanadorArray[0]->horario,
-                        'jugador_1' => 0,
-                        'jugador_2' => 0,
+                        'zona' => $zonaGrupoGanador,
+                        'fecha' => $fechaGanador,
+                        'horario' => $horarioGanador,
+                        'jugador_1' => $ganadorA['jugador_1'],
+                        'jugador_2' => $ganadorA['jugador_2'],
                         'partido_id' => $partidoGanador->partido_id,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-                    \Log::info('Creado segundo grupo Ganador: ID ' . $segundoGrupoGanador);
-                    // Recargar los grupos
-                    $gruposGanador = DB::table('grupos')
-                        ->where('partido_id', $partidoGanador->partido_id)
-                        ->where('torneo_id', $torneoId)
-                        ->where('zona', 'ganador ' . $zona)
-                        ->orderBy('id')
-                        ->get();
-                    $gruposGanadorArray = $gruposGanador->values();
-                }
-                
-                // Actualizar el primer grupo si tenemos ganadorA (o si solo hay 1 grupo y es Partido A)
-                if ($ganadorA) {
-                    $grupoId = $gruposGanadorArray[0]->id;
-                    $filasActualizadas = DB::table('grupos')
-                        ->where('id', $grupoId)
-                        ->update([
-                            'jugador_1' => $ganadorA['jugador_1'],
-                            'jugador_2' => $ganadorA['jugador_2']
-                        ]);
-                    \Log::info('Actualizado grupo Ganador (1): ID ' . $grupoId . ' con jugadores ' . $ganadorA['jugador_1'] . '/' . $ganadorA['jugador_2'] . ' - Filas actualizadas: ' . $filasActualizadas);
+                    \Log::info('Creado nuevo grupo Ganador A: ID ' . $nuevoGrupoId . ' con jugadores ' . $ganadorA['jugador_1'] . '/' . $ganadorA['jugador_2']);
                     $debugInfo['actualizacionGanador1'] = [
-                        'grupoId' => $grupoId,
+                        'grupoId' => $nuevoGrupoId,
                         'jugadores' => $ganadorA['jugador_1'] . '/' . $ganadorA['jugador_2'],
-                        'filasActualizadas' => $filasActualizadas
+                        'accion' => 'creado'
                     ];
                 }
+            }
+            
+            // Si es Partido B, crear un NUEVO grupo (no actualizar el existente)
+            if ($ganadorB) {
+                // Verificar si ya existe un grupo con estos jugadores para este partido
+                $grupoExistente = DB::table('grupos')
+                    ->where('partido_id', $partidoGanador->partido_id)
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zonaGrupoGanador)
+                    ->where('jugador_1', $ganadorB['jugador_1'])
+                    ->where('jugador_2', $ganadorB['jugador_2'])
+                    ->first();
                 
-                // Actualizar el segundo grupo si tenemos ganadorB (solo si hay 2 grupos)
-                if ($ganadorB && $gruposGanadorArray->count() >= 2) {
-                    $grupoId = $gruposGanadorArray[1]->id;
-                    $filasActualizadas = DB::table('grupos')
-                        ->where('id', $grupoId)
-                        ->update([
-                            'jugador_1' => $ganadorB['jugador_1'],
-                            'jugador_2' => $ganadorB['jugador_2']
-                        ]);
-                    \Log::info('Actualizado grupo Ganador (2): ID ' . $grupoId . ' con jugadores ' . $ganadorB['jugador_1'] . '/' . $ganadorB['jugador_2'] . ' - Filas actualizadas: ' . $filasActualizadas);
+                if ($grupoExistente) {
+                    // Ya existe, solo loggear
+                    \Log::info('Grupo Ganador B ya existe: ID ' . $grupoExistente->id);
                     $debugInfo['actualizacionGanador2'] = [
-                        'grupoId' => $grupoId,
+                        'grupoId' => $grupoExistente->id,
                         'jugadores' => $ganadorB['jugador_1'] . '/' . $ganadorB['jugador_2'],
-                        'filasActualizadas' => $filasActualizadas
+                        'accion' => 'ya_existia'
+                    ];
+                } else {
+                    // Crear nuevo grupo para ganador B
+                    $nuevoGrupoId = DB::table('grupos')->insertGetId([
+                        'torneo_id' => $torneoId,
+                        'zona' => $zonaGrupoGanador,
+                        'fecha' => $fechaGanador,
+                        'horario' => $horarioGanador,
+                        'jugador_1' => $ganadorB['jugador_1'],
+                        'jugador_2' => $ganadorB['jugador_2'],
+                        'partido_id' => $partidoGanador->partido_id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    \Log::info('Creado nuevo grupo Ganador B: ID ' . $nuevoGrupoId . ' con jugadores ' . $ganadorB['jugador_1'] . '/' . $ganadorB['jugador_2']);
+                    $debugInfo['actualizacionGanador2'] = [
+                        'grupoId' => $nuevoGrupoId,
+                        'jugadores' => $ganadorB['jugador_1'] . '/' . $ganadorB['jugador_2'],
+                        'accion' => 'creado'
                     ];
                 }
             }
@@ -3073,8 +3364,13 @@ class HomeController extends Controller
             $gruposPerdedor = DB::table('grupos')
                 ->where('partido_id', $partidoPerdedor->partido_id)
                 ->where('torneo_id', $torneoId)
-                ->where('zona', 'perdedor ' . $zona)
+                ->where(function($q) use ($zona) {
+                    $q->where('zona', $zona)
+                      ->orWhere('zona', 'perdedor ' . $zona);
+                })
                 ->get();
+            
+            \Log::info('Grupos Perdedor encontrados: ' . $gruposPerdedor->count() . ' para partido ID: ' . $partidoPerdedor->partido_id);
             
             $perdedorA = null;
             $perdedorB = null;
@@ -3126,66 +3422,110 @@ class HomeController extends Controller
                 }
             }
             
-            // Actualizar grupos del partido Perdedor
-            if ($gruposPerdedor->count() >= 1) {
-                $gruposPerdedorArray = $gruposPerdedor->values();
+            // Crear o actualizar grupos del partido Perdedor
+            // Obtener la zona correcta para el grupo perdedor
+            $zonaGrupoPerdedor = 'perdedor ' . $zona;
+            
+            // Obtener fecha y horario del primer grupo si existe, o usar valores por defecto
+            $fechaPerdedor = null;
+            $horarioPerdedor = null;
+            if ($gruposPerdedor->count() > 0) {
+                $fechaPerdedor = $gruposPerdedor->first()->fecha;
+                $horarioPerdedor = $gruposPerdedor->first()->horario;
+            } else {
+                // Si no hay grupos, obtener fecha y horario de algún grupo de la zona base
+                $grupoBase = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zona)
+                    ->whereNotNull('partido_id')
+                    ->first();
+                if ($grupoBase) {
+                    $fechaPerdedor = $grupoBase->fecha;
+                    $horarioPerdedor = $grupoBase->horario;
+                } else {
+                    $fechaPerdedor = '2000-01-01';
+                    $horarioPerdedor = '00:00';
+                }
+            }
+            
+            // Si es Partido A, crear o actualizar el primer grupo
+            if ($perdedorA) {
+                // Verificar si ya existe un grupo con estos jugadores para este partido
+                $grupoExistente = DB::table('grupos')
+                    ->where('partido_id', $partidoPerdedor->partido_id)
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zonaGrupoPerdedor)
+                    ->where('jugador_1', $perdedorA['jugador_1'])
+                    ->where('jugador_2', $perdedorA['jugador_2'])
+                    ->first();
                 
-                // Si solo hay 1 grupo y necesitamos 2, crear el segundo grupo
-                if ($gruposPerdedor->count() == 1 && $perdedorB) {
-                    // Crear el segundo grupo para el partido Perdedor
-                    $segundoGrupoPerdedor = DB::table('grupos')->insertGetId([
+                if ($grupoExistente) {
+                    // Ya existe, solo loggear
+                    \Log::info('Grupo Perdedor A ya existe: ID ' . $grupoExistente->id);
+                    $debugInfo['actualizacionPerdedor1'] = [
+                        'grupoId' => $grupoExistente->id,
+                        'jugadores' => $perdedorA['jugador_1'] . '/' . $perdedorA['jugador_2'],
+                        'accion' => 'ya_existia'
+                    ];
+                } else {
+                    // Crear nuevo grupo para perdedor A
+                    $nuevoGrupoId = DB::table('grupos')->insertGetId([
                         'torneo_id' => $torneoId,
-                        'zona' => 'perdedor ' . $zona,
-                        'fecha' => $gruposPerdedorArray[0]->fecha,
-                        'horario' => $gruposPerdedorArray[0]->horario,
-                        'jugador_1' => 0,
-                        'jugador_2' => 0,
+                        'zona' => $zonaGrupoPerdedor,
+                        'fecha' => $fechaPerdedor,
+                        'horario' => $horarioPerdedor,
+                        'jugador_1' => $perdedorA['jugador_1'],
+                        'jugador_2' => $perdedorA['jugador_2'],
                         'partido_id' => $partidoPerdedor->partido_id,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-                    \Log::info('Creado segundo grupo Perdedor: ID ' . $segundoGrupoPerdedor);
-                    // Recargar los grupos
-                    $gruposPerdedor = DB::table('grupos')
-                        ->where('partido_id', $partidoPerdedor->partido_id)
-                        ->where('torneo_id', $torneoId)
-                        ->where('zona', 'perdedor ' . $zona)
-                        ->orderBy('id')
-                        ->get();
-                    $gruposPerdedorArray = $gruposPerdedor->values();
-                }
-                
-                // Actualizar el primer grupo si tenemos perdedorA (o si solo hay 1 grupo y es Partido A)
-                if ($perdedorA) {
-                    $grupoId = $gruposPerdedorArray[0]->id;
-                    $filasActualizadas = DB::table('grupos')
-                        ->where('id', $grupoId)
-                        ->update([
-                            'jugador_1' => $perdedorA['jugador_1'],
-                            'jugador_2' => $perdedorA['jugador_2']
-                        ]);
-                    \Log::info('Actualizado grupo Perdedor (1): ID ' . $grupoId . ' con jugadores ' . $perdedorA['jugador_1'] . '/' . $perdedorA['jugador_2'] . ' - Filas actualizadas: ' . $filasActualizadas);
+                    \Log::info('Creado nuevo grupo Perdedor A: ID ' . $nuevoGrupoId . ' con jugadores ' . $perdedorA['jugador_1'] . '/' . $perdedorA['jugador_2']);
                     $debugInfo['actualizacionPerdedor1'] = [
-                        'grupoId' => $grupoId,
+                        'grupoId' => $nuevoGrupoId,
                         'jugadores' => $perdedorA['jugador_1'] . '/' . $perdedorA['jugador_2'],
-                        'filasActualizadas' => $filasActualizadas
+                        'accion' => 'creado'
                     ];
                 }
+            }
+            
+            // Si es Partido B, crear un NUEVO grupo (no actualizar el existente)
+            if ($perdedorB) {
+                // Verificar si ya existe un grupo con estos jugadores para este partido
+                $grupoExistente = DB::table('grupos')
+                    ->where('partido_id', $partidoPerdedor->partido_id)
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zonaGrupoPerdedor)
+                    ->where('jugador_1', $perdedorB['jugador_1'])
+                    ->where('jugador_2', $perdedorB['jugador_2'])
+                    ->first();
                 
-                // Actualizar el segundo grupo si tenemos perdedorB (solo si hay 2 grupos)
-                if ($perdedorB && $gruposPerdedorArray->count() >= 2) {
-                    $grupoId = $gruposPerdedorArray[1]->id;
-                    $filasActualizadas = DB::table('grupos')
-                        ->where('id', $grupoId)
-                        ->update([
-                            'jugador_1' => $perdedorB['jugador_1'],
-                            'jugador_2' => $perdedorB['jugador_2']
-                        ]);
-                    \Log::info('Actualizado grupo Perdedor (2): ID ' . $grupoId . ' con jugadores ' . $perdedorB['jugador_1'] . '/' . $perdedorB['jugador_2'] . ' - Filas actualizadas: ' . $filasActualizadas);
+                if ($grupoExistente) {
+                    // Ya existe, solo loggear
+                    \Log::info('Grupo Perdedor B ya existe: ID ' . $grupoExistente->id);
                     $debugInfo['actualizacionPerdedor2'] = [
-                        'grupoId' => $grupoId,
+                        'grupoId' => $grupoExistente->id,
                         'jugadores' => $perdedorB['jugador_1'] . '/' . $perdedorB['jugador_2'],
-                        'filasActualizadas' => $filasActualizadas
+                        'accion' => 'ya_existia'
+                    ];
+                } else {
+                    // Crear nuevo grupo para perdedor B
+                    $nuevoGrupoId = DB::table('grupos')->insertGetId([
+                        'torneo_id' => $torneoId,
+                        'zona' => $zonaGrupoPerdedor,
+                        'fecha' => $fechaPerdedor,
+                        'horario' => $horarioPerdedor,
+                        'jugador_1' => $perdedorB['jugador_1'],
+                        'jugador_2' => $perdedorB['jugador_2'],
+                        'partido_id' => $partidoPerdedor->partido_id,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    \Log::info('Creado nuevo grupo Perdedor B: ID ' . $nuevoGrupoId . ' con jugadores ' . $perdedorB['jugador_1'] . '/' . $perdedorB['jugador_2']);
+                    $debugInfo['actualizacionPerdedor2'] = [
+                        'grupoId' => $nuevoGrupoId,
+                        'jugadores' => $perdedorB['jugador_1'] . '/' . $perdedorB['jugador_2'],
+                        'accion' => 'creado'
                     ];
                 }
             }
@@ -3242,10 +3582,99 @@ class HomeController extends Controller
         }
         $debugInfo['seActualizo'] = $seActualizo;
         
+        // Preparar información estructurada de partidos actualizados para el frontend
+        $partidosActualizados = [];
+        
+        if ($partidoGanador && $seActualizo) {
+            // Obtener información actualizada del partido Ganador
+            $gruposGanadorActualizados = DB::table('grupos')
+                ->where('partido_id', $partidoGanador->partido_id)
+                ->where('torneo_id', $torneoId)
+                ->where(function($q) use ($zona) {
+                    $q->where('zona', $zona)
+                      ->orWhere('zona', 'ganador ' . $zona);
+                })
+                ->orderBy('id')
+                ->get();
+            
+            $pareja1Ganador = null;
+            $pareja2Ganador = null;
+            $fechaGanador = null;
+            $horarioGanador = null;
+            if ($gruposGanadorActualizados->count() >= 1) {
+                $pareja1Ganador = [
+                    'jugador_1' => $gruposGanadorActualizados[0]->jugador_1,
+                    'jugador_2' => $gruposGanadorActualizados[0]->jugador_2
+                ];
+                $fechaGanador = $gruposGanadorActualizados[0]->fecha;
+                $horarioGanador = $gruposGanadorActualizados[0]->horario;
+            }
+            if ($gruposGanadorActualizados->count() >= 2) {
+                $pareja2Ganador = [
+                    'jugador_1' => $gruposGanadorActualizados[1]->jugador_1,
+                    'jugador_2' => $gruposGanadorActualizados[1]->jugador_2
+                ];
+            }
+            
+            $partidosActualizados['ganador'] = [
+                'partido_id' => $partidoGanador->partido_id,
+                'pareja_1' => $pareja1Ganador,
+                'pareja_2' => $pareja2Ganador,
+                'fecha' => $fechaGanador,
+                'horario' => $horarioGanador,
+                'tipo' => 'ganador'
+            ];
+        }
+        
+        if ($partidoPerdedor && $seActualizo) {
+            // Obtener información actualizada del partido Perdedor
+            $gruposPerdedorActualizados = DB::table('grupos')
+                ->where('partido_id', $partidoPerdedor->partido_id)
+                ->where('torneo_id', $torneoId)
+                ->where(function($q) use ($zona) {
+                    $q->where('zona', $zona)
+                      ->orWhere('zona', 'perdedor ' . $zona);
+                })
+                ->orderBy('id')
+                ->get();
+            
+            $pareja1Perdedor = null;
+            $pareja2Perdedor = null;
+            $fechaPerdedor = null;
+            $horarioPerdedor = null;
+            if ($gruposPerdedorActualizados->count() >= 1) {
+                $pareja1Perdedor = [
+                    'jugador_1' => $gruposPerdedorActualizados[0]->jugador_1,
+                    'jugador_2' => $gruposPerdedorActualizados[0]->jugador_2
+                ];
+                $fechaPerdedor = $gruposPerdedorActualizados[0]->fecha;
+                $horarioPerdedor = $gruposPerdedorActualizados[0]->horario;
+            }
+            if ($gruposPerdedorActualizados->count() >= 2) {
+                $pareja2Perdedor = [
+                    'jugador_1' => $gruposPerdedorActualizados[1]->jugador_1,
+                    'jugador_2' => $gruposPerdedorActualizados[1]->jugador_2
+                ];
+            }
+            
+            $partidosActualizados['perdedor'] = [
+                'partido_id' => $partidoPerdedor->partido_id,
+                'pareja_1' => $pareja1Perdedor,
+                'pareja_2' => $pareja2Perdedor,
+                'fecha' => $fechaPerdedor,
+                'horario' => $horarioPerdedor,
+                'tipo' => 'perdedor'
+            ];
+        }
+        
         // Guardar debugInfo en el log también
         \Log::info('Debug info actualizarPartidosGanadorPerdedor: ' . json_encode($debugInfo));
         
-        return ['actualizado' => $seActualizo, 'debug' => $debugInfo];
+        return [
+            'actualizado' => $seActualizo, 
+            'debug' => $debugInfo,
+            'partidos_actualizados' => $partidosActualizados
+        ];
     }
     
     /**
@@ -3564,34 +3993,75 @@ class HomeController extends Controller
         $torneoId = $request->torneo_id;
         $zona = $request->zona;
         
+        \Log::info('=== verificarPartidosCompletos ===');
+        \Log::info('Torneo ID: ' . $torneoId . ', Zona: ' . $zona);
+        
         // Obtener todos los partidos únicos de la zona
-        $partidos = DB::table('grupos')
-                        ->join('partidos', 'grupos.partido_id', '=', 'partidos.id')
+        // Incluir también partidos de "ganador X" y "perdedor X" si es una zona de 4 parejas
+        // Usar pluck para obtener solo los partido_id únicos y luego hacer join
+        $partidosIds = DB::table('grupos')
                         ->where('grupos.torneo_id', $torneoId)
-                        ->where('grupos.zona', $zona)
-                        ->select('grupos.partido_id', 'partidos.*')
+                        ->where(function($query) use ($zona) {
+                            $query->where('grupos.zona', $zona)
+                                  ->orWhere('grupos.zona', 'ganador ' . $zona)
+                                  ->orWhere('grupos.zona', 'perdedor ' . $zona);
+                        })
+                        ->whereNotNull('grupos.partido_id')
+                        ->select('grupos.partido_id')
                         ->distinct()
+                        ->pluck('partido_id');
+        
+        \Log::info('Partidos IDs encontrados: ' . json_encode($partidosIds->toArray()));
+        
+        // Obtener información completa de cada partido
+        $partidos = DB::table('partidos')
+                        ->whereIn('id', $partidosIds)
                         ->get();
         
         $totalPartidos = $partidos->count();
         $partidosCompletos = 0;
+        $detallePartidos = [];
         
         foreach ($partidos as $partido) {
             // Un partido está completo si tiene al menos un set con resultado > 0
             $tieneResultado = ($partido->pareja_1_set_1 > 0 || $partido->pareja_2_set_1 > 0) ||
                              ($partido->pareja_1_set_2 > 0 || $partido->pareja_2_set_2 > 0) ||
+                             ($partido->pareja_1_set_3 > 0 || $partido->pareja_2_set_3 > 0) ||
                              ($partido->pareja_1_set_super_tie_break > 0 || $partido->pareja_2_set_super_tie_break > 0);
+            
+            // Obtener información de la zona de este partido para debugging
+            $zonaPartido = DB::table('grupos')
+                            ->where('partido_id', $partido->id)
+                            ->where('torneo_id', $torneoId)
+                            ->select('zona')
+                            ->distinct()
+                            ->pluck('zona')
+                            ->toArray();
+            
+            $detallePartidos[] = [
+                'partido_id' => $partido->id,
+                'tiene_resultado' => $tieneResultado,
+                'zonas' => $zonaPartido,
+                'set1' => $partido->pareja_1_set_1 . '-' . $partido->pareja_2_set_1,
+                'set2' => $partido->pareja_1_set_2 . '-' . $partido->pareja_2_set_2,
+                'set3' => $partido->pareja_1_set_3 . '-' . $partido->pareja_2_set_3,
+                'super_tb' => $partido->pareja_1_set_super_tie_break . '-' . $partido->pareja_2_set_super_tie_break
+            ];
             
             if ($tieneResultado) {
                 $partidosCompletos++;
             }
         }
         
+        \Log::info('Verificar partidos completos - Zona: ' . $zona . ', Total: ' . $totalPartidos . ', Completos: ' . $partidosCompletos);
+        \Log::info('Detalle partidos: ' . json_encode($detallePartidos));
+        
         return response()->json([
             'success' => true,
             'total_partidos' => $totalPartidos,
             'partidos_completos' => $partidosCompletos,
-            'todos_completos' => $totalPartidos > 0 && $partidosCompletos == $totalPartidos
+            'todos_completos' => $totalPartidos > 0 && $partidosCompletos == $totalPartidos,
+            'detalle_partidos' => $detallePartidos
         ]);
     }
 
@@ -3599,7 +4069,46 @@ class HomeController extends Controller
         $torneoId = $request->torneo_id;
         $zona = $request->zona;
         
-        // Obtener todos los partidos únicos de la zona
+        // PRIMERO: Verificar que todos los partidos estén completos antes de calcular posiciones
+        // Incluir también partidos de "ganador X" y "perdedor X" si es una zona de 4 parejas
+        $todosPartidos = DB::table('grupos')
+                        ->join('partidos', 'grupos.partido_id', '=', 'partidos.id')
+                        ->where('grupos.torneo_id', $torneoId)
+                        ->where(function($query) use ($zona) {
+                            $query->where('grupos.zona', $zona)
+                                  ->orWhere('grupos.zona', 'ganador ' . $zona)
+                                  ->orWhere('grupos.zona', 'perdedor ' . $zona);
+                        })
+                        ->select('grupos.partido_id', 'partidos.*')
+                        ->distinct()
+                        ->get();
+        
+        $totalPartidos = $todosPartidos->count();
+        $partidosCompletos = 0;
+        
+        foreach ($todosPartidos as $partido) {
+            $tieneResultado = ($partido->pareja_1_set_1 > 0 || $partido->pareja_2_set_1 > 0) ||
+                             ($partido->pareja_1_set_2 > 0 || $partido->pareja_2_set_2 > 0) ||
+                             ($partido->pareja_1_set_3 > 0 || $partido->pareja_2_set_3 > 0) ||
+                             ($partido->pareja_1_set_super_tie_break > 0 || $partido->pareja_2_set_super_tie_break > 0);
+            
+            if ($tieneResultado) {
+                $partidosCompletos++;
+            }
+        }
+        
+        // Si no todos los partidos están completos, retornar error
+        if ($totalPartidos > 0 && $partidosCompletos < $totalPartidos) {
+            \Log::info('No todos los partidos están completos - Zona: ' . $zona . ', Completos: ' . $partidosCompletos . '/' . $totalPartidos);
+            return response()->json([
+                'success' => false,
+                'message' => 'No todos los partidos están completos. Faltan ' . ($totalPartidos - $partidosCompletos) . ' partido(s).',
+                'total_partidos' => $totalPartidos,
+                'partidos_completos' => $partidosCompletos
+            ]);
+        }
+        
+        // Obtener todos los partidos únicos de la zona (solo los de la zona base para calcular posiciones)
         $partidos = DB::table('grupos')
                         ->join('partidos', 'grupos.partido_id', '=', 'partidos.id')
                         ->where('grupos.torneo_id', $torneoId)
@@ -3696,6 +4205,12 @@ class HomeController extends Controller
                 $juegosGanadosP1 = $partido->pareja_1_set_1 + $partido->pareja_1_set_2;
                 $juegosGanadosP2 = $partido->pareja_2_set_1 + $partido->pareja_2_set_2;
                 
+                // Si hay set 3 (no super tie break), agregar esos juegos también
+                if ($partido->pareja_1_set_3 > 0 || $partido->pareja_2_set_3 > 0) {
+                    $juegosGanadosP1 += $partido->pareja_1_set_3;
+                    $juegosGanadosP2 += $partido->pareja_2_set_3;
+                }
+                
                 // Si hay super tie break, no se cuentan juegos del super TB (solo sets)
                 
                 // Actualizar estadísticas de sets
@@ -3716,90 +4231,433 @@ class HomeController extends Controller
                     $parejas[$pareja1]['partidos_ganados']++;
                     $parejas[$pareja2]['partidos_perdidos']++;
                     
-                    // Asignar puntos: 2-0 = 2 puntos ganador, 0 perdedor | 2-1 = 2 puntos ganador, 1 perdedor
-                    if ($setsGanadosP1 == 2 && $setsGanadosP2 == 0) {
-                        $parejas[$pareja1]['puntos'] += 2;
-                        $parejas[$pareja2]['puntos'] += 0;
-                    } else if ($setsGanadosP1 == 2 && $setsGanadosP2 == 1) {
-                        $parejas[$pareja1]['puntos'] += 2;
-                        $parejas[$pareja2]['puntos'] += 1;
-                    }
+                    // Asignar puntos: Victoria = 2 puntos, Derrota = 1 punto (para zonas de 3 parejas)
+                    // Para otras zonas, mantener la lógica anterior
+                    $parejas[$pareja1]['puntos'] += 2;
+                    $parejas[$pareja2]['puntos'] += 1;
                     
-                    // Guardar resultado del partido directo
-                    $parejas[$pareja1]['partidos_directos'][$pareja2] = ['ganado' => true, 'sets' => $setsGanadosP1 . '-' . $setsGanadosP2];
-                    $parejas[$pareja2]['partidos_directos'][$pareja1] = ['ganado' => false, 'sets' => $setsGanadosP2 . '-' . $setsGanadosP1];
+                    // Guardar resultado del partido directo (incluyendo sets para diferencia)
+                    $parejas[$pareja1]['partidos_directos'][$pareja2] = [
+                        'ganado' => true, 
+                        'sets' => $setsGanadosP1 . '-' . $setsGanadosP2,
+                        'sets_ganados' => $setsGanadosP1,
+                        'sets_perdidos' => $setsGanadosP2,
+                        'juegos_ganados' => $juegosGanadosP1,
+                        'juegos_perdidos' => $juegosGanadosP2
+                    ];
+                    $parejas[$pareja2]['partidos_directos'][$pareja1] = [
+                        'ganado' => false, 
+                        'sets' => $setsGanadosP2 . '-' . $setsGanadosP1,
+                        'sets_ganados' => $setsGanadosP2,
+                        'sets_perdidos' => $setsGanadosP1,
+                        'juegos_ganados' => $juegosGanadosP2,
+                        'juegos_perdidos' => $juegosGanadosP1
+                    ];
                     
                 } else if ($setsGanadosP2 > $setsGanadosP1) {
                     // Pareja 2 gana
                     $parejas[$pareja2]['partidos_ganados']++;
                     $parejas[$pareja1]['partidos_perdidos']++;
                     
-                    // Asignar puntos
-                    if ($setsGanadosP2 == 2 && $setsGanadosP1 == 0) {
-                        $parejas[$pareja2]['puntos'] += 2;
-                        $parejas[$pareja1]['puntos'] += 0;
-                    } else if ($setsGanadosP2 == 2 && $setsGanadosP1 == 1) {
-                        $parejas[$pareja2]['puntos'] += 2;
-                        $parejas[$pareja1]['puntos'] += 1;
-                    }
+                    // Asignar puntos: Victoria = 2 puntos, Derrota = 1 punto
+                    $parejas[$pareja2]['puntos'] += 2;
+                    $parejas[$pareja1]['puntos'] += 1;
                     
-                    // Guardar resultado del partido directo
-                    $parejas[$pareja2]['partidos_directos'][$pareja1] = ['ganado' => true, 'sets' => $setsGanadosP2 . '-' . $setsGanadosP1];
-                    $parejas[$pareja1]['partidos_directos'][$pareja2] = ['ganado' => false, 'sets' => $setsGanadosP1 . '-' . $setsGanadosP2];
+                    // Guardar resultado del partido directo (incluyendo sets para diferencia)
+                    $parejas[$pareja2]['partidos_directos'][$pareja1] = [
+                        'ganado' => true, 
+                        'sets' => $setsGanadosP2 . '-' . $setsGanadosP1,
+                        'sets_ganados' => $setsGanadosP2,
+                        'sets_perdidos' => $setsGanadosP1,
+                        'juegos_ganados' => $juegosGanadosP2,
+                        'juegos_perdidos' => $juegosGanadosP1
+                    ];
+                    $parejas[$pareja1]['partidos_directos'][$pareja2] = [
+                        'ganado' => false, 
+                        'sets' => $setsGanadosP1 . '-' . $setsGanadosP2,
+                        'sets_ganados' => $setsGanadosP1,
+                        'sets_perdidos' => $setsGanadosP2,
+                        'juegos_ganados' => $juegosGanadosP1,
+                        'juegos_perdidos' => $juegosGanadosP2
+                    ];
                 }
             }
         }
         
         // Agregar keys a cada pareja para poder comparar partidos directos
+        // También agregar información sobre cómo ganó cada partido (2-0 o 2-1) para desempate en zonas de 3 parejas
         foreach ($parejas as $key => $pareja) {
             $parejas[$key]['key'] = $key;
+            $parejas[$key]['victorias_2_0'] = 0; // Contador de victorias por 2-0
+            $parejas[$key]['victorias_2_1'] = 0; // Contador de victorias por 2-1
         }
         
+        // Contar victorias por 2-0 y 2-1 para cada pareja
+        foreach ($partidos as $partido) {
+            $pareja1 = null;
+            $pareja2 = null;
+            
+            foreach ($grupos as $grupo) {
+                if ($grupo->partido_id == $partido->partido_id) {
+                    $key = $grupo->jugador_1 . '_' . $grupo->jugador_2;
+                    if (!$pareja1) {
+                        $pareja1 = $key;
+                    } else if ($key != $pareja1) {
+                        $pareja2 = $key;
+                        break;
+                    }
+                }
+            }
+            
+            if ($pareja1 && $pareja2 && isset($parejas[$pareja1]) && isset($parejas[$pareja2])) {
+                // Calcular sets ganados
+                $setsGanadosP1 = 0;
+                $setsGanadosP2 = 0;
+                
+                if ($partido->pareja_1_set_1 > $partido->pareja_2_set_1) $setsGanadosP1++;
+                else if ($partido->pareja_2_set_1 > $partido->pareja_1_set_1) $setsGanadosP2++;
+                
+                if ($partido->pareja_1_set_2 > $partido->pareja_2_set_2) $setsGanadosP1++;
+                else if ($partido->pareja_2_set_2 > $partido->pareja_1_set_2) $setsGanadosP2++;
+                
+                // Si hay super tie break, ese determina el tercer set
+                if ($partido->pareja_1_set_super_tie_break > 0 || $partido->pareja_2_set_super_tie_break > 0) {
+                    if ($partido->pareja_1_set_super_tie_break > $partido->pareja_2_set_super_tie_break) {
+                        $setsGanadosP1 = 2;
+                        $setsGanadosP2 = 1;
+                    } else if ($partido->pareja_2_set_super_tie_break > $partido->pareja_1_set_super_tie_break) {
+                        $setsGanadosP1 = 1;
+                        $setsGanadosP2 = 2;
+                    }
+                } else if ($partido->pareja_1_set_3 > $partido->pareja_2_set_3) {
+                    $setsGanadosP1++;
+                } else if ($partido->pareja_2_set_3 > $partido->pareja_1_set_3) {
+                    $setsGanadosP2++;
+                }
+                
+                // Contar victorias por 2-0 o 2-1
+                if ($setsGanadosP1 == 2 && $setsGanadosP2 == 0) {
+                    $parejas[$pareja1]['victorias_2_0']++;
+                } else if ($setsGanadosP1 == 2 && $setsGanadosP2 == 1) {
+                    $parejas[$pareja1]['victorias_2_1']++;
+                } else if ($setsGanadosP2 == 2 && $setsGanadosP1 == 0) {
+                    $parejas[$pareja2]['victorias_2_0']++;
+                } else if ($setsGanadosP2 == 2 && $setsGanadosP1 == 1) {
+                    $parejas[$pareja2]['victorias_2_1']++;
+                }
+            }
+        }
+        
+        // Determinar número de parejas en la zona
+        $numParejas = count($parejas);
+        
+        // Verificar si es una zona eliminatoria de 4 parejas (tiene partidos de ganador y perdedor)
+        $partidoGanador = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('zona', 'ganador ' . $zona)
+            ->whereNotNull('partido_id')
+            ->select('partido_id')
+            ->distinct()
+            ->first();
+        
+        $partidoPerdedor = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('zona', 'perdedor ' . $zona)
+            ->whereNotNull('partido_id')
+            ->select('partido_id')
+            ->distinct()
+            ->first();
+        
+        $esZonaEliminatoria = ($partidoGanador && $partidoPerdedor);
+        
+        // Si es zona eliminatoria de 4 parejas, calcular posiciones basándose en los partidos de Ganador y Perdedor
+        if ($esZonaEliminatoria) {
+            \Log::info('Zona eliminatoria detectada. Calculando posiciones basadas en partidos Ganador/Perdedor');
+            
+            $posiciones = [];
+            
+            // 1. Obtener ganador y perdedor del partido de ganadores
+            $partidoGanadorData = DB::table('partidos')
+                ->where('id', $partidoGanador->partido_id)
+                ->first();
+            
+            if ($partidoGanadorData) {
+                // Verificar si el partido tiene resultados
+                $tieneResultadosGanador = ($partidoGanadorData->pareja_1_set_1 > 0 || $partidoGanadorData->pareja_2_set_1 > 0) ||
+                                         ($partidoGanadorData->pareja_1_set_2 > 0 || $partidoGanadorData->pareja_2_set_2 > 0) ||
+                                         ($partidoGanadorData->pareja_1_set_3 > 0 || $partidoGanadorData->pareja_2_set_3 > 0) ||
+                                         ($partidoGanadorData->pareja_1_set_super_tie_break > 0 || $partidoGanadorData->pareja_2_set_super_tie_break > 0);
+                
+                if ($tieneResultadosGanador) {
+                    // Obtener grupos del partido ganador
+                    $gruposGanador = DB::table('grupos')
+                        ->where('partido_id', $partidoGanador->partido_id)
+                        ->where('torneo_id', $torneoId)
+                        ->where(function($q) use ($zona) {
+                            $q->where('zona', $zona)
+                              ->orWhere('zona', 'ganador ' . $zona);
+                        })
+                        ->where('jugador_1', '!=', 0)
+                        ->where('jugador_2', '!=', 0)
+                        ->orderBy('id')
+                        ->get();
+                    
+                    if ($gruposGanador->count() >= 2) {
+                        // Determinar ganador del partido de ganadores
+                        $ganadorPartidoGanador = $this->determinarGanadorPartido($partidoGanadorData);
+                        $perdedorPartidoGanador = $ganadorPartidoGanador === 1 ? 2 : 1;
+                        
+                        $grupoGanador = $gruposGanador[$ganadorPartidoGanador - 1];
+                        $grupoPerdedorGanador = $gruposGanador[$perdedorPartidoGanador - 1];
+                        
+                        // 1º lugar: ganador del partido de ganadores (índice 0)
+                        $posiciones[0] = [
+                            'jugador_1' => $grupoGanador->jugador_1,
+                            'jugador_2' => $grupoGanador->jugador_2
+                        ];
+                        
+                        // 2º lugar: perdedor del partido de ganadores (índice 1)
+                        $posiciones[1] = [
+                            'jugador_1' => $grupoPerdedorGanador->jugador_1,
+                            'jugador_2' => $grupoPerdedorGanador->jugador_2
+                        ];
+                    }
+                }
+            }
+            
+            // 2. Obtener ganador del partido de perdedores (3º lugar)
+            $partidoPerdedorData = DB::table('partidos')
+                ->where('id', $partidoPerdedor->partido_id)
+                ->first();
+            
+            if ($partidoPerdedorData) {
+                // Verificar si el partido tiene resultados
+                $tieneResultadosPerdedor = ($partidoPerdedorData->pareja_1_set_1 > 0 || $partidoPerdedorData->pareja_2_set_1 > 0) ||
+                                          ($partidoPerdedorData->pareja_1_set_2 > 0 || $partidoPerdedorData->pareja_2_set_2 > 0) ||
+                                          ($partidoPerdedorData->pareja_1_set_3 > 0 || $partidoPerdedorData->pareja_2_set_3 > 0) ||
+                                          ($partidoPerdedorData->pareja_1_set_super_tie_break > 0 || $partidoPerdedorData->pareja_2_set_super_tie_break > 0);
+                
+                if ($tieneResultadosPerdedor) {
+                    // Obtener grupos del partido perdedor
+                    $gruposPerdedor = DB::table('grupos')
+                        ->where('partido_id', $partidoPerdedor->partido_id)
+                        ->where('torneo_id', $torneoId)
+                        ->where(function($q) use ($zona) {
+                            $q->where('zona', $zona)
+                              ->orWhere('zona', 'perdedor ' . $zona);
+                        })
+                        ->where('jugador_1', '!=', 0)
+                        ->where('jugador_2', '!=', 0)
+                        ->orderBy('id')
+                        ->get();
+                    
+                    if ($gruposPerdedor->count() >= 2) {
+                        // Determinar ganador del partido de perdedores
+                        $ganadorPartidoPerdedor = $this->determinarGanadorPartido($partidoPerdedorData);
+                        $grupoGanadorPerdedor = $gruposPerdedor[$ganadorPartidoPerdedor - 1];
+                        
+                        // 3º lugar: ganador del partido de perdedores (índice 2)
+                        $posiciones[2] = [
+                            'jugador_1' => $grupoGanadorPerdedor->jugador_1,
+                            'jugador_2' => $grupoGanadorPerdedor->jugador_2
+                        ];
+                    }
+                }
+            }
+            
+            // Asegurar que el array esté indexado correctamente (0, 1, 2)
+            $posiciones = array_values($posiciones);
+            
+            \Log::info('Posiciones calculadas para zona eliminatoria: ' . json_encode($posiciones));
+            
+            return response()->json(['success' => true, 'posiciones' => $posiciones]);
+        }
+        
+        // Si no es zona eliminatoria, usar la lógica normal de clasificación
         // Convertir a array y ordenar por posición
         $posiciones = array_values($parejas);
         
         // Función de comparación con todos los criterios de desempate
-        usort($posiciones, function($a, $b) {
-            // 1. Primero por PUNTOS (no partidos ganados)
-            if ($a['puntos'] != $b['puntos']) {
-                return $b['puntos'] - $a['puntos'];
-            }
+        if ($numParejas == 3) {
+            // Lógica específica para zonas de 3 parejas según el sistema oficial
+            usort($posiciones, function($a, $b) use ($posiciones) {
+                // 1. Primero por PUNTOS (Victoria = 2, Derrota = 1)
+                if ($a['puntos'] != $b['puntos']) {
+                    return $b['puntos'] - $a['puntos'];
+                }
+                
+                // 2. Si empatan en puntos, aplicar desempates
+                $keyA = $a['key'];
+                $keyB = $b['key'];
+                
+                // 2.1. Paso 1: Resultado entre ellas (Partido Directo)
+                if (isset($a['partidos_directos'][$keyB])) {
+                    if ($a['partidos_directos'][$keyB]['ganado']) {
+                        return -1; // A gana el partido directo
+                    } else {
+                        return 1; // B gana el partido directo
+                    }
+                }
+                
+                // 2.2. Paso 2: Diferencia de Sets (Sets ganados - Sets perdidos)
+                $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
+                $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
+                if ($diffSetsA != $diffSetsB) {
+                    return $diffSetsB - $diffSetsA;
+                }
+                
+                // 2.3. Paso 3: Diferencia de Games (Games ganados - Games perdidos)
+                $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
+                $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
+                if ($diffJuegosA != $diffJuegosB) {
+                    return $diffJuegosB - $diffJuegosA;
+                }
+                
+                // 2.4. Paso 4: Games a favor (Total de games ganados)
+                if ($a['juegos_ganados'] != $b['juegos_ganados']) {
+                    return $b['juegos_ganados'] - $a['juegos_ganados'];
+                }
+                
+                // 2.5. Paso 5: Sorteo o criterio organizador (mantener orden)
+                return 0;
+            });
             
-            // 2. Si tienen los mismos puntos, aplicar desempates
-            $keyA = $a['key'];
-            $keyB = $b['key'];
-            
-            // 2.1. Partido Directo
-            if (isset($a['partidos_directos'][$keyB])) {
-                if ($a['partidos_directos'][$keyB]['ganado']) {
-                    return -1; // A gana el partido directo
-                } else {
-                    return 1; // B gana el partido directo
+            // Manejar triple empate: Si las 3 parejas tienen los mismos puntos
+            // y no se resolvió con los desempates normales, recalcular diferencias solo entre ellas
+            $puntosUnicos = array_unique(array_column($posiciones, 'puntos'));
+            if (count($puntosUnicos) == 1 && count($posiciones) == 3) {
+                // Verificar si ya se resolvió el empate con los desempates normales
+                // (partido directo, diferencia sets, diferencia games, games a favor)
+                $keys = array_column($posiciones, 'key');
+                $yaResuelto = false;
+                
+                // Si hay un partido directo que puede resolver el empate, ya está resuelto
+                foreach ($posiciones as $i => $pos1) {
+                    foreach ($posiciones as $j => $pos2) {
+                        if ($i != $j && isset($pos1['partidos_directos'][$pos2['key']])) {
+                            // Hay partidos directos, el ordenamiento normal debería haberlos resuelto
+                            $yaResuelto = true;
+                            break 2;
+                        }
+                    }
+                }
+                
+                // Si no se resolvió con partidos directos, aplicar lógica de triple empate
+                if (!$yaResuelto) {
+                    // Triple empate: recalcular diferencias solo entre las 3 parejas
+                    foreach ($posiciones as &$pos) {
+                        $key = $pos['key'];
+                        $setsGanadosEntreEmpatadas = 0;
+                        $setsPerdidosEntreEmpatadas = 0;
+                        $gamesGanadosEntreEmpatadas = 0;
+                        $gamesPerdidosEntreEmpatadas = 0;
+                        
+                        // Calcular estadísticas solo contra las otras dos parejas empatadas
+                        foreach ($posiciones as $otra) {
+                            if ($otra['key'] != $key && isset($pos['partidos_directos'][$otra['key']])) {
+                                $partido = $pos['partidos_directos'][$otra['key']];
+                                $setsGanadosEntreEmpatadas += $partido['sets_ganados'];
+                                $setsPerdidosEntreEmpatadas += $partido['sets_perdidos'];
+                                $gamesGanadosEntreEmpatadas += $partido['juegos_ganados'];
+                                $gamesPerdidosEntreEmpatadas += $partido['juegos_perdidos'];
+                            }
+                        }
+                        
+                        $pos['diff_sets_entre_empatadas'] = $setsGanadosEntreEmpatadas - $setsPerdidosEntreEmpatadas;
+                        $pos['diff_games_entre_empatadas'] = $gamesGanadosEntreEmpatadas - $gamesPerdidosEntreEmpatadas;
+                        $pos['games_a_favor_entre_empatadas'] = $gamesGanadosEntreEmpatadas;
+                    }
+                    unset($pos);
+                    
+                    // Reordenar usando diferencias entre empatadas
+                    usort($posiciones, function($a, $b) {
+                        // Paso 1: Diferencia de sets entre todas
+                        if (isset($a['diff_sets_entre_empatadas']) && isset($b['diff_sets_entre_empatadas'])) {
+                            if ($a['diff_sets_entre_empatadas'] != $b['diff_sets_entre_empatadas']) {
+                                return $b['diff_sets_entre_empatadas'] - $a['diff_sets_entre_empatadas'];
+                            }
+                        }
+                        
+                        // Paso 2: Diferencia de games entre todas
+                        if (isset($a['diff_games_entre_empatadas']) && isset($b['diff_games_entre_empatadas'])) {
+                            if ($a['diff_games_entre_empatadas'] != $b['diff_games_entre_empatadas']) {
+                                return $b['diff_games_entre_empatadas'] - $a['diff_games_entre_empatadas'];
+                            }
+                        }
+                        
+                        // Paso 3: Games a favor entre todas
+                        if (isset($a['games_a_favor_entre_empatadas']) && isset($b['games_a_favor_entre_empatadas'])) {
+                            if ($a['games_a_favor_entre_empatadas'] != $b['games_a_favor_entre_empatadas']) {
+                                return $b['games_a_favor_entre_empatadas'] - $a['games_a_favor_entre_empatadas'];
+                            }
+                        }
+                        
+                        // Paso 4: Diferencia global (incluyendo todos los partidos)
+                        $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
+                        $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
+                        if ($diffSetsA != $diffSetsB) {
+                            return $diffSetsB - $diffSetsA;
+                        }
+                        
+                        $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
+                        $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
+                        if ($diffJuegosA != $diffJuegosB) {
+                            return $diffJuegosB - $diffJuegosA;
+                        }
+                        
+                        if ($a['juegos_ganados'] != $b['juegos_ganados']) {
+                            return $b['juegos_ganados'] - $a['juegos_ganados'];
+                        }
+                        
+                        // Paso 5: Sorteo
+                        return 0;
+                    });
                 }
             }
-            
-            // 2.2. Diferencia de Juegos
-            $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
-            $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
-            if ($diffJuegosA != $diffJuegosB) {
-                return $diffJuegosB - $diffJuegosA;
-            }
-            
-            // 2.3. Diferencia de Sets
-            $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
-            $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
-            if ($diffSetsA != $diffSetsB) {
-                return $diffSetsB - $diffSetsA;
-            }
-            
-            // 2.4. Mayor Número de Juegos Ganados
-            if ($a['juegos_ganados'] != $b['juegos_ganados']) {
-                return $b['juegos_ganados'] - $a['juegos_ganados'];
-            }
-            
-            // 2.5. Si todo está igual, mantener orden (equivalente a sorteo)
-            return 0;
-        });
+        } else {
+            // Lógica normal para otras zonas (basada en puntos)
+            usort($posiciones, function($a, $b) {
+                // 1. Primero por PUNTOS (no partidos ganados)
+                if ($a['puntos'] != $b['puntos']) {
+                    return $b['puntos'] - $a['puntos'];
+                }
+                
+                // 2. Si tienen los mismos puntos, aplicar desempates
+                $keyA = $a['key'];
+                $keyB = $b['key'];
+                
+                // 2.1. Partido Directo
+                if (isset($a['partidos_directos'][$keyB])) {
+                    if ($a['partidos_directos'][$keyB]['ganado']) {
+                        return -1; // A gana el partido directo
+                    } else {
+                        return 1; // B gana el partido directo
+                    }
+                }
+                
+                // 2.2. Diferencia de Juegos
+                $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
+                $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
+                if ($diffJuegosA != $diffJuegosB) {
+                    return $diffJuegosB - $diffJuegosA;
+                }
+                
+                // 2.3. Diferencia de Sets
+                $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
+                $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
+                if ($diffSetsA != $diffSetsB) {
+                    return $diffSetsB - $diffSetsA;
+                }
+                
+                // 2.4. Mayor Número de Juegos Ganados
+                if ($a['juegos_ganados'] != $b['juegos_ganados']) {
+                    return $b['juegos_ganados'] - $a['juegos_ganados'];
+                }
+                
+                // 2.5. Si todo está igual, mantener orden (equivalente a sorteo)
+                return 0;
+            });
+        }
         
         return response()->json(['success' => true, 'posiciones' => $posiciones]);
     }
@@ -3812,20 +4670,74 @@ class HomeController extends Controller
             return response()->json(['success' => false, 'message' => 'Datos de cruces inválidos']);
         }
         
-        // Eliminar cruces de cuartos existentes para este torneo
-        $gruposCuartos = DB::table('grupos')
+        // Eliminar cruces de octavos y cuartos existentes para este torneo
+        $gruposEliminatorios = DB::table('grupos')
             ->where('torneo_id', $torneoId)
-            ->where('zona', 'cuartos final')
+            ->whereIn('zona', ['octavos final', 'cuartos final'])
             ->whereNotNull('partido_id')
             ->get();
         
-        $partidosIds = $gruposCuartos->pluck('partido_id')->unique();
+        $partidosIds = $gruposEliminatorios->pluck('partido_id')->unique();
         if ($partidosIds->count() > 0) {
             DB::table('partidos')->whereIn('id', $partidosIds)->delete();
             DB::table('grupos')->whereIn('partido_id', $partidosIds)->delete();
         }
         
-        // Crear los nuevos cruces de cuartos
+        // Crear los nuevos cruces (octavos o cuartos según corresponda)
+        foreach ($cruces as $cruce) {
+            if (!isset($cruce['pareja_1']) || !isset($cruce['pareja_2'])) {
+                continue;
+            }
+            
+            $pareja1 = $cruce['pareja_1'];
+            $pareja2 = $cruce['pareja_2'];
+            $ronda = $cruce['ronda'] ?? 'cuartos';
+            
+            // Determinar la zona según la ronda
+            $zona = ($ronda === 'octavos') ? 'octavos final' : 'cuartos final';
+            
+            // Crear partido
+            $partido = $this->crearPartido();
+            
+            // Crear grupo para pareja 1
+            $grupo1 = new Grupo;
+            $grupo1->torneo_id = $torneoId;
+            $grupo1->zona = $zona;
+            $grupo1->fecha = '2000-01-01';
+            $grupo1->horario = '00:00';
+            $grupo1->jugador_1 = $pareja1['jugador_1'];
+            $grupo1->jugador_2 = $pareja1['jugador_2'];
+            $grupo1->partido_id = $partido->id;
+            $grupo1->save();
+            
+            // Crear grupo para pareja 2
+            $grupo2 = new Grupo;
+            $grupo2->torneo_id = $torneoId;
+            $grupo2->zona = $zona;
+            $grupo2->fecha = '2000-01-01';
+            $grupo2->horario = '00:00';
+            $grupo2->jugador_1 = $pareja2['jugador_1'];
+            $grupo2->jugador_2 = $pareja2['jugador_2'];
+            $grupo2->partido_id = $partido->id;
+            $grupo2->save();
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Cruces confirmados correctamente',
+            'torneo_id' => $torneoId
+        ]);
+    }
+    
+    public function crearCuartosDesdeOctavos(Request $request) {
+        $torneoId = $request->torneo_id;
+        $cruces = json_decode($request->cruces, true);
+        
+        if (!$cruces || !is_array($cruces)) {
+            return response()->json(['success' => false, 'message' => 'Datos de cruces inválidos']);
+        }
+        
+        // Crear los cruces de cuartos desde los ganadores de octavos
         foreach ($cruces as $cruce) {
             if (!isset($cruce['pareja_1']) || !isset($cruce['pareja_2'])) {
                 continue;
@@ -3862,7 +4774,7 @@ class HomeController extends Controller
         
         return response()->json([
             'success' => true,
-            'message' => 'Cruces confirmados correctamente',
+            'message' => 'Cuartos de final creados correctamente desde octavos',
             'torneo_id' => $torneoId
         ]);
     }
@@ -4785,16 +5697,58 @@ class HomeController extends Controller
                         ->get()
                         ->toArray();
         
+        // Verificar si hay más de 17 parejas clasificadas para determinar si deberían ser octavos
+        $gruposZonas = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where(function($query) {
+                $query->whereNotIn('zona', ['cuartos final', 'semifinal', 'final', 'octavos final'])
+                      ->where('zona', 'not like', 'cuartos final|%')
+                      ->where('zona', 'not like', 'octavos final|%')
+                      ->where('zona', 'not like', 'ganador %')
+                      ->where('zona', 'not like', 'perdedor %');
+            })
+            ->get();
+        
+        $posicionesPorZona = [];
+        foreach ($gruposZonas->groupBy('zona') as $zona => $grupos) {
+            $posicionesPorZona[$zona] = $grupos->count();
+        }
+        
+        $totalParejasClasificadas = array_sum($posicionesPorZona);
+        $necesitaOctavos = $totalParejasClasificadas > 17;
+        
+        // Si necesita octavos y hay exactamente 8 cruces de cuartos, convertirlos a octavos
+        if ($necesitaOctavos) {
+            $crucesCuartos = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->where('zona', 'cuartos final')
+                ->whereNotNull('partido_id')
+                ->select('partido_id')
+                ->distinct()
+                ->get();
+            
+            // Si hay exactamente 8 partidos de cuartos, convertirlos a octavos
+            if ($crucesCuartos->count() == 8) {
+                \Log::info('Convirtiendo 8 cruces de cuartos a octavos para torneo ' . $torneoId);
+                DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', 'cuartos final')
+                    ->whereNotNull('partido_id')
+                    ->update(['zona' => 'octavos final']);
+            }
+        }
+        
         // PRIMERO: Obtener todos los partidos eliminatorios existentes directamente de la base de datos
         $cruces = [];
         $resultadosGuardados = [];
         
         // Obtener todos los grupos eliminatorios con sus partidos
-        // Para cuartos, buscar también zonas que comiencen con "cuartos final"
+        // Para octavos, cuartos, buscar también zonas que comiencen con "octavos final" o "cuartos final"
         $gruposEliminatorios = DB::table('grupos')
             ->where('torneo_id', $torneoId)
             ->where(function($query) {
-                $query->whereIn('zona', ['cuartos final', 'semifinal', 'final'])
+                $query->whereIn('zona', ['octavos final', 'cuartos final', 'semifinal', 'final'])
+                      ->orWhere('zona', 'like', 'octavos final|%')
                       ->orWhere('zona', 'like', 'cuartos final|%');
             })
             ->whereNotNull('partido_id')
@@ -4834,6 +5788,7 @@ class HomeController extends Controller
         
         // Construir cruces desde los partidos existentes
         $crucesPorRonda = [
+            'octavos' => [],
             'cuartos' => [],
             'semifinales' => [],
             'final' => []
@@ -4850,9 +5805,13 @@ class HomeController extends Controller
                 
                 // Determinar la ronda según la zona
                 $ronda = 'cuartos';
-                if (strpos($datosPartido['zona'], 'semifinal') !== false) {
+                $zonaLower = strtolower($datosPartido['zona']);
+                if (strpos($zonaLower, 'octavos') !== false || $zonaLower === 'octavos final') {
+                    $ronda = 'octavos';
+                    \Log::info('Detectado cruce de octavos: zona=' . $datosPartido['zona'] . ', partido_id=' . $partidoId);
+                } else if (strpos($zonaLower, 'semifinal') !== false) {
                     $ronda = 'semifinales';
-                } else if ($datosPartido['zona'] === 'final') {
+                } else if ($zonaLower === 'final') {
                     $ronda = 'final';
                 }
                 
@@ -5415,14 +6374,20 @@ class HomeController extends Controller
             
             // Agregar los cruces de cuartos generados a los cruces existentes
             // Ordenar cada ronda por partido_id para mantener orden consistente
+            usort($crucesPorRonda['octavos'], function($a, $b) {
+                return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
+            });
             usort($crucesPorRonda['cuartos'], function($a, $b) {
                 return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
             
-            $cruces = array_merge($crucesPorRonda['cuartos'], $crucesCuartos, $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
+            $cruces = array_merge($crucesPorRonda['octavos'], $crucesPorRonda['cuartos'], $crucesCuartos, $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
         } else {
             // Si ya hay cruces de cuartos en la base de datos, usar todos los cruces existentes
             // Ordenar cada ronda por partido_id para mantener orden consistente
+            usort($crucesPorRonda['octavos'], function($a, $b) {
+                return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
+            });
             usort($crucesPorRonda['cuartos'], function($a, $b) {
                 return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
@@ -5433,7 +6398,7 @@ class HomeController extends Controller
                 return ($a['partido_id'] ?? 0) <=> ($b['partido_id'] ?? 0);
             });
             
-            $cruces = array_merge($crucesPorRonda['cuartos'], $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
+            $cruces = array_merge($crucesPorRonda['octavos'], $crucesPorRonda['cuartos'], $crucesPorRonda['semifinales'], $crucesPorRonda['final']);
         }
         
         // Verificar si todos los cuartos tienen resultados antes de mostrar semifinales
@@ -5474,9 +6439,10 @@ class HomeController extends Controller
         }
         
         // Si los cuartos no están completos, filtrar semifinales y final de los cruces
+        // Pero mantener octavos y cuartos
         if (!$cuartosCompletos) {
             $cruces = array_filter($cruces, function($cruce) {
-                return isset($cruce['ronda']) && $cruce['ronda'] === 'cuartos';
+                return isset($cruce['ronda']) && ($cruce['ronda'] === 'cuartos' || $cruce['ronda'] === 'octavos');
             });
             // Reindexar el array
             $cruces = array_values($cruces);
@@ -5490,6 +6456,20 @@ class HomeController extends Controller
             }
         }
         
+        // Determinar si hay octavos
+        $tieneOctavos = isset($crucesPorRonda['octavos']) && count($crucesPorRonda['octavos']) > 0;
+        
+        // Log para debugging
+        \Log::info('Cruces por ronda antes de pasar a vista: octavos=' . count($crucesPorRonda['octavos']) . ', cuartos=' . count($crucesPorRonda['cuartos']) . ', semifinales=' . count($crucesPorRonda['semifinales']) . ', final=' . count($crucesPorRonda['final']));
+        \Log::info('Total cruces: ' . count($cruces) . ', tieneOctavos=' . ($tieneOctavos ? 'true' : 'false'));
+        
+        // Log total de resultados guardados antes de pasar a vista
+        $octavosGuardados = array_filter($resultadosGuardados, function($r) { return isset($r['ronda']) && $r['ronda'] === 'octavos'; });
+        \Log::info('Total resultados guardados antes de pasar a vista: ' . count($resultadosGuardados) . ', de octavos: ' . count($octavosGuardados));
+        if (count($octavosGuardados) > 0) {
+            \Log::info('Resultados de octavos guardados: ' . json_encode($octavosGuardados));
+        }
+        
         return View('bahia_padel.admin.torneo.cruces_americano')
                     ->with('torneo', $torneo)
                     ->with('jugadores', $jugadores)
@@ -5499,7 +6479,8 @@ class HomeController extends Controller
                     ->with('resultadosGuardados', $resultadosGuardados)
                     ->with('primerosClasificados', $primerosClasificados)
                     ->with('totalClasificados', count($clasificados))
-                    ->with('cuartosCompletos', $cuartosCompletos);
+                    ->with('cuartosCompletos', $cuartosCompletos)
+                    ->with('tieneOctavos', $tieneOctavos);
     }
 
     public function guardarResultadoCruceAmericano(Request $request) {
@@ -5515,7 +6496,9 @@ class HomeController extends Controller
         
         // Mapear ronda a nombre de zona
         $zonaRonda = '';
-        if ($ronda === 'cuartos') {
+        if ($ronda === 'octavos') {
+            $zonaRonda = 'octavos final';
+        } else if ($ronda === 'cuartos') {
             $zonaRonda = 'cuartos final';
         } else if ($ronda === 'semifinales') {
             $zonaRonda = 'semifinal';
@@ -5539,8 +6522,10 @@ class HomeController extends Controller
                 });
             });
         
-        // Para cuartos, buscar por zona que comience con "cuartos final"
-        if ($ronda === 'cuartos') {
+        // Para octavos y cuartos, buscar por zona que comience con el nombre correspondiente
+        if ($ronda === 'octavos') {
+            $query->where('zona', 'like', 'octavos final%');
+        } else if ($ronda === 'cuartos') {
             $query->where('zona', 'like', 'cuartos final%');
         } else {
             $query->where('zona', $zonaRonda);
@@ -5557,8 +6542,10 @@ class HomeController extends Controller
                 ->where('partido_id', $grupo1Encontrado->partido_id)
                 ->where('id', '!=', $grupo1Encontrado->id);
             
-            // Para cuartos, buscar por zona que comience con "cuartos final"
-            if ($ronda === 'cuartos') {
+            // Para octavos y cuartos, buscar por zona que comience con el nombre correspondiente
+            if ($ronda === 'octavos') {
+                $query2->where('zona', 'like', 'octavos final%');
+            } else if ($ronda === 'cuartos') {
                 $query2->where('zona', 'like', 'cuartos final%');
             } else {
                 $query2->where('zona', $zonaRonda);
@@ -5577,7 +6564,7 @@ class HomeController extends Controller
                     $partido = Partido::find($grupo1Encontrado->partido_id);
                     
                     // Si existe el partido pero no tiene el número de partido y se está guardando uno, actualizar
-                    if ($ronda === 'cuartos' && strpos($grupo1Encontrado->zona, '|') === false) {
+                    if (($ronda === 'octavos' || $ronda === 'cuartos') && strpos($grupo1Encontrado->zona, '|') === false) {
                         DB::table('grupos')
                             ->where('partido_id', $grupo1Encontrado->partido_id)
                             ->where('torneo_id', $torneoId)
@@ -5633,6 +6620,9 @@ class HomeController extends Controller
                 $partido->pareja_1_set_1 = $pareja2Set1;
                 $partido->pareja_2_set_1 = $pareja1Set1;
             }
+            
+            // Log para debugging
+            \Log::info('Guardando resultado de ' . $ronda . ': partido_id=' . $partido->id . ', pareja_1_set_1=' . $partido->pareja_1_set_1 . ', pareja_2_set_1=' . $partido->pareja_2_set_1);
         } else {
             $partido->pareja_1_set_1 = $pareja1Set1;
             $partido->pareja_2_set_1 = $pareja2Set1;
@@ -6126,12 +7116,14 @@ class HomeController extends Controller
             return redirect()->route('admintorneos')->with('error', 'Torneo no encontrado');
         }
         
-        // Verificar si ya existen cruces armados (zonas que comienzan con "cuartos final|" o "cuartos final")
+        // Verificar si ya existen cruces armados (zonas que comienzan con "cuartos final|" o "cuartos final", o "octavos final")
         $crucesExistentes = DB::table('grupos')
             ->where('torneo_id', $torneoId)
             ->where(function($query) {
                 $query->where('zona', 'cuartos final')
-                      ->orWhere('zona', 'like', 'cuartos final|%');
+                      ->orWhere('zona', 'like', 'cuartos final|%')
+                      ->orWhere('zona', 'octavos final')
+                      ->orWhere('zona', 'like', 'octavos final|%');
             })
             ->whereNotNull('partido_id')
             ->count();
@@ -6350,6 +7342,15 @@ class HomeController extends Controller
                 $cruces[] = $cruce;
             }
         }
+        
+        // Calcular total de parejas clasificadas
+        $totalParejasClasificadas = 0;
+        foreach ($posicionesPorZona as $zona => $posiciones) {
+            $totalParejasClasificadas += count($posiciones);
+        }
+        
+        // Determinar si necesitamos octavos de final (más de 17 parejas)
+        $necesitaOctavos = $totalParejasClasificadas > 17;
         
         // Si no hay cruces de cuartos, generarlos desde los clasificados
         if (count($cruces) == 0) {
@@ -6594,7 +7595,9 @@ class HomeController extends Controller
                     ->with('torneo', $torneo)
                     ->with('cruces', $cruces)
                     ->with('posicionesPorZona', $posicionesPorZona)
-                    ->with('mejoresTercerosIds', $mejoresTercerosIds);
+                    ->with('mejoresTercerosIds', $mejoresTercerosIds)
+                    ->with('necesitaOctavos', $necesitaOctavos ?? false)
+                    ->with('totalParejasClasificadas', $totalParejasClasificadas ?? 0);
     }
 
     public function guardarCrucesEditados(Request $request) {

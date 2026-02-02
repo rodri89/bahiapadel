@@ -80,7 +80,12 @@
                 </div>
                 <input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">
                 <div class="alert alert-info">
-                    <i class="fa fa-info-circle"></i> Revisa los cruces de cuartos de final generados. Puedes editar cualquier pareja haciendo clic en los jugadores.
+                    <i class="fa fa-info-circle"></i> 
+                    @if($necesitaOctavos ?? false)
+                        Revisa los cruces de octavos de final generados. Puedes editar cualquier pareja haciendo clic en los jugadores.
+                    @else
+                        Revisa los cruces de cuartos de final generados. Puedes editar cualquier pareja haciendo clic en los jugadores.
+                    @endif
                 </div>
             </div>
         </div>
@@ -158,10 +163,16 @@
             <!-- Tabla de selección de cruces a la derecha -->
             <div class="col-lg-4">
                 <div class="card shadow bg-white px-4 py-3" style="border-radius: 12px; border: 1px solid #e3e6f0;">
-                    <h3 class="text-center mb-4" style="color:#4e73df; font-weight:700;">Armar Cruces</h3>
+                    <h3 class="text-center mb-4" style="color:#4e73df; font-weight:700;">
+                        @if($necesitaOctavos ?? false)
+                            Armar Octavos de Final
+                        @else
+                            Armar Cruces
+                        @endif
+                    </h3>
                     
-                    <!-- Tabla de selección 4x2 -->
-                    <div class="table-responsive">
+                    <!-- Tabla de selección 4x2 o 8x2 según necesite octavos -->
+                    <div class="table-responsive" style="max-height: {{ ($necesitaOctavos ?? false) ? '600px' : '400px' }}; overflow-y: auto;">
                         <table class="table table-bordered" style="font-size: 0.9rem;">
                             <thead class="thead-light">
                                 <tr>
@@ -170,54 +181,23 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @php
+                                    $numFilas = ($necesitaOctavos ?? false) ? 8 : 4;
+                                @endphp
+                                @for($fila = 1; $fila <= $numFilas; $fila++)
                                 <tr>
                                     <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="1" data-columna="1">
+                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="{{ $fila }}" data-columna="1">
                                             <option value="">Seleccionar...</option>
                                         </select>
                                     </td>
                                     <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="1" data-columna="2">
+                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="{{ $fila }}" data-columna="2">
                                             <option value="">Seleccionar...</option>
                                         </select>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="2" data-columna="1">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="2" data-columna="2">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="3" data-columna="1">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="3" data-columna="2">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="4" data-columna="1">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="4" data-columna="2">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                </tr>
+                                @endfor
                             </tbody>
                         </table>
                     </div>
@@ -232,8 +212,20 @@
         </div>
         
         <div class="row">
-            <!-- Cuartos de Final -->
-            <div class="col-12">
+            @if($necesitaOctavos ?? false)
+            <!-- Octavos de Final -->
+            <div class="col-12 mb-4">
+                <div class="bracket-round">
+                    <div class="bracket-round-title">OCTAVOS DE FINAL</div>
+                    <div id="cruces-octavos" class="d-flex flex-wrap justify-content-center">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            @endif
+            
+            <!-- Cuartos de Final (solo se muestra si no necesita octavos o cuando ya hay cruces de cuartos) -->
+            <div class="col-12" @if($necesitaOctavos ?? false) style="display: none;" @endif>
                 <div class="bracket-round">
                     <div class="bracket-round-title">CUARTOS DE FINAL</div>
                     <div id="cruces-cuartos" class="d-flex flex-wrap justify-content-center">
@@ -332,6 +324,22 @@
 <script>
 $(document).ready(function() {
     var cruces = @json($cruces);
+    var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
+    
+    // Asegurar que los cruces existentes tengan la ronda correcta
+    // Si necesitamos octavos y hay cruces sin ronda o con ronda 'cuartos', verificar si deberían ser octavos
+    if (necesitaOctavos) {
+        cruces.forEach(function(cruce, index) {
+            // Si el cruce no tiene ronda o tiene ronda 'cuartos', pero debería ser octavos
+            // Verificar si hay 8 cruces (octavos) o 4 cruces (cuartos)
+            if (!cruce.ronda || cruce.ronda === 'cuartos') {
+                // Si hay más de 4 cruces, los primeros 8 deberían ser octavos
+                if (cruces.length > 4 && index < 8) {
+                    cruce.ronda = 'octavos';
+                }
+            }
+        });
+    }
     var jugadores = @json($jugadores);
     var posicionesPorZona = @json($posicionesPorZona);
     var torneoId = $('#torneo_id').val();
@@ -386,10 +394,15 @@ $(document).ready(function() {
     function generarCrucesDesdeTabla() {
         var crucesTemp = [];
         
-        // Leer las selecciones de la tabla 4x2 (4 filas, 2 columnas)
+        // Determinar si necesitamos octavos de final
+        var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
+        var numFilas = necesitaOctavos ? 8 : 4;
+        var ronda = necesitaOctavos ? 'octavos' : 'cuartos';
+        
+        // Leer las selecciones de la tabla (4x2 o 8x2 según corresponda)
         // Cada fila es un cruce: pareja1 (columna 1) vs pareja2 (columna 2)
         
-        for (var fila = 1; fila <= 4; fila++) {
+        for (var fila = 1; fila <= numFilas; fila++) {
             var pareja1Select = $('.select-pareja-cruce[data-fila="' + fila + '"][data-columna="1"]');
             var pareja2Select = $('.select-pareja-cruce[data-fila="' + fila + '"][data-columna="2"]');
             
@@ -409,7 +422,7 @@ $(document).ready(function() {
                 
                 crucesTemp.push({
                     id: 'cruce_manual_' + fila,
-                    ronda: 'cuartos',
+                    ronda: ronda,
                     pareja_1: {
                         jugador_1: pareja1Data.jugador_1,
                         jugador_2: pareja1Data.jugador_2,
@@ -429,9 +442,11 @@ $(document).ready(function() {
         return crucesTemp;
     }
     
-    // Función para renderizar cruces en el contenedor de cuartos
-    function renderizarCrucesEnCuartos(crucesData) {
-        var container = $('#cruces-cuartos');
+    // Función para renderizar cruces en el contenedor de octavos o cuartos
+    function renderizarCrucesEnCuartos(crucesData, esOctavos) {
+        esOctavos = esOctavos || false;
+        var container = esOctavos ? $('#cruces-octavos') : $('#cruces-cuartos');
+        var ronda = esOctavos ? 'octavos' : 'cuartos';
         container.empty();
         
         if (!crucesData || crucesData.length === 0) {
@@ -446,7 +461,7 @@ $(document).ready(function() {
             var jugador2_2 = jugadoresMap[cruce.pareja_2.jugador_2] || null;
             
             var cruceHTML = `
-                <div class="match-card cruce-editable" data-cruce-index="${index}" data-ronda="cuartos">
+                <div class="match-card cruce-editable" data-cruce-index="${index}" data-ronda="${ronda}">
                     <!-- Pareja 1 -->
                     <div class="player-pair pareja-editable" 
                          data-pareja="1"
@@ -503,7 +518,16 @@ $(document).ready(function() {
             alert('Por favor, selecciona al menos un cruce completo (pareja 1 y pareja 2 en la misma fila)');
             return;
         }
-        renderizarCrucesEnCuartos(crucesNuevos);
+        var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
+        var crucesOctavos = crucesNuevos.filter(function(c) { return c.ronda === 'octavos'; });
+        var crucesCuartos = crucesNuevos.filter(function(c) { return c.ronda === 'cuartos'; });
+        
+        if (necesitaOctavos && crucesOctavos.length > 0) {
+            renderizarCrucesEnCuartos(crucesOctavos, true);
+        }
+        if (crucesCuartos.length > 0) {
+            renderizarCrucesEnCuartos(crucesCuartos, false);
+        }
     });
     
     // Construir lista de todas las parejas disponibles
@@ -737,6 +761,7 @@ $(document).ready(function() {
         btn.prop('disabled', true).text('Guardando...');
         
         // Preparar datos de cruces para enviar
+        var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
         var crucesParaEnviar = cruces.map(function(cruce, index) {
             // Validar que el cruce tenga las parejas necesarias
             if (!cruce.pareja_1 || !cruce.pareja_2) {
@@ -750,8 +775,25 @@ $(document).ready(function() {
                 return null;
             }
             
+            // Determinar la ronda correcta
+            var ronda = cruce.ronda;
+            if (!ronda) {
+                // Si no tiene ronda, determinar según si necesitamos octavos
+                if (necesitaOctavos) {
+                    // Si hay 8 cruces, todos son octavos
+                    ronda = (cruces.length === 8) ? 'octavos' : 'cuartos';
+                } else {
+                    ronda = 'cuartos';
+                }
+            }
+            
+            // Si necesitamos octavos y hay 8 cruces, asegurar que todos sean octavos
+            if (necesitaOctavos && cruces.length === 8 && ronda === 'cuartos') {
+                ronda = 'octavos';
+            }
+            
             return {
-                ronda: cruce.ronda || 'cuartos',
+                ronda: ronda,
                 pareja_1: {
                     jugador_1: parseInt(cruce.pareja_1.jugador_1),
                     jugador_2: parseInt(cruce.pareja_1.jugador_2),
