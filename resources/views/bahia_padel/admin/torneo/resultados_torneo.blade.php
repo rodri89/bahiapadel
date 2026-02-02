@@ -662,15 +662,12 @@ $(document).ready(function() {
                     // Determinar ganador y aplicar estilo verde
                     determinarGanador(partidoId, resultadoPartido);
                     
-                    // Si se actualizaron partidos de Ganador/Perdedor, recargar la página
-                    if (data.recargar) {
-                        console.log('⚠️ Se actualizaron partidos de Ganador/Perdedor. Recargando página...');
-                        setTimeout(function() {
-                            location.reload();
-                        }, 1000);
-                        return;
+                    // Si se actualizaron partidos de Ganador/Perdedor, actualizar dinámicamente
+                    if (data.recargar && data.partidos_actualizados) {
+                        console.log('⚠️ Se actualizaron partidos de Ganador/Perdedor. Actualizando dinámicamente...');
+                        actualizarPartidosGanadorPerdedor(data.partidos_actualizados);
                     } else {
-                        console.log('No se requiere recargar la página');
+                        console.log('No se requiere actualizar partidos de Ganador/Perdedor');
                     }
                     
                     // Verificar si todos los partidos están completos
@@ -788,6 +785,303 @@ $(document).ready(function() {
                 .css('background-color', '#d4edda')
                 .css('border', '3px solid #28a745');
         }
+    }
+    
+    // Función para actualizar dinámicamente los partidos de Ganador/Perdedor
+    function actualizarPartidosGanadorPerdedor(partidosActualizados) {
+        @php
+            $jugadoresArray = [];
+            foreach($jugadores as $j) {
+                $jugadoresArray[] = [
+                    'id' => $j->id,
+                    'nombre' => $j->nombre ?? '',
+                    'apellido' => $j->apellido ?? '',
+                    'foto' => $j->foto ?? asset('images/jugador_img.png')
+                ];
+            }
+        @endphp
+        var jugadores = @json($jugadoresArray);
+        var baseUrl = '{{ url("/") }}';
+        var zonaActual = $('.zona-container:visible').data('zona');
+        
+        console.log('Actualizando partidos de Ganador/Perdedor:', partidosActualizados);
+        console.log('Zona actual:', zonaActual);
+        
+        // Función helper para obtener URL de foto
+        function getFotoUrl(foto) {
+            if (!foto || foto === '') {
+                return baseUrl + '/images/jugador_img.png?v=' + Date.now();
+            }
+            if (foto.startsWith('http://') || foto.startsWith('https://')) {
+                return foto + '?v=' + Date.now();
+            }
+            if (foto.startsWith('/')) {
+                return baseUrl + foto + '?v=' + Date.now();
+            }
+            return baseUrl + '/' + foto + '?v=' + Date.now();
+        }
+        
+        // Función helper para obtener jugador por ID
+        function obtenerJugadorPorId(id) {
+            return jugadores.find(function(j) {
+                return j.id == id;
+            });
+        }
+        
+        // Función helper para formatear fecha
+        function formatearFecha(fecha) {
+            if (!fecha || fecha === '2000-01-01' || fecha === '') {
+                return '';
+            }
+            var diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+            var fechaObj = new Date(fecha);
+            var diaSemana = diasSemana[fechaObj.getDay()];
+            var diaMes = fechaObj.getDate();
+            return diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1) + ' ' + diaMes;
+        }
+        
+        // Función helper para crear HTML de pareja
+        function crearHTMLPareja(pareja, esPareja1) {
+            if (!pareja || !pareja.jugador_1 || pareja.jugador_1 == 0) {
+                return '<div class="mb-2"><div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;"><span style="font-size:0.7rem; color:#666;">?</span></div><div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">Por determinar</div></div>';
+            }
+            
+            var jugador1 = obtenerJugadorPorId(pareja.jugador_1);
+            var jugador2 = obtenerJugadorPorId(pareja.jugador_2);
+            var colorBorde = esPareja1 ? '#4e73df' : '#1a8917';
+            
+            if (!jugador1 || !jugador2) {
+                return '<div class="mb-2"><div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;"><span style="font-size:0.7rem; color:#666;">?</span></div><div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">Por determinar</div></div>';
+            }
+            
+            return '<div class="mb-2">' +
+                '<img src="' + getFotoUrl(jugador1.foto) + '" class="rounded-circle" style="width:70px; height:70px; object-fit:cover; border: 2px solid ' + colorBorde + ';" onerror="this.src=\'' + baseUrl + '/images/jugador_img.png?v=' + Date.now() + '\'">' +
+                '<div style="font-size:0.75rem; font-weight:600; margin-top:5px;">' + jugador1.nombre + ' ' + jugador1.apellido + '</div>' +
+                '</div>' +
+                '<div>' +
+                '<img src="' + getFotoUrl(jugador2.foto) + '" class="rounded-circle" style="width:70px; height:70px; object-fit:cover; border: 2px solid ' + colorBorde + ';" onerror="this.src=\'' + baseUrl + '/images/jugador_img.png?v=' + Date.now() + '\'">' +
+                '<div style="font-size:0.75rem; font-weight:600; margin-top:5px;">' + jugador2.nombre + ' ' + jugador2.apellido + '</div>' +
+                '</div>';
+        }
+        
+        // Función helper para crear HTML completo de un partido
+        function crearHTMLPartido(partidoData) {
+            var partidoId = partidoData.partido_id;
+            var tipo = partidoData.tipo || 'normal';
+            var titulo = tipo === 'ganador' ? 'Partido 3 - Ganador' : (tipo === 'perdedor' ? 'Partido 4 - Perdedor' : 'Partido');
+            var fechaFormateada = formatearFecha(partidoData.fecha);
+            var horario = (partidoData.horario && partidoData.horario !== '00:00') ? partidoData.horario : '';
+            
+            var htmlFechaHorario = '';
+            if (fechaFormateada || horario) {
+                htmlFechaHorario = '<div class="text-center mb-3" style="font-size:0.85rem; color:#555;">';
+                if (fechaFormateada) {
+                    htmlFechaHorario += '<div><strong>Día:</strong> ' + fechaFormateada + '</div>';
+                }
+                if (horario) {
+                    htmlFechaHorario += '<div><strong>Horario:</strong> ' + horario + '</div>';
+                }
+                htmlFechaHorario += '</div>';
+            }
+            
+            var htmlPareja1 = crearHTMLPareja(partidoData.pareja_1, true);
+            var htmlPareja2 = crearHTMLPareja(partidoData.pareja_2, false);
+            
+            // Verificar si la zona tiene 4 partidos para usar el layout correcto
+            var zonaContainer = $('.zona-container[data-zona="' + zonaActual + '"]');
+            var tieneCuatroPartidos = zonaContainer.find('.partidos-container-scroll').length > 0 || zonaContainer.find('.partido-item, .col-md-6').length >= 3; // Ya hay al menos 3, agregaremos el 4to
+            
+            var htmlPartido = '';
+            if (tieneCuatroPartidos) {
+                // Layout horizontal (4 partidos)
+                htmlPartido = '<div class="partido-item" style="min-width: 280px; flex-shrink: 0;">' +
+                    '<div class="card border" style="height: 100%;">' +
+                    '<div class="card-body">';
+            } else {
+                // Layout normal (grid)
+                htmlPartido = '<div class="col-md-6 col-lg-4 mb-4">' +
+                    '<div class="card border" style="height: 100%;">' +
+                    '<div class="card-body">';
+            }
+            
+            htmlPartido += '<h5 class="card-title text-center mb-2">' + titulo + '</h5>' +
+                htmlFechaHorario +
+                '<div class="d-flex justify-content-around align-items-center mb-3">' +
+                '<div class="text-center pareja-container pareja-1-container" data-partido-id="' + partidoId + '" style="position: relative; padding: 10px; border-radius: 8px; transition: all 0.3s;">' +
+                htmlPareja1 +
+                '</div>' +
+                '<div class="mx-3"><h4 style="color:#dc3545; font-weight:bold;">VS</h4></div>' +
+                '<div class="text-center pareja-container pareja-2-container" data-partido-id="' + partidoId + '" style="position: relative; padding: 10px; border-radius: 8px; transition: all 0.3s;">' +
+                htmlPareja2 +
+                '</div>' +
+                '</div>' +
+                '<div class="resultado-partido" data-partido-id="' + partidoId + '">' +
+                '<div class="mb-2"><label style="font-size:0.8rem; font-weight:600;">Set 1</label>' +
+                '<div class="d-flex justify-content-center align-items-center">' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_1_set_1" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-2">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_2_set_1" value="0" data-partido-id="' + partidoId + '">' +
+                '</div>' +
+                '<div class="d-flex justify-content-center align-items-center mt-1">' +
+                '<small style="font-size:0.7rem;">TB:</small>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm ml-1" style="width:50px;" name="pareja_1_set_1_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-1">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_1_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '</div></div>' +
+                '<div class="mb-2"><label style="font-size:0.8rem; font-weight:600;">Set 2</label>' +
+                '<div class="d-flex justify-content-center align-items-center">' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_1_set_2" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-2">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_2_set_2" value="0" data-partido-id="' + partidoId + '">' +
+                '</div>' +
+                '<div class="d-flex justify-content-center align-items-center mt-1">' +
+                '<small style="font-size:0.7rem;">TB:</small>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm ml-1" style="width:50px;" name="pareja_1_set_2_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-1">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_2_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '</div></div>' +
+                '<div class="mb-2"><label style="font-size:0.8rem; font-weight:600;">Set 3</label>' +
+                '<div class="d-flex justify-content-center align-items-center">' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_1_set_3" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-2">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_2_set_3" value="0" data-partido-id="' + partidoId + '">' +
+                '</div>' +
+                '<div class="d-flex justify-content-center align-items-center mt-1">' +
+                '<small style="font-size:0.7rem;">TB:</small>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm ml-1" style="width:50px;" name="pareja_1_set_3_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-1">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_3_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '</div></div>' +
+                '<div class="mb-2"><label style="font-size:0.8rem; font-weight:600;">Super TB</label>' +
+                '<div class="d-flex justify-content-center align-items-center">' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_1_set_super_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '<span class="mx-2">-</span>' +
+                '<input type="number" min="0" max="99" class="form-control form-control-sm" style="width:60px;" name="pareja_2_set_super_tie_break" value="0" data-partido-id="' + partidoId + '">' +
+                '</div></div>' +
+                '<div class="text-center mt-3">' +
+                '<button type="button" class="btn btn-sm btn-primary guardar-resultado" data-partido-id="' + partidoId + '">Guardar Resultado</button>' +
+                '</div>' +
+                '</div>' +
+                '</div></div>';
+            
+            if (tieneCuatroPartidos) {
+                htmlPartido += '</div>';
+            } else {
+                htmlPartido += '</div></div>';
+            }
+            
+            return htmlPartido;
+        }
+        
+        // Actualizar partido Ganador
+        if (partidosActualizados.ganador) {
+            var partidoGanadorId = partidosActualizados.ganador.partido_id;
+            var pareja1Ganador = partidosActualizados.ganador.pareja_1;
+            var pareja2Ganador = partidosActualizados.ganador.pareja_2;
+            
+            console.log('Actualizando partido Ganador ID:', partidoGanadorId);
+            
+            // Buscar el contenedor del partido Ganador en la zona actual
+            var zonaContainer = $('.zona-container[data-zona="' + zonaActual + '"]');
+            var partidoGanadorContainer = zonaContainer.find('.partido-item').filter(function() {
+                return $(this).find('[data-partido-id="' + partidoGanadorId + '"]').length > 0;
+            });
+            
+            if (partidoGanadorContainer.length > 0) {
+                // El partido existe, actualizar solo las parejas
+                if (pareja1Ganador && pareja1Ganador.jugador_1 && pareja1Ganador.jugador_1 != 0) {
+                    var pareja1Container = partidoGanadorContainer.find('.pareja-1-container[data-partido-id="' + partidoGanadorId + '"]');
+                    pareja1Container.empty();
+                    pareja1Container.html(crearHTMLPareja(pareja1Ganador, true));
+                }
+                
+                if (pareja2Ganador && pareja2Ganador.jugador_1 && pareja2Ganador.jugador_1 != 0) {
+                    var pareja2Container = partidoGanadorContainer.find('.pareja-2-container[data-partido-id="' + partidoGanadorId + '"]');
+                    pareja2Container.empty();
+                    pareja2Container.html(crearHTMLPareja(pareja2Ganador, false));
+                }
+            } else {
+                // El partido no existe, crearlo dinámicamente
+                console.log('Partido Ganador no existe, creándolo dinámicamente...');
+                var contenedorPartidos = zonaContainer.find('.partidos-container-scroll .d-flex, .row').first();
+                if (contenedorPartidos.length > 0) {
+                    var htmlPartido = crearHTMLPartido(partidosActualizados.ganador);
+                    contenedorPartidos.append(htmlPartido);
+                    
+                    // Si ahora tiene 4 partidos, cambiar el layout
+                    var numPartidos = zonaContainer.find('.partido-item, .col-md-6').length;
+                    if (numPartidos === 4) {
+                        // Reorganizar para layout horizontal
+                        var partidos = zonaContainer.find('.partido-item, .col-md-6');
+                        var nuevoContenedor = $('<div class="partidos-container-scroll" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; margin-bottom: 1rem;"><div class="d-flex" style="min-width: max-content; gap: 1rem;"></div></div>');
+                        partidos.each(function() {
+                            var $this = $(this);
+                            if ($this.hasClass('col-md-6')) {
+                                $this.removeClass('col-md-6 col-lg-4 mb-4').addClass('partido-item').css({'min-width': '280px', 'flex-shrink': '0'});
+                            }
+                            nuevoContenedor.find('.d-flex').append($this);
+                        });
+                        zonaContainer.find('.partidos-container-scroll, .row').first().replaceWith(nuevoContenedor);
+                    }
+                }
+            }
+        }
+        
+        // Actualizar partido Perdedor
+        if (partidosActualizados.perdedor) {
+            var partidoPerdedorId = partidosActualizados.perdedor.partido_id;
+            var pareja1Perdedor = partidosActualizados.perdedor.pareja_1;
+            var pareja2Perdedor = partidosActualizados.perdedor.pareja_2;
+            
+            console.log('Actualizando partido Perdedor ID:', partidoPerdedorId);
+            
+            // Buscar el contenedor del partido Perdedor en la zona actual
+            var zonaContainer = $('.zona-container[data-zona="' + zonaActual + '"]');
+            var partidoPerdedorContainer = zonaContainer.find('.partido-item, .col-md-6').filter(function() {
+                return $(this).find('[data-partido-id="' + partidoPerdedorId + '"]').length > 0;
+            });
+            
+            if (partidoPerdedorContainer.length > 0) {
+                // El partido existe, actualizar solo las parejas
+                if (pareja1Perdedor && pareja1Perdedor.jugador_1 && pareja1Perdedor.jugador_1 != 0) {
+                    var pareja1Container = partidoPerdedorContainer.find('.pareja-1-container[data-partido-id="' + partidoPerdedorId + '"]');
+                    pareja1Container.empty();
+                    pareja1Container.html(crearHTMLPareja(pareja1Perdedor, true));
+                }
+                
+                if (pareja2Perdedor && pareja2Perdedor.jugador_1 && pareja2Perdedor.jugador_1 != 0) {
+                    var pareja2Container = partidoPerdedorContainer.find('.pareja-2-container[data-partido-id="' + partidoPerdedorId + '"]');
+                    pareja2Container.empty();
+                    pareja2Container.html(crearHTMLPareja(pareja2Perdedor, false));
+                }
+            } else {
+                // El partido no existe, crearlo dinámicamente
+                console.log('Partido Perdedor no existe, creándolo dinámicamente...');
+                var contenedorPartidos = zonaContainer.find('.partidos-container-scroll .d-flex, .row').first();
+                if (contenedorPartidos.length > 0) {
+                    var htmlPartido = crearHTMLPartido(partidosActualizados.perdedor);
+                    contenedorPartidos.append(htmlPartido);
+                    
+                    // Si ahora tiene 4 partidos, cambiar el layout
+                    var numPartidos = zonaContainer.find('.partido-item, .col-md-6').length;
+                    if (numPartidos === 4) {
+                        // Reorganizar para layout horizontal
+                        var partidos = zonaContainer.find('.partido-item, .col-md-6');
+                        var nuevoContenedor = $('<div class="partidos-container-scroll" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; margin-bottom: 1rem;"><div class="d-flex" style="min-width: max-content; gap: 1rem;"></div></div>');
+                        partidos.each(function() {
+                            var $this = $(this);
+                            if ($this.hasClass('col-md-6')) {
+                                $this.removeClass('col-md-6 col-lg-4 mb-4').addClass('partido-item').css({'min-width': '280px', 'flex-shrink': '0'});
+                            }
+                            nuevoContenedor.find('.d-flex').append($this);
+                        });
+                        zonaContainer.find('.partidos-container-scroll, .row').first().replaceWith(nuevoContenedor);
+                    }
+                }
+            }
+        }
+        
+        console.log('✓ Partidos de Ganador/Perdedor actualizados dinámicamente');
     }
     
     // Aplicar ganador al cargar la página si ya hay resultados
