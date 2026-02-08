@@ -86,7 +86,7 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('/admin_torneo_americano_partidos', 'HomeController@adminTorneoAmericanoPartidos')->name('admintorneoamericanopartidos');
 	Route::post('/guardar_resultado_americano', 'HomeController@guardarResultadoAmericano')->name('guardarresultadoamericano');
 	Route::post('/calcular_posiciones_americano', 'HomeController@calcularPosicionesAmericano')->name('calcularposicionesamericano');
-	Route::get('/admin_torneo_americano_cruces', 'HomeController@adminTorneoAmericanoCruces')->name('admintorneoamericanocruces');
+	Route::get('/admin_torneo_americano_cruces', 'HomeController@admintorneoamericanocruces')->name('admintorneoamericanocruces');
 	Route::get('/admin_torneo_validar_cruces', 'HomeController@adminTorneoValidarCruces')->name('admintorneovalidarcruces');
 	Route::post('/guardar_cruces_editados', 'HomeController@guardarCrucesEditados')->name('guardarcruceseditados');
 	Route::post('/guardar_resultado_cruce_americano', 'HomeController@guardarResultadoCruceAmericano')->name('guardarresultadocruceamericano');
@@ -97,7 +97,11 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('/admin_torneo_validar_cruces', 'HomeController@adminTorneoValidarCruces')->name('admintorneovalidarcruces');
 	Route::post('/confirmar_cruces', 'HomeController@confirmarCruces')->name('confirmarcruces');
 	Route::post('/crear_cuartos_desde_octavos', 'HomeController@crearCuartosDesdeOctavos')->name('crearcuartosdesdeoctavos');
-	Route::get('/admin_torneo_puntuable_cruces', 'HomeController@adminTorneoPuntuableCruces')->name('admintorneopuntuablecruces');	
+	Route::get('/admin_torneo_puntuable_cruces', 'PuntuableController@adminTorneoPuntuableCruces')->name('admintorneopuntuablecruces');
+	Route::get('/admin_torneo_puntuable_cruces_v2', 'PuntuableController@adminTorneoPuntuableCrucesV2')->name('admintorneopuntuablecrucesv2');
+	Route::post('/guardar_resultado_cruce_puntuable', 'PuntuableController@guardarResultadoCrucePuntuable')->name('guardarresultadocrucepuntuable');
+	Route::post('/guardar_resultado_partido_puntuable', 'PuntuableController@guardarResultadoPartidoPuntuable')->name('guardarresultadopartidopuntuable');
+	Route::post('/crear_cuartos_desde_octavos', 'PuntuableController@crearCuartosDesdeOctavosEndpoint')->name('crearcuartosdesdeoctavos');	
 	
 
 

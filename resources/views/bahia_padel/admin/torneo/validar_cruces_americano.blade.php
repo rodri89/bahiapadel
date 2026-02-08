@@ -831,7 +831,13 @@ $(document).ready(function() {
                 console.log('Respuesta del servidor:', response);
                 if (response.success) {
                     alert('Cruces confirmados correctamente');
-                    window.location.href = '{{ route("admintorneoamericanocruces") }}?torneo_id=' + torneoId;
+                    // Verificar el tipo de torneo para redirigir apropiadamente
+                    var tipoTorneo = '{{ $tipoTorneo ?? "puntuable" }}';
+                    if (tipoTorneo === 'puntuable') {
+                        window.location.href = '{{ route("admintorneopuntuablecrucesv2") }}?torneo_id=' + torneoId;
+                    } else {
+                        window.location.href = '{{ route("admintorneoamericanocruces") }}?torneo_id=' + torneoId;
+                    }
                 } else {
                     alert('Error: ' + (response.message || 'Error desconocido'));
                     btn.prop('disabled', false).text('Confirmar Cruces');
