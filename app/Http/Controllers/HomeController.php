@@ -64,6 +64,78 @@ class HomeController extends Controller
     function adminFotos() {
         return View('bahia_padel.admin.fotos.index'); 
     }
+    
+    function adminConfig() {
+        // Cargar configuración existente si hay
+        $configuracion = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id') // Configuración global
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $config = null;
+        if ($configuracion) {
+            $config = [
+                'cantidad_parejas' => $configuracion->cantidad_parejas,
+                'tiene_16avos_final' => $configuracion->tiene_16avos_final,
+                'tiene_8vos_final' => $configuracion->tiene_8vos_final,
+                'tiene_4tos_final' => $configuracion->tiene_4tos_final,
+                'llave_16avos' => $configuracion->llave_16avos ? json_decode($configuracion->llave_16avos, true) : null,
+                'llave_8vos' => $configuracion->llave_8vos ? json_decode($configuracion->llave_8vos, true) : null,
+                'llave_4tos' => $configuracion->llave_4tos ? json_decode($configuracion->llave_4tos, true) : null,
+                'llave_semifinal' => $configuracion->llave_semifinal ? json_decode($configuracion->llave_semifinal, true) : null,
+                'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
+            ];
+        }
+        
+        return View('bahia_padel.admin.config.index')
+            ->with('config', $config); 
+    }
+    
+    function guardarConfigCruces(Request $request) {
+        try {
+            $data = [
+                'torneo_id' => null, // Configuración global por ahora
+                'cantidad_parejas' => $request->cantidad_parejas,
+                'tiene_16avos_final' => $request->tiene_16avos_final ? 1 : 0,
+                'tiene_8vos_final' => $request->tiene_8vos_final ? 1 : 0,
+                'tiene_4tos_final' => $request->tiene_4tos_final ? 1 : 0,
+                'llave_16avos' => $request->llave_16avos,
+                'llave_8vos' => $request->llave_8vos,
+                'llave_4tos' => $request->llave_4tos,
+                'llave_semifinal' => $request->llave_semifinal,
+                'llave_final' => $request->llave_final,
+                'updated_at' => now()
+            ];
+            
+            // Verificar si ya existe una configuración global
+            $existente = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->first();
+            
+            if ($existente) {
+                // Actualizar
+                DB::table('configuracion_cruces_puntuables')
+                    ->where('id', $existente->id)
+                    ->update($data);
+            } else {
+                // Crear nueva
+                $data['created_at'] = now();
+                DB::table('configuracion_cruces_puntuables')->insert($data);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuración guardada correctamente'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error al guardar configuración de cruces: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     function registrarTorneo(Request $request) {
         try {
@@ -4881,7 +4953,7 @@ class HomeController extends Controller
         // Eliminar cruces de octavos y cuartos existentes para este torneo
         $gruposEliminatorios = DB::table('grupos')
             ->where('torneo_id', $torneoId)
-            ->whereIn('zona', ['octavos final', 'cuartos final'])
+            ->whereIn('zona', ['octavos final', 'cuartos final', '16avos final'])
             ->whereNotNull('partido_id')
             ->get();
         
@@ -4891,25 +4963,52 @@ class HomeController extends Controller
             DB::table('grupos')->whereIn('partido_id', $partidosIds)->delete();
         }
         
-        // Determinar la ronda basándose en la cantidad de cruces
-        // Si hay 8 cruces, son octavos de final
-        // Si hay 4 cruces, son cuartos de final
-        $numCruces = count($cruces);
-        $rondaPorDefecto = ($numCruces == 8) ? 'octavos' : 'cuartos';
+        \Log::info('Confirmando cruces. Total cruces recibidos: ' . count($cruces));
+        \Log::info('Cruces recibidos: ' . json_encode($cruces));
         
-        // Crear los nuevos cruces (octavos o cuartos según corresponda)
-        foreach ($cruces as $cruce) {
+        // Crear los nuevos cruces usando la ronda de cada cruce individual
+        foreach ($cruces as $index => $cruce) {
             if (!isset($cruce['pareja_1']) || !isset($cruce['pareja_2'])) {
+                \Log::warning('Cruce ' . $index . ' no tiene pareja_1 o pareja_2, saltando');
                 continue;
             }
             
             $pareja1 = $cruce['pareja_1'];
             $pareja2 = $cruce['pareja_2'];
-            // Usar la ronda del cruce si está especificada, sino usar la determinada por cantidad
-            $ronda = $cruce['ronda'] ?? $rondaPorDefecto;
+            
+            // Usar la ronda del cruce si está especificada
+            // Si no está especificada, intentar determinar por el ID del cruce o por la cantidad
+            $ronda = $cruce['ronda'] ?? null;
+            
+            // Si no tiene ronda, intentar determinar por el ID del cruce
+            if (!$ronda && isset($cruce['id'])) {
+                if (strpos($cruce['id'], '16avos_') === 0) {
+                    $ronda = '16avos';
+                } elseif (strpos($cruce['id'], 'octavos_') === 0) {
+                    $ronda = 'octavos';
+                } elseif (strpos($cruce['id'], 'cuartos_') === 0) {
+                    $ronda = 'cuartos';
+                }
+            }
+            
+            // Si aún no tiene ronda, usar lógica de fallback basada en cantidad
+            // PERO solo si todos los cruces tienen la misma cantidad
+            if (!$ronda) {
+                $numCruces = count($cruces);
+                $ronda = ($numCruces == 8) ? 'octavos' : (($numCruces == 16) ? '16avos' : 'cuartos');
+            }
             
             // Determinar la zona según la ronda
-            $zona = ($ronda === 'octavos') ? 'octavos final' : 'cuartos final';
+            $zona = 'cuartos final'; // Por defecto
+            if ($ronda === 'octavos' || $ronda === '8vos') {
+                $zona = 'octavos final';
+            } elseif ($ronda === '16avos' || $ronda === '16vos') {
+                $zona = '16avos final';
+            } elseif ($ronda === 'cuartos' || $ronda === '4tos') {
+                $zona = 'cuartos final';
+            }
+            
+            \Log::info('Procesando cruce ' . $index . ': Ronda=' . $ronda . ', Zona=' . $zona);
             
             // Crear partido
             $partido = $this->crearPartido();
@@ -7700,10 +7799,25 @@ class HomeController extends Controller
         // Determinar si necesitamos octavos de final (más de 17 parejas)
         $necesitaOctavos = $totalParejasClasificadas > 17;
         
+        // Buscar configuración de cruces según la cantidad de parejas
+        $configuracionCruces = DB::table('configuracion_cruces_puntuables')
+            ->where('cantidad_parejas', $totalParejasClasificadas)
+            ->whereNull('torneo_id') // Configuración global
+            ->orderBy('id', 'desc')
+            ->first();
+        
         // Si no hay cruces de cuartos, generarlos desde los clasificados
         if (count($cruces) == 0) {
-            $zonasArray = $zonas->toArray();
-            sort($zonasArray);
+            // Si existe configuración para torneos puntuables, usar las llaves configuradas
+            if ($configuracionCruces && $tipoTorneo === 'puntuable') {
+                $cruces = $this->generarCrucesDesdeConfiguracion($configuracionCruces, $posicionesPorZona, $zonas);
+            }
+        }
+        
+        // Si aún no hay cruces (no hay configuración o no es puntuable), usar lógica por defecto
+        if (count($cruces) == 0) {
+                $zonasArray = $zonas->toArray();
+                sort($zonasArray);
             
             // Verificar si es caso de 12 parejas (3 zonas de 4 parejas cada una)
             $esGrupoDe12 = false;
@@ -7938,6 +8052,24 @@ class HomeController extends Controller
             }
         }
         
+        // Determinar si hay cruces de octavos o cuartos generados
+        $tieneCrucesOctavos = false;
+        $tieneCrucesCuartos = false;
+        foreach ($cruces as $cruce) {
+            if (isset($cruce['ronda'])) {
+                if ($cruce['ronda'] === 'octavos' || $cruce['ronda'] === '16avos') {
+                    $tieneCrucesOctavos = true;
+                } elseif ($cruce['ronda'] === 'cuartos') {
+                    $tieneCrucesCuartos = true;
+                }
+            }
+        }
+        
+        // Si hay cruces de octavos desde configuración, mostrar sección de octavos
+        if ($tieneCrucesOctavos) {
+            $necesitaOctavos = true;
+        }
+        
         //return $cruces;
         return View('bahia_padel.admin.torneo.validar_cruces_americano')
                     ->with('jugadores', $jugadores)
@@ -7947,7 +8079,184 @@ class HomeController extends Controller
                     ->with('mejoresTercerosIds', $mejoresTercerosIds)
                     ->with('necesitaOctavos', $necesitaOctavos ?? false)
                     ->with('totalParejasClasificadas', $totalParejasClasificadas ?? 0)
-                    ->with('tipoTorneo', $tipoTorneo);
+                    ->with('tipoTorneo', $tipoTorneo)
+                    ->with('configuracionCruces', $configuracionCruces)
+                    ->with('tieneCrucesOctavos', $tieneCrucesOctavos)
+                    ->with('tieneCrucesCuartos', $tieneCrucesCuartos);
+    }
+    
+    /**
+     * Genera cruces usando la configuración guardada
+     */
+    private function generarCrucesDesdeConfiguracion($configuracion, $posicionesPorZona, $zonas) {
+        $cruces = [];
+        $zonasArray = $zonas->toArray();
+        sort($zonasArray);
+        
+        // Mapear zonas a letras (A, B, C, D, etc.)
+        $letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+        $zonaALetra = [];
+        foreach ($zonasArray as $index => $zona) {
+            if (isset($letrasZonas[$index])) {
+                $zonaALetra[$zona] = $letrasZonas[$index];
+            }
+        }
+        
+        // Función para obtener pareja desde una referencia (ej: "A1", "B2", "A3", "O1", "O2")
+        $obtenerParejaDesdeReferencia = function($referencia, $torneoId = null) use ($posicionesPorZona, $zonaALetra) {
+            \Log::info('=== INICIANDO RESOLUCIÓN DE REFERENCIA: ' . $referencia . ' ===');
+            
+            // PRIMERO verificar si es referencia directa a zona (ej: "A1", "B2", "C2", "A3")
+            // Esto debe ir ANTES de verificar ganadores de cuartos para evitar que "C2" se interprete como "ganador de cuartos 2"
+            if (preg_match('/^([A-P])(\d+)$/', $referencia, $matches)) {
+                \Log::info('Referencia ' . $referencia . ' coincide con patrón de zona directa');
+                $letra = $matches[1];
+                $posicion = (int)$matches[2];
+                
+                \Log::info('Buscando pareja para referencia: ' . $referencia . ' (Letra: ' . $letra . ', Posición: ' . $posicion . ')');
+                \Log::info('Zonas mapeadas: ' . json_encode($zonaALetra));
+                \Log::info('Zonas disponibles en posicionesPorZona: ' . json_encode(array_keys($posicionesPorZona)));
+                
+                // Buscar la zona que corresponde a esta letra
+                foreach ($zonaALetra as $zona => $letraZona) {
+                    if ($letraZona === $letra) {
+                        \Log::info('Zona encontrada para letra ' . $letra . ': ' . $zona . ', Total posiciones: ' . (isset($posicionesPorZona[$zona]) ? count($posicionesPorZona[$zona]) : 0));
+                        // La posición en el array es índice 0-based, pero la referencia es 1-based
+                        if (isset($posicionesPorZona[$zona]) && isset($posicionesPorZona[$zona][$posicion - 1])) {
+                            $pareja = $posicionesPorZona[$zona][$posicion - 1];
+                            \Log::info('Pareja encontrada: J1=' . $pareja['jugador_1'] . ', J2=' . $pareja['jugador_2']);
+                            return [
+                                'jugador_1' => $pareja['jugador_1'],
+                                'jugador_2' => $pareja['jugador_2'],
+                                'zona' => $zona,
+                                'posicion' => $posicion
+                            ];
+                        } else {
+                            \Log::warning('No se encontró pareja en posición ' . $posicion . ' para zona ' . $zona . '. Posiciones disponibles: ' . (isset($posicionesPorZona[$zona]) ? count($posicionesPorZona[$zona]) : 0));
+                        }
+                    }
+                }
+                \Log::warning('No se encontró zona para letra: ' . $letra);
+            }
+            
+            // Si NO es referencia directa a zona, verificar si es referencia a ganadores
+            // Si es referencia a ganador de octavos (ej: "O1", "O2", "O3")
+            // O referencia a ganador con formato "G1-8vos", "G2-8vos"
+            if (preg_match('/^O(\d+)$/', $referencia, $matches) || 
+                preg_match('/^G(\d+)-8vos$/', $referencia, $matches) ||
+                preg_match('/^G(\d+)-octavos$/', $referencia, $matches)) {
+                \Log::info('Referencia ' . $referencia . ' es ganador de octavos, retornando null');
+                // Esta es una referencia a un ganador de octavos que aún no existe
+                // Retornar null para indicar que no se puede resolver aún
+                return null;
+            }
+            
+            // Si es referencia a ganador de cuartos (ej: "C1", "C2" o "G1-4tos")
+            // NOTA: Esto solo se ejecuta si NO es una referencia de zona directa (ej: "C2" como zona C posición 2)
+            // Para referencias de ganadores de cuartos, usar formato "G1-4tos" o "G1-cuartos"
+            if (preg_match('/^G(\d+)-4tos$/', $referencia, $matches) ||
+                preg_match('/^G(\d+)-cuartos$/', $referencia, $matches)) {
+                \Log::info('Referencia ' . $referencia . ' es ganador de cuartos, retornando null');
+                // Esta es una referencia a un ganador de cuartos que aún no existe
+                return null;
+            }
+            
+            \Log::warning('Referencia ' . $referencia . ' no coincide con ningún patrón conocido');
+            \Log::info('=== FIN RESOLUCIÓN DE REFERENCIA: ' . $referencia . ' (retornando null) ===');
+            return null;
+        };
+        
+        // Generar cruces para cada ronda según la configuración
+        // Primero 16avos (si existe)
+        if ($configuracion->tiene_16avos_final && $configuracion->llave_16avos) {
+            $llave = json_decode($configuracion->llave_16avos, true);
+            if ($llave && is_array($llave)) {
+                foreach ($llave as $index => $partido) {
+                    $pareja1Ref = $partido['pareja_1'] ?? null;
+                    $pareja2Ref = $partido['pareja_2'] ?? null;
+                    
+                    if ($pareja1Ref && $pareja2Ref) {
+                        $pareja1 = $obtenerParejaDesdeReferencia($pareja1Ref);
+                        $pareja2 = $obtenerParejaDesdeReferencia($pareja2Ref);
+                        
+                        if ($pareja1 && $pareja2) {
+                            $cruces[] = [
+                                'id' => '16avos_' . ($index + 1),
+                                'partido_id' => null,
+                                'pareja_1' => $pareja1,
+                                'pareja_2' => $pareja2,
+                                'ronda' => '16avos'
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Luego octavos (si existe)
+        if ($configuracion->tiene_8vos_final && $configuracion->llave_8vos) {
+            $llave = json_decode($configuracion->llave_8vos, true);
+            \Log::info('Generando cruces de octavos. Llave decodificada: ' . json_encode($llave));
+            if ($llave && is_array($llave)) {
+                foreach ($llave as $index => $partido) {
+                    $pareja1Ref = $partido['pareja_1'] ?? null;
+                    $pareja2Ref = $partido['pareja_2'] ?? null;
+                    
+                    \Log::info('Procesando partido octavos ' . ($index + 1) . ': ' . $pareja1Ref . ' vs ' . $pareja2Ref);
+                    
+                    if ($pareja1Ref && $pareja2Ref) {
+                        $pareja1 = $obtenerParejaDesdeReferencia($pareja1Ref);
+                        $pareja2 = $obtenerParejaDesdeReferencia($pareja2Ref);
+                        
+                        \Log::info('Pareja 1 resuelta: ' . ($pareja1 ? 'Sí' : 'No') . ', Pareja 2 resuelta: ' . ($pareja2 ? 'Sí' : 'No'));
+                        
+                        if ($pareja1 && $pareja2) {
+                            $cruces[] = [
+                                'id' => 'octavos_' . ($index + 1),
+                                'partido_id' => null,
+                                'pareja_1' => $pareja1,
+                                'pareja_2' => $pareja2,
+                                'ronda' => 'octavos'
+                            ];
+                            \Log::info('Cruce de octavos ' . ($index + 1) . ' agregado correctamente');
+                        }
+                    }
+                }
+            }
+        }
+        
+        \Log::info('Total cruces generados desde configuración: ' . count($cruces) . ' (Octavos: ' . count(array_filter($cruces, function($c) { return $c['ronda'] === 'octavos'; })) . ', Cuartos: ' . count(array_filter($cruces, function($c) { return $c['ronda'] === 'cuartos'; })) . ')');
+        
+        // Luego cuartos (si existe) - Solo generar cruces si ambas parejas se pueden resolver
+        // Si alguna pareja es referencia a ganador de octavos (O1, O2, etc.), no generar el cruce aún
+        if ($configuracion->tiene_4tos_final && $configuracion->llave_4tos) {
+            $llave = json_decode($configuracion->llave_4tos, true);
+            if ($llave && is_array($llave)) {
+                foreach ($llave as $index => $partido) {
+                    $pareja1Ref = $partido['pareja_1'] ?? null;
+                    $pareja2Ref = $partido['pareja_2'] ?? null;
+                    
+                    if ($pareja1Ref && $pareja2Ref) {
+                        $pareja1 = $obtenerParejaDesdeReferencia($pareja1Ref);
+                        $pareja2 = $obtenerParejaDesdeReferencia($pareja2Ref);
+                        
+                        // Solo agregar el cruce si ambas parejas se pueden resolver
+                        // Si alguna es referencia a ganador de octavos (O1, O2, etc.), no agregar aún
+                        if ($pareja1 && $pareja2) {
+                            $cruces[] = [
+                                'id' => 'cuartos_' . ($index + 1),
+                                'partido_id' => null,
+                                'pareja_1' => $pareja1,
+                                'pareja_2' => $pareja2,
+                                'ronda' => 'cuartos'
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $cruces;
     }
 
     public function guardarCrucesEditados(Request $request) {
@@ -7962,16 +8271,10 @@ class HomeController extends Controller
                 return response()->json(['success' => false, 'message' => 'No se recibieron cruces válidos']);
             }
             
-            // Determinar la ronda basándose en la cantidad de cruces
-            // Si hay 8 cruces, son octavos de final
-            // Si hay 4 cruces, son cuartos de final
-            $numCruces = count($cruces);
-            $rondaPorDefecto = ($numCruces == 8) ? 'octavos' : 'cuartos';
-            
-            // Eliminar cruces existentes para este torneo (incluyendo octavos final)
+            // Eliminar cruces existentes para este torneo (incluyendo octavos final, 16avos final)
             $gruposEliminatorios = DB::table('grupos')
                 ->where('torneo_id', $torneoId)
-                ->whereIn('zona', ['octavos final', 'cuartos final', 'semifinal', 'final'])
+                ->whereIn('zona', ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
                 ->get();
             
             $partidosIds = $gruposEliminatorios->pluck('partido_id')->unique()->filter();
@@ -7981,13 +8284,13 @@ class HomeController extends Controller
                 DB::table('partidos')->whereIn('id', $partidosIds)->delete();
             }
             
-            // Eliminar grupos eliminatorios (incluyendo octavos final)
+            // Eliminar grupos eliminatorios (incluyendo octavos final, 16avos final)
             DB::table('grupos')
                 ->where('torneo_id', $torneoId)
-                ->whereIn('zona', ['octavos final', 'cuartos final', 'semifinal', 'final'])
+                ->whereIn('zona', ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
                 ->delete();
             
-            // Crear nuevos cruces
+            // Crear nuevos cruces usando la ronda de cada cruce individual
             foreach ($cruces as $index => $cruce) {
                 \Log::info('Procesando cruce ' . $index . ': ' . json_encode($cruce));
                 
@@ -8003,18 +8306,47 @@ class HomeController extends Controller
                     continue;
                 }
                 
-                // Usar la ronda del cruce si está especificada, sino usar la determinada por cantidad
-                $ronda = $cruce['ronda'] ?? $rondaPorDefecto;
+                // Usar la ronda del cruce si está especificada
+                $ronda = $cruce['ronda'] ?? null;
+                
+                // Si no tiene ronda, intentar determinar por el ID del cruce
+                if (!$ronda && isset($cruce['id'])) {
+                    if (strpos($cruce['id'], '16avos_') === 0 || strpos($cruce['id'], '16vos_') === 0) {
+                        $ronda = '16avos';
+                    } elseif (strpos($cruce['id'], 'octavos_') === 0 || strpos($cruce['id'], '8vos_') === 0) {
+                        $ronda = 'octavos';
+                    } elseif (strpos($cruce['id'], 'cuartos_') === 0 || strpos($cruce['id'], '4tos_') === 0) {
+                        $ronda = 'cuartos';
+                    }
+                }
+                
+                // Si aún no tiene ronda, usar lógica de fallback basada en cantidad
+                // PERO solo si todos los cruces tienen la misma cantidad
+                if (!$ronda) {
+                    $numCruces = count($cruces);
+                    $ronda = ($numCruces == 16) ? '16avos' : (($numCruces == 8) ? 'octavos' : 'cuartos');
+                    \Log::warning('Cruce ' . $index . ' no tiene ronda definida, usando fallback: ' . $ronda);
+                }
+                
+                // Solo crear partidos para la primera ronda (octavos, 16avos) y cuartos.
+                // NO crear semifinales ni final aquí: dependen de los ganadores de rondas anteriores
+                // y se crean automáticamente al guardar resultados (crearCuartosDesdeConfiguracionYOctavos, etc.)
+                if ($ronda === 'semifinales' || $ronda === 'semifinal' || $ronda === 'final') {
+                    \Log::info('Cruce ' . $index . ': Saltando ronda ' . $ronda . ' (se crea al guardar resultados de rondas anteriores)');
+                    continue;
+                }
                 
                 // Determinar la zona según la ronda
-                $zona = 'cuartos final';
-                if ($ronda === 'octavos') {
+                $zona = 'cuartos final'; // Por defecto
+                if ($ronda === 'octavos' || $ronda === '8vos') {
                     $zona = 'octavos final';
-                } else if ($ronda === 'semifinales') {
-                    $zona = 'semifinal';
-                } else if ($ronda === 'final') {
-                    $zona = 'final';
+                } elseif ($ronda === '16avos' || $ronda === '16vos') {
+                    $zona = '16avos final';
+                } elseif ($ronda === 'cuartos' || $ronda === '4tos') {
+                    $zona = 'cuartos final';
                 }
+                
+                \Log::info('Cruce ' . $index . ': Ronda=' . $ronda . ', Zona=' . $zona);
                 
                 // Validar que los jugadores no sean null o 0
                 $jugador1_1 = $cruce['pareja_1']['jugador_1'];

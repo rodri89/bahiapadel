@@ -55,6 +55,59 @@
             min-width: 260px;
         }
     }
+    
+    /* Estilos para alinear inputs de Tie Break con los inputs de Sets */
+    .resultado-partido .d-flex.justify-content-center {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-left: 0;
+        padding-right: 0;
+        width: 100%;
+        max-width: 150px;
+        margin: 0 auto;
+    }
+    
+    .resultado-partido .d-flex.justify-content-center input[type="number"] {
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 60px !important;
+    }
+    
+    .tie-break-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 0.25rem;
+        padding-left: 0;
+        padding-right: 0;
+        width: 100%;
+        max-width: 150px;
+        margin-left: auto;
+        margin-right: auto;
+        position: relative;
+    }
+    
+    .tie-break-container > div:first-child {
+        position: absolute;
+        left: -35px;
+        width: 30px;
+        text-align: right;
+        padding-right: 0.25rem;
+        font-size: 0.7rem;
+        flex-shrink: 0;
+    }
+    
+    .tie-break-container input[type="number"] {
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 60px !important;
+    }
+    
+    .tie-break-container .mx-1 {
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+    }
 </style>
 
 <div class="container body_admin">
@@ -312,18 +365,16 @@
                                                         value="{{ $resultados->pareja_2_set_1 ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
                                                 </div>
-                                                <div class="d-flex justify-content-center align-items-center mt-1">
-                                                    <small style="font-size:0.7rem;">TB:</small>
+                                                <div class="tie-break-container">
+                                                    <div style="width: 30px; text-align: right; padding-right: 0.25rem; font-size: 0.7rem;">TB:</div>
                                                     <input type="number" min="0" max="99" 
-                                                        class="form-control form-control-sm ml-1" 
-                                                        style="width:50px;"
+                                                        class="form-control form-control-sm" 
                                                         name="pareja_1_set_1_tie_break" 
                                                         value="{{ $resultados->pareja_1_set_1_tie_break ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
                                                     <span class="mx-1">-</span>
                                                     <input type="number" min="0" max="99" 
                                                         class="form-control form-control-sm" 
-                                                        style="width:50px;"
                                                         name="pareja_2_set_1_tie_break" 
                                                         value="{{ $resultados->pareja_2_set_1_tie_break ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
@@ -348,18 +399,16 @@
                                                         value="{{ $resultados->pareja_2_set_2 ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
                                                 </div>
-                                                <div class="d-flex justify-content-center align-items-center mt-1">
-                                                    <small style="font-size:0.7rem;">TB:</small>
+                                                <div class="tie-break-container">
+                                                    <div style="width: 30px; text-align: right; padding-right: 0.25rem; font-size: 0.7rem;">TB:</div>
                                                     <input type="number" min="0" max="99" 
-                                                        class="form-control form-control-sm ml-1" 
-                                                        style="width:50px;"
+                                                        class="form-control form-control-sm" 
                                                         name="pareja_1_set_2_tie_break" 
                                                         value="{{ $resultados->pareja_1_set_2_tie_break ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
                                                     <span class="mx-1">-</span>
                                                     <input type="number" min="0" max="99" 
                                                         class="form-control form-control-sm" 
-                                                        style="width:50px;"
                                                         name="pareja_2_set_2_tie_break" 
                                                         value="{{ $resultados->pareja_2_set_2_tie_break ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
@@ -384,18 +433,16 @@
                                                         value="{{ $resultados->pareja_2_set_3 ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
                                                 </div>
-                                                <div class="d-flex justify-content-center align-items-center mt-1">
-                                                    <small style="font-size:0.7rem;">TB:</small>
+                                                <div class="tie-break-container">
+                                                    <div style="width: 30px; text-align: right; padding-right: 0.25rem; font-size: 0.7rem;">TB:</div>
                                                     <input type="number" min="0" max="99" 
-                                                        class="form-control form-control-sm ml-1" 
-                                                        style="width:50px;"
+                                                        class="form-control form-control-sm" 
                                                         name="pareja_1_set_3_tie_break" 
                                                         value="{{ $resultados->pareja_1_set_3_tie_break ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
                                                     <span class="mx-1">-</span>
                                                     <input type="number" min="0" max="99" 
                                                         class="form-control form-control-sm" 
-                                                        style="width:50px;"
                                                         name="pareja_2_set_3_tie_break" 
                                                         value="{{ $resultados->pareja_2_set_3_tie_break ?? 0 }}"
                                                         data-partido-id="{{ $partidoId }}">
@@ -662,10 +709,12 @@ $(document).ready(function() {
                     // Determinar ganador y aplicar estilo verde
                     determinarGanador(partidoId, resultadoPartido);
                     
-                    // Si se actualizaron partidos de Ganador/Perdedor, actualizar dinámicamente
+                    // Si se actualizaron partidos de Ganador/Perdedor, recargar la página
                     if (data.recargar && data.partidos_actualizados) {
-                        console.log('⚠️ Se actualizaron partidos de Ganador/Perdedor. Actualizando dinámicamente...');
-                        actualizarPartidosGanadorPerdedor(data.partidos_actualizados);
+                        console.log('⚠️ Se actualizaron partidos de Ganador/Perdedor. Recargando página...');
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 500);
                     } else {
                         console.log('No se requiere actualizar partidos de Ganador/Perdedor');
                     }
@@ -1003,14 +1052,23 @@ $(document).ready(function() {
             } else {
                 // El partido no existe, crearlo dinámicamente
                 console.log('Partido Ganador no existe, creándolo dinámicamente...');
-                var contenedorPartidos = zonaContainer.find('.partidos-container-scroll .d-flex, .row').first();
+                var contenedorPartidos = null;
+                
+                // Buscar contenedor de partidos (puede ser .partidos-container-scroll .d-flex o .row)
+                var scrollContainer = zonaContainer.find('.partidos-container-scroll');
+                if (scrollContainer.length > 0) {
+                    contenedorPartidos = scrollContainer.find('.d-flex').first();
+                } else {
+                    contenedorPartidos = zonaContainer.find('.row').first();
+                }
+                
                 if (contenedorPartidos.length > 0) {
                     var htmlPartido = crearHTMLPartido(partidosActualizados.ganador);
                     contenedorPartidos.append(htmlPartido);
                     
                     // Si ahora tiene 4 partidos, cambiar el layout
                     var numPartidos = zonaContainer.find('.partido-item, .col-md-6').length;
-                    if (numPartidos === 4) {
+                    if (numPartidos === 4 && scrollContainer.length === 0) {
                         // Reorganizar para layout horizontal
                         var partidos = zonaContainer.find('.partido-item, .col-md-6');
                         var nuevoContenedor = $('<div class="partidos-container-scroll" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; margin-bottom: 1rem;"><div class="d-flex" style="min-width: max-content; gap: 1rem;"></div></div>');
@@ -1021,8 +1079,10 @@ $(document).ready(function() {
                             }
                             nuevoContenedor.find('.d-flex').append($this);
                         });
-                        zonaContainer.find('.partidos-container-scroll, .row').first().replaceWith(nuevoContenedor);
+                        contenedorPartidos.replaceWith(nuevoContenedor);
                     }
+                } else {
+                    console.error('No se encontró contenedor de partidos para insertar el partido Ganador');
                 }
             }
         }
@@ -1057,14 +1117,23 @@ $(document).ready(function() {
             } else {
                 // El partido no existe, crearlo dinámicamente
                 console.log('Partido Perdedor no existe, creándolo dinámicamente...');
-                var contenedorPartidos = zonaContainer.find('.partidos-container-scroll .d-flex, .row').first();
+                var contenedorPartidos = null;
+                
+                // Buscar contenedor de partidos (puede ser .partidos-container-scroll .d-flex o .row)
+                var scrollContainer = zonaContainer.find('.partidos-container-scroll');
+                if (scrollContainer.length > 0) {
+                    contenedorPartidos = scrollContainer.find('.d-flex').first();
+                } else {
+                    contenedorPartidos = zonaContainer.find('.row').first();
+                }
+                
                 if (contenedorPartidos.length > 0) {
                     var htmlPartido = crearHTMLPartido(partidosActualizados.perdedor);
                     contenedorPartidos.append(htmlPartido);
                     
                     // Si ahora tiene 4 partidos, cambiar el layout
                     var numPartidos = zonaContainer.find('.partido-item, .col-md-6').length;
-                    if (numPartidos === 4) {
+                    if (numPartidos === 4 && scrollContainer.length === 0) {
                         // Reorganizar para layout horizontal
                         var partidos = zonaContainer.find('.partido-item, .col-md-6');
                         var nuevoContenedor = $('<div class="partidos-container-scroll" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; margin-bottom: 1rem;"><div class="d-flex" style="min-width: max-content; gap: 1rem;"></div></div>');
@@ -1075,8 +1144,10 @@ $(document).ready(function() {
                             }
                             nuevoContenedor.find('.d-flex').append($this);
                         });
-                        zonaContainer.find('.partidos-container-scroll, .row').first().replaceWith(nuevoContenedor);
+                        contenedorPartidos.replaceWith(nuevoContenedor);
                     }
+                } else {
+                    console.error('No se encontró contenedor de partidos para insertar el partido Perdedor');
                 }
             }
         }

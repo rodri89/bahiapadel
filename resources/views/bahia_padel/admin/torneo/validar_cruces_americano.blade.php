@@ -212,7 +212,7 @@
         </div>
         
         <div class="row">
-            @if($necesitaOctavos ?? false)
+            @if(($necesitaOctavos ?? false) || ($tieneCrucesOctavos ?? false))
             <!-- Octavos de Final -->
             <div class="col-12 mb-4">
                 <div class="bracket-round">
@@ -224,8 +224,8 @@
             </div>
             @endif
             
-            <!-- Cuartos de Final (solo se muestra si no necesita octavos o cuando ya hay cruces de cuartos) -->
-            <div class="col-12" @if($necesitaOctavos ?? false) style="display: none;" @endif>
+            <!-- Cuartos de Final (se muestra si hay cruces de cuartos o si no necesita octavos) -->
+            <div class="col-12" @if(($necesitaOctavos ?? false) && !($tieneCrucesCuartos ?? false)) style="display: none;" @endif>
                 <div class="bracket-round">
                     <div class="bracket-round-title">CUARTOS DE FINAL</div>
                     <div id="cruces-cuartos" class="d-flex flex-wrap justify-content-center">
@@ -340,6 +340,7 @@ $(document).ready(function() {
             }
         });
     }
+    
     var jugadores = @json($jugadores);
     var posicionesPorZona = @json($posicionesPorZona);
     var torneoId = $('#torneo_id').val();
@@ -347,23 +348,73 @@ $(document).ready(function() {
     
     // Preparar datos de posiciones para JavaScript (formato: posiciones[zona][posicion])
     var posicionesJS = {};
-    Object.keys(posicionesPorZona).forEach(function(zona) {
-        posicionesJS[zona] = {};
-        posicionesPorZona[zona].forEach(function(pareja, index) {
-            posicionesJS[zona][index + 1] = {
-                jugador_1: pareja.jugador_1,
-                jugador_2: pareja.jugador_2,
-                zona: zona,
-                posicion: index + 1
-            };
+    if (posicionesPorZona) {
+        Object.keys(posicionesPorZona).forEach(function(zona) {
+            posicionesJS[zona] = {};
+            if (posicionesPorZona[zona] && Array.isArray(posicionesPorZona[zona])) {
+                posicionesPorZona[zona].forEach(function(pareja, index) {
+                    posicionesJS[zona][index + 1] = {
+                        jugador_1: pareja.jugador_1,
+                        jugador_2: pareja.jugador_2,
+                        zona: zona,
+                        posicion: index + 1
+                    };
+                });
+            }
         });
-    });
+    }
     
     // Crear mapa de jugadores
     var jugadoresMap = {};
-    jugadores.forEach(function(j) {
-        jugadoresMap[j.id] = j;
-    });
+    if (jugadores && Array.isArray(jugadores)) {
+        jugadores.forEach(function(j) {
+            jugadoresMap[j.id] = j;
+        });
+    }
+    
+    // Renderizar cruces automáticamente si existen al cargar la página (después de inicializar jugadoresMap)
+    if (cruces && cruces.length > 0) {
+        var crucesOctavos = cruces.filter(function(c) { 
+            return c.ronda === 'octavos' || c.ronda === '16avos'; 
+        });
+        var crucesCuartos = cruces.filter(function(c) { 
+            return c.ronda === 'cuartos'; 
+        });
+        
+        // Renderizar cruces de octavos si existen
+        if (crucesOctavos.length > 0) {
+            renderizarCrucesEnCuartos(crucesOctavos, true);
+            // Mostrar sección de octavos
+            $('#cruces-octavos').closest('.col-12').show();
+        }
+        
+        // Renderizar cruces de cuartos si existen
+        if (crucesCuartos.length > 0) {
+            renderizarCrucesEnCuartos(crucesCuartos, false);
+            // Mostrar sección de cuartos
+            $('#cruces-cuartos').closest('.col-12').show();
+        }
+        
+        // Si hay cruces pero no tienen ronda definida, intentar determinar por cantidad
+        if (crucesOctavos.length === 0 && crucesCuartos.length === 0 && cruces.length > 0) {
+            if (cruces.length === 16) {
+                // 16 cruces = 16avos
+                cruces.forEach(function(c) { c.ronda = '16avos'; });
+                renderizarCrucesEnCuartos(cruces, true);
+                $('#cruces-octavos').closest('.col-12').show();
+            } else if (cruces.length === 8) {
+                // 8 cruces = octavos
+                cruces.forEach(function(c) { c.ronda = 'octavos'; });
+                renderizarCrucesEnCuartos(cruces, true);
+                $('#cruces-octavos').closest('.col-12').show();
+            } else if (cruces.length === 4) {
+                // 4 cruces = cuartos
+                cruces.forEach(function(c) { c.ronda = 'cuartos'; });
+                renderizarCrucesEnCuartos(cruces, false);
+                $('#cruces-cuartos').closest('.col-12').show();
+            }
+        }
+    }
     
     // Poblar los selectores con opciones dinámicas
     function poblarSelectoresParejas() {
@@ -476,7 +527,7 @@ $(document).ready(function() {
                                 ${jugador1_1 ? '<div class="player-name" style="color: #000;">' + jugador1_1.nombre + ' ' + jugador1_1.apellido + '</div>' : ''}
                                 ${jugador1_2 ? '<div class="player-name" style="color: #000;">' + jugador1_2.nombre + ' ' + jugador1_2.apellido + '</div>' : ''}
                             </div>
-                            <span class="badge badge-info">${cruce.pareja_1.zona}${cruce.pareja_1.posicion}º</span>
+                            ${cruce.pareja_1 && cruce.pareja_1.zona && cruce.pareja_1.posicion ? '<span class="badge badge-info">' + cruce.pareja_1.zona + cruce.pareja_1.posicion + 'º</span>' : ''}
                         </div>
                     </div>
                     
@@ -498,7 +549,7 @@ $(document).ready(function() {
                                 ${jugador2_1 ? '<div class="player-name" style="color: #000;">' + jugador2_1.nombre + ' ' + jugador2_1.apellido + '</div>' : ''}
                                 ${jugador2_2 ? '<div class="player-name" style="color: #000;">' + jugador2_2.nombre + ' ' + jugador2_2.apellido + '</div>' : ''}
                             </div>
-                            <span class="badge badge-info">${cruce.pareja_2.zona}${cruce.pareja_2.posicion}º</span>
+                            ${cruce.pareja_2 && cruce.pareja_2.zona && cruce.pareja_2.posicion ? '<span class="badge badge-info">' + cruce.pareja_2.zona + cruce.pareja_2.posicion + 'º</span>' : ''}
                         </div>
                     </div>
                 </div>
@@ -508,7 +559,23 @@ $(document).ready(function() {
         });
         
         // Actualizar el array de cruces global
-        cruces = crucesData;
+        // Si esOctavos, agregar/reemplazar solo los cruces de octavos
+        // Si no esOctavos, agregar/reemplazar solo los cruces de cuartos
+        if (esOctavos) {
+            // Filtrar cruces existentes que NO sean octavos o 16avos
+            cruces = cruces.filter(function(c) {
+                return c.ronda !== 'octavos' && c.ronda !== '16avos';
+            });
+            // Agregar los nuevos cruces de octavos
+            cruces = cruces.concat(crucesData);
+        } else {
+            // Filtrar cruces existentes que NO sean cuartos
+            cruces = cruces.filter(function(c) {
+                return c.ronda !== 'cuartos';
+            });
+            // Agregar los nuevos cruces de cuartos
+            cruces = cruces.concat(crucesData);
+        }
     }
     
     // Botón Armar Cruces
@@ -760,7 +827,10 @@ $(document).ready(function() {
         var btn = $(this);
         btn.prop('disabled', true).text('Guardando...');
         
-        // Preparar datos de cruces para enviar
+        console.log('Cruces globales antes de preparar:', cruces);
+        
+        // Preparar datos de cruces para enviar desde el array global cruces
+        // que ahora contiene tanto octavos como cuartos
         var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
         var crucesParaEnviar = cruces.map(function(cruce, index) {
             // Validar que el cruce tenga las parejas necesarias

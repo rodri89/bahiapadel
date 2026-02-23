@@ -86,6 +86,12 @@
             <i class="fas fa-fw fa-address-card"></i>
             <span>Fotos</span></a>
       </li>
+      
+      <li class="nav-item">
+          <a class="nav-link" href="admin_config">
+            <i class="fas fa-fw fa-cog"></i>
+            <span>Config</span></a>
+      </li>
 
       <hr class="sidebar-divider my-0"><br>
 

@@ -5,6 +5,35 @@
 @section('contenedor')
 <link rel="stylesheet" href="{{ asset('css/bracket.css') }}">
 <link rel="stylesheet" href="{{ asset('css/dark-mode.css') }}">
+<style>
+    /* Estilos para inputs de resultados - alineación y tamaño uniforme */
+    .resultado-cruce {
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+        text-align: center;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.9rem;
+        height: 38px;
+    }
+    
+    .d-flex.flex-column.align-items-center {
+        min-width: 80px;
+        flex: 0 0 auto;
+    }
+    
+    .d-flex.align-items-center.gap-2 {
+        justify-content: center;
+        gap: 0.75rem !important;
+    }
+    
+    .small.mb-1 {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 0.25rem !important;
+        font-size: 0.75rem;
+    }
+</style>
 
 <div class="bracket-container">
     <div class="container-fluid">
@@ -53,7 +82,7 @@
                         <div class="match-card" 
                              data-cruce-id="{{ $cruce['id'] }}" 
                              data-ronda="{{ $cruce['ronda'] }}" 
-                             data-partido-id="{{ $cruce['partido_id'] }}" 
+                             data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
                              style="padding: 15px; margin-bottom: 20px;">
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -91,7 +120,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="1"
@@ -105,7 +133,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="2"
@@ -119,7 +146,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="3"
@@ -139,7 +165,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="2"
                                                data-set="1"
@@ -153,7 +178,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="2"
                                                data-set="2"
@@ -167,7 +191,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="2"
                                                data-set="3"
@@ -231,11 +254,16 @@
                     <div class="bracket-round-title">Cuartos Final</div>
                     @foreach($crucesCuartos as $cruce)
                         @php
-                            // Obtener datos de los jugadores
-                            $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
-                            $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
-                            $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
-                            $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
+                            $p1j1 = isset($cruce['pareja_1']) ? ($cruce['pareja_1']['jugador_1'] ?? null) : null;
+                            $p2j1 = isset($cruce['pareja_2']) ? ($cruce['pareja_2']['jugador_1'] ?? null) : null;
+                            $pareja1Esperando = !isset($cruce['pareja_1']) || $p1j1 === null || (int)$p1j1 === 0;
+                            $pareja2Esperando = !isset($cruce['pareja_2']) || $p2j1 === null || (int)$p2j1 === 0;
+                            
+                            // Obtener datos de los jugadores solo si no están esperando
+                            $jugador1_1 = !$pareja1Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']) : null;
+                            $jugador1_2 = !$pareja1Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']) : null;
+                            $jugador2_1 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']) : null;
+                            $jugador2_2 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']) : null;
                             
                             // Obtener resultados del partido si existen
                             $partido = $cruce['partido'] ?? null;
@@ -245,40 +273,51 @@
                             $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
                             $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
                             $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $ref1 = $cruce['referencia_1'] ?? '';
+                            $ref2 = $cruce['referencia_2'] ?? '';
                         @endphp
                         <!-- CARD DE PARTIDO -->
                         <div class="match-card" 
                              data-cruce-id="{{ $cruce['id'] }}" 
                              data-ronda="{{ $cruce['ronda'] }}" 
-                             data-partido-id="{{ $cruce['partido_id'] }}" 
+                             data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
+                             data-llave-ref1="{{ $ref1 }}"
+                             data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
+                            <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="1"
-                                 data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
-                                 data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
-                                <!-- Imágenes -->
-                                <div class="d-flex mr-3">
-                                    <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                    <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                </div>
-                                <!-- Nombres a la derecha -->
-                                <div class="d-flex flex-column justify-content-center" style="height: 60px;">
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}
+                                 data-jugador-1="{{ $pareja1Esperando ? '' : ($cruce['pareja_1']['jugador_1'] ?? '') }}"
+                                 data-jugador-2="{{ $pareja1Esperando ? '' : ($cruce['pareja_1']['jugador_2'] ?? '') }}">
+                                @if($pareja1Esperando)
+                                    <div class="d-flex align-items-center justify-content-center" style="width: 100%; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f8f9fa;">
+                                        <span style="color: #666; font-weight: bold; font-size: 0.9rem;">Esperando ganador ({{ $ref1 ?: '?' }})</span>
                                     </div>
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}
+                                @else
+                                    <!-- Imágenes -->
+                                    <div class="d-flex mr-3">
+                                        <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" 
+                                             alt="{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}" 
+                                             class="rounded-circle"
+                                             style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
+                                             onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                        <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" 
+                                             alt="{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}" 
+                                             class="rounded-circle"
+                                             style="width: 60px; height: 60px; object-fit: cover;"
+                                             onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                     </div>
-                                </div>
+                                    <!-- Nombres a la derecha -->
+                                    <div class="d-flex flex-column justify-content-center" style="height: 60px;">
+                                        <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
+                                            {{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}
+                                        </div>
+                                        <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
+                                            {{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                             
                             <!-- Inputs Sets Pareja 1 -->
@@ -288,7 +327,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="1"
@@ -302,7 +340,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="2"
@@ -316,7 +353,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="3"
@@ -330,13 +366,13 @@
                             </div>
                             
                             <!-- Inputs Sets Pareja 2 -->
+                            @if(!$pareja2Esperando)
                             <div class="mb-3">                                    
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="2"
                                                data-set="1"
@@ -350,7 +386,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="2"
                                                data-set="2"
@@ -364,7 +399,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="2"
                                                data-set="3"
@@ -376,37 +410,45 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             
                             <!-- Pareja 2 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="2"
-                                 data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
-                                 data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
-                                <!-- Imágenes -->
-                                <div class="d-flex mr-3">
-                                    <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                    <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                </div>
-                                <!-- Nombres a la derecha -->
-                                <div class="d-flex flex-column justify-content-center" style="height: 60px;">
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}
+                                 data-jugador-1="{{ $pareja2Esperando ? '' : ($cruce['pareja_2']['jugador_1'] ?? '') }}"
+                                 data-jugador-2="{{ $pareja2Esperando ? '' : ($cruce['pareja_2']['jugador_2'] ?? '') }}">
+                                @if($pareja2Esperando)
+                                    <div class="d-flex align-items-center justify-content-center" style="width: 100%; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f8f9fa;">
+                                        <span style="color: #666; font-weight: bold; font-size: 0.9rem;">Esperando ganador ({{ $ref2 ?: '?' }})</span>
                                     </div>
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}
+                                @else
+                                    <!-- Imágenes -->
+                                    <div class="d-flex mr-3">
+                                        <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" 
+                                             alt="{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}" 
+                                             class="rounded-circle"
+                                             style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
+                                             onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                        <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" 
+                                             alt="{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}" 
+                                             class="rounded-circle"
+                                             style="width: 60px; height: 60px; object-fit: cover;"
+                                             onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                     </div>
-                                </div>
+                                    <!-- Nombres a la derecha -->
+                                    <div class="d-flex flex-column justify-content-center" style="height: 60px;">
+                                        <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
+                                            {{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}
+                                        </div>
+                                        <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
+                                            {{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                             
-                            <!-- Botón guardar -->
+                            <!-- Botón guardar (solo si ambas parejas están definidas) -->
+                            @if(!$pareja1Esperando && !$pareja2Esperando)
                             <div class="text-center mt-2">
                                 <button type="button" 
                                         class="btn btn-primary btn-sm guardar-cruce" 
@@ -415,6 +457,7 @@
                                     Guardar
                                 </button>
                             </div>
+                            @endif
                         </div>
                         <!-- FIN CARD DE PARTIDO -->
                     @endforeach
@@ -429,13 +472,14 @@
                     <div class="bracket-round-title">Semifinales</div>
                     @foreach($crucesSemifinales as $cruce)
                         @php
-                            // Obtener datos de los jugadores
-                            $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
-                            $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
-                            $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
-                            $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
-                            
-                            // Obtener resultados del partido si existen
+                            $p1j1 = isset($cruce['pareja_1']) ? ($cruce['pareja_1']['jugador_1'] ?? null) : null;
+                            $p2j1 = isset($cruce['pareja_2']) ? ($cruce['pareja_2']['jugador_1'] ?? null) : null;
+                            $pareja1Esperando = !isset($cruce['pareja_1']) || $p1j1 === null || (int)$p1j1 === 0;
+                            $pareja2Esperando = !isset($cruce['pareja_2']) || $p2j1 === null || (int)$p2j1 === 0;
+                            $jugador1_1 = !$pareja1Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']) : null;
+                            $jugador1_2 = !$pareja1Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']) : null;
+                            $jugador2_1 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']) : null;
+                            $jugador2_2 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']) : null;
                             $partido = $cruce['partido'] ?? null;
                             $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
                             $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
@@ -443,18 +487,28 @@
                             $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
                             $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
                             $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $ref1 = $cruce['referencia_1'] ?? '';
+                            $ref2 = $cruce['referencia_2'] ?? '';
                         @endphp
                         <!-- CARD DE PARTIDO -->
                         <div class="match-card" 
                              data-cruce-id="{{ $cruce['id'] }}" 
                              data-ronda="{{ $cruce['ronda'] }}" 
-                             data-partido-id="{{ $cruce['partido_id'] }}" 
+                             data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
+                             data-llave-ref1="{{ $ref1 }}"
+                             data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
+                            <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="1"
-                                 data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
-                                 data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
+                                 data-jugador-1="{{ $pareja1Esperando ? '' : ($cruce['pareja_1']['jugador_1'] ?? '') }}"
+                                 data-jugador-2="{{ $pareja1Esperando ? '' : ($cruce['pareja_1']['jugador_2'] ?? '') }}">
+                                @if($pareja1Esperando)
+                                    <div class="d-flex align-items-center justify-content-center" style="width: 100%; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f8f9fa;">
+                                        <span style="color: #666; font-weight: bold; font-size: 0.9rem;">Esperando ganador ({{ $ref1 ?: '?' }})</span>
+                                    </div>
+                                @else
                                 <!-- Imágenes -->
                                 <div class="d-flex mr-3">
                                     <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" 
@@ -468,7 +522,6 @@
                                          style="width: 60px; height: 60px; object-fit: cover;"
                                          onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                 </div>
-                                <!-- Nombres a la derecha -->
                                 <div class="d-flex flex-column justify-content-center" style="height: 60px;">
                                     <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
                                         {{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}
@@ -477,6 +530,7 @@
                                         {{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}
                                     </div>
                                 </div>
+                                @endif
                             </div>
                             
                             <!-- Inputs Sets Pareja 1 -->
@@ -484,135 +538,65 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="1"
-                                               data-set="1"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja1_set1 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="1" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja1_set1 }}" placeholder="0">
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="1"
-                                               data-set="2"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja1_set2 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="1" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja1_set2 }}" placeholder="0">
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="1"
-                                               data-set="3"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja1_set3 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="1" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja1_set3 }}" placeholder="0">
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Inputs Sets Pareja 2 -->
+                            @if(!$pareja2Esperando)
                             <div class="mb-3">                                    
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="2"
-                                               data-set="1"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja2_set1 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set1 }}" placeholder="0">
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="2"
-                                               data-set="2"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja2_set2 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set2 }}" placeholder="0">
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="2"
-                                               data-set="3"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja2_set3 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set3 }}" placeholder="0">
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             
                             <!-- Pareja 2 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="2"
-                                 data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
-                                 data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
-                                <!-- Imágenes -->
+                                 data-jugador-1="{{ $pareja2Esperando ? '' : ($cruce['pareja_2']['jugador_1'] ?? '') }}"
+                                 data-jugador-2="{{ $pareja2Esperando ? '' : ($cruce['pareja_2']['jugador_2'] ?? '') }}">
+                                @if($pareja2Esperando)
+                                    <div class="d-flex align-items-center justify-content-center" style="width: 100%; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f8f9fa;">
+                                        <span style="color: #666; font-weight: bold; font-size: 0.9rem;">Esperando ganador ({{ $ref2 ?: '?' }})</span>
+                                    </div>
+                                @else
                                 <div class="d-flex mr-3">
-                                    <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                    <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                    <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" alt="" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                    <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" alt="" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                 </div>
-                                <!-- Nombres a la derecha -->
                                 <div class="d-flex flex-column justify-content-center" style="height: 60px;">
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}
-                                    </div>
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}
-                                    </div>
+                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
+                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}</div>
                                 </div>
+                                @endif
                             </div>
                             
-                            <!-- Botón guardar -->
+                            @if(!$pareja1Esperando && !$pareja2Esperando)
                             <div class="text-center mt-2">
-                                <button type="button" 
-                                        class="btn btn-primary btn-sm guardar-cruce" 
-                                        data-cruce-id="{{ $cruce['id'] }}"
-                                        data-ronda="{{ $cruce['ronda'] }}">
-                                    Guardar
-                                </button>
+                                <button type="button" class="btn btn-primary btn-sm guardar-cruce" data-cruce-id="{{ $cruce['id'] }}" data-ronda="{{ $cruce['ronda'] }}">Guardar</button>
                             </div>
+                            @endif
                         </div>
                         <!-- FIN CARD DE PARTIDO -->
                     @endforeach
@@ -627,13 +611,14 @@
                     <div class="bracket-round-title">Final</div>
                     @foreach($crucesFinales as $cruce)
                         @php
-                            // Obtener datos de los jugadores
-                            $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
-                            $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
-                            $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
-                            $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
-                            
-                            // Obtener resultados del partido si existen
+                            $p1j1 = isset($cruce['pareja_1']) ? ($cruce['pareja_1']['jugador_1'] ?? null) : null;
+                            $p2j1 = isset($cruce['pareja_2']) ? ($cruce['pareja_2']['jugador_1'] ?? null) : null;
+                            $pareja1Esperando = !isset($cruce['pareja_1']) || $p1j1 === null || (int)$p1j1 === 0;
+                            $pareja2Esperando = !isset($cruce['pareja_2']) || $p2j1 === null || (int)$p2j1 === 0;
+                            $jugador1_1 = !$pareja1Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']) : null;
+                            $jugador1_2 = !$pareja1Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']) : null;
+                            $jugador2_1 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']) : null;
+                            $jugador2_2 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']) : null;
                             $partido = $cruce['partido'] ?? null;
                             $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
                             $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
@@ -641,40 +626,37 @@
                             $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
                             $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
                             $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $ref1 = $cruce['referencia_1'] ?? '';
+                            $ref2 = $cruce['referencia_2'] ?? '';
                         @endphp
                         <!-- CARD DE PARTIDO -->
                         <div class="match-card" 
                              data-cruce-id="{{ $cruce['id'] }}" 
                              data-ronda="{{ $cruce['ronda'] }}" 
-                             data-partido-id="{{ $cruce['partido_id'] }}" 
+                             data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
+                             data-llave-ref1="{{ $ref1 }}"
+                             data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
+                            <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="1"
-                                 data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
-                                 data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
-                                <!-- Imágenes -->
+                                 data-jugador-1="{{ $pareja1Esperando ? '' : ($cruce['pareja_1']['jugador_1'] ?? '') }}"
+                                 data-jugador-2="{{ $pareja1Esperando ? '' : ($cruce['pareja_1']['jugador_2'] ?? '') }}">
+                                @if($pareja1Esperando)
+                                    <div class="d-flex align-items-center justify-content-center" style="width: 100%; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f8f9fa;">
+                                        <span style="color: #666; font-weight: bold; font-size: 0.9rem;">Esperando ganador ({{ $ref1 ?: '?' }})</span>
+                                    </div>
+                                @else
                                 <div class="d-flex mr-3">
-                                    <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                    <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                    <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" alt="" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                    <img src="{{ asset($jugador1_2->foto ?? 'images/jugador_img.png') }}" alt="" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                 </div>
-                                <!-- Nombres a la derecha -->
                                 <div class="d-flex flex-column justify-content-center" style="height: 60px;">
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}
-                                    </div>
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}
-                                    </div>
+                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">{{ $jugador1_1->nombre ?? '' }} {{ $jugador1_1->apellido ?? '' }}</div>
+                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">{{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}</div>
                                 </div>
+                                @endif
                             </div>
                             
                             <!-- Inputs Sets Pareja 1 -->
@@ -684,7 +666,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="1"
@@ -698,7 +679,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="2"
@@ -712,7 +692,6 @@
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
                                         <input type="number" 
                                                class="form-control resultado-cruce" 
-                                               style="width: 60px;"
                                                data-cruce-id="{{ $cruce['id'] }}"
                                                data-pareja="1"
                                                data-set="3"
@@ -726,91 +705,51 @@
                             </div>
                             
                             <!-- Inputs Sets Pareja 2 -->
+                            @if(!$pareja2Esperando)
                             <div class="mb-3">                                    
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="2"
-                                               data-set="1"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja2_set1 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set1 }}" placeholder="0">
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="2"
-                                               data-set="2"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja2_set2 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set2 }}" placeholder="0">
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
-                                        <input type="number" 
-                                               class="form-control resultado-cruce" 
-                                               style="width: 60px;"
-                                               data-cruce-id="{{ $cruce['id'] }}"
-                                               data-pareja="2"
-                                               data-set="3"
-                                               data-ronda="{{ $cruce['ronda'] }}"
-                                               min="0"
-                                               max="99"
-                                               value="{{ $pareja2_set3 }}"
-                                               placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set3 }}" placeholder="0">
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             
                             <!-- Pareja 2 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="2"
-                                 data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
-                                 data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
-                                <!-- Imágenes -->
+                                 data-jugador-1="{{ $pareja2Esperando ? '' : ($cruce['pareja_2']['jugador_1'] ?? '') }}"
+                                 data-jugador-2="{{ $pareja2Esperando ? '' : ($cruce['pareja_2']['jugador_2'] ?? '') }}">
+                                @if($pareja2Esperando)
+                                    <div class="d-flex align-items-center justify-content-center" style="width: 100%; padding: 20px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f8f9fa;">
+                                        <span style="color: #666; font-weight: bold; font-size: 0.9rem;">Esperando ganador ({{ $ref2 ?: '?' }})</span>
+                                    </div>
+                                @else
                                 <div class="d-flex mr-3">
-                                    <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
-                                    <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" 
-                                         alt="{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}" 
-                                         class="rounded-circle"
-                                         style="width: 60px; height: 60px; object-fit: cover;"
-                                         onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                    <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" alt="" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
+                                    <img src="{{ asset($jugador2_2->foto ?? 'images/jugador_img.png') }}" alt="" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;" onerror="this.src='{{ asset('images/jugador_img.png') }}?v=' + Date.now()">
                                 </div>
-                                <!-- Nombres a la derecha -->
                                 <div class="d-flex flex-column justify-content-center" style="height: 60px;">
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}
-                                    </div>
-                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">
-                                        {{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}
-                                    </div>
+                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">{{ $jugador2_1->nombre ?? '' }} {{ $jugador2_1->apellido ?? '' }}</div>
+                                    <div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">{{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}</div>
                                 </div>
+                                @endif
                             </div>
                             
-                            <!-- Botón guardar -->
+                            @if(!$pareja1Esperando && !$pareja2Esperando)
                             <div class="text-center mt-2">
-                                <button type="button" 
-                                        class="btn btn-primary btn-sm guardar-cruce" 
-                                        data-cruce-id="{{ $cruce['id'] }}"
-                                        data-ronda="{{ $cruce['ronda'] }}">
-                                    Guardar
-                                </button>
+                                <button type="button" class="btn btn-primary btn-sm guardar-cruce" data-cruce-id="{{ $cruce['id'] }}" data-ronda="{{ $cruce['ronda'] }}">Guardar</button>
                             </div>
+                            @endif
                         </div>
                         <!-- FIN CARD DE PARTIDO -->
                     @endforeach

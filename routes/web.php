@@ -70,6 +70,8 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_vivo','HomeController@adminVivo')->name('adminvivo');
 	Route::get('admin_torneos','HomeController@adminTorneos')->name('admintorneos');
 	Route::get('admin_fotos','HomeController@adminFotos')->name('adminfotos');
+	Route::get('admin_config','HomeController@adminConfig')->name('adminconfig');
+	Route::post('admin_config_guardar','HomeController@guardarConfigCruces')->name('adminconfigguardar');
 	Route::post('/registrar_torneo_admin', 'HomeController@registrarTorneo')->name('registrartorneoadmin');
 	Route::post('/get_torneos', 'HomeController@getTorneos')->name('gettorneos');
 	Route::post('/admin_torneo_selected', 'HomeController@adminTorneoSelected')->name('admintorneoselected');	
