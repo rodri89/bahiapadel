@@ -10,6 +10,27 @@
     h5, h6 {
         color: #000 !important;
     }
+    /* Asegurar que inputs y card se vean siempre (tema claro/oscuro y rutas de CSS) */
+    #form-config-cruces .form-control {
+        background-color: #fff !important;
+        color: #333 !important;
+        border: 1px solid #ced4da !important;
+        min-height: 38px;
+    }
+    #form-config-cruces .card {
+        background-color: #fff;
+    }
+    #form-config-cruces .card-body {
+        background-color: #fff;
+    }
+    #llave-8vos-content,
+    #llave-4tos-content,
+    #llave-semifinal-content,
+    #llave-final-content,
+    #llave-16avos-content {
+        min-height: 40px;
+        display: block;
+    }
 </style>
 
 <div class="container-fluid">
@@ -61,35 +82,110 @@
                         <!-- Configuración de Llaves -->
                         <h5 class="mb-3">Configuración de Llaves</h5>
                         
-                        <!-- Llave 16avos -->
+                        <!-- Llave 16avos (se muestra al marcar "Tiene 16avos") -->
                         <div id="llave-16avos-container" class="mb-4" style="display: none;">
                             <h6>16avos de Final</h6>
-                            <div id="llave-16avos-content"></div>
+                            <p class="text-muted small mb-2">Ej: A1, H2 (zona y posición). Solo visible si activa "Tiene 16avos de Final".</p>
+                            <div id="llave-16avos-content">
+                                @foreach([['A1','H2'],['B1','G2'],['C1','F2'],['D1','E2'],['E1','D2'],['F1','C2'],['G1','B2'],['H1','A2'],['A3','H4'],['B3','G4'],['C3','F4'],['D3','E4'],['E3','D4'],['F3','C4'],['G3','B4'],['H3','A4']] as $i => $par)
+                                <div class="form-group row mb-2 partido-llave" data-ronda="16avos" data-partido="{{ $i+1 }}">
+                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (16{{ $i+1 }}):</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" class="form-control pareja-1-input" name="llave_16avos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1">
+                                    </div>
+                                    <div class="col-sm-1 text-center">VS</div>
+                                    <div class="col-sm-4">
+                                        <input type="text" class="form-control pareja-2-input" name="llave_16avos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2">
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
                         </div>
                         
                         <!-- Llave 8vos -->
                         <div id="llave-8vos-container" class="mb-4">
                             <h6>8vos de Final</h6>
-                            <div id="llave-8vos-content"></div>
+                            <p class="text-muted small mb-2">Ej: A1, H2 o referencias como G1-8vos (ganador partido 1 de 8vos).</p>
+                            <div id="llave-8vos-content">
+                                @foreach([['A1','H2'],['B1','G2'],['C1','F2'],['D1','E2'],['E1','D2'],['F1','C2'],['G1','B2'],['H1','A2']] as $i => $par)
+                                <div class="form-group row mb-2 partido-llave" data-ronda="8vos" data-partido="{{ $i+1 }}">
+                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (O{{ $i+1 }}):</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" class="form-control pareja-1-input" name="llave_8vos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1">
+                                    </div>
+                                    <div class="col-sm-1 text-center">VS</div>
+                                    <div class="col-sm-4">
+                                        <input type="text" class="form-control pareja-2-input" name="llave_8vos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2">
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
                         </div>
                         
                         <!-- Llave 4tos -->
                         <div id="llave-4tos-container" class="mb-4">
                             <h6>4tos de Final</h6>
-                            <div id="llave-4tos-content"></div>
+                            <p class="text-muted small mb-2">Use G1-8vos, G2-8vos, … = ganadores de los partidos de 8vos.</p>
+                            <div id="llave-4tos-content">
+                                @foreach([['G1-8vos','G2-8vos'],['G3-8vos','G4-8vos'],['G5-8vos','G6-8vos'],['G7-8vos','G8-8vos']] as $i => $par)
+                                <div class="form-group row mb-2 partido-llave" data-ronda="4tos" data-partido="{{ $i+1 }}">
+                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (C{{ $i+1 }}):</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" class="form-control pareja-1-input" name="llave_4tos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: G1-8vos">
+                                    </div>
+                                    <div class="col-sm-1 text-center">VS</div>
+                                    <div class="col-sm-4">
+                                        <input type="text" class="form-control pareja-2-input" name="llave_4tos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: G2-8vos">
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
                         </div>
                         
-                        <!-- Llave Semifinal -->
+                        <!-- Llave Semifinal (inputs fijos para que siempre se vean) -->
                         <div id="llave-semifinal-container" class="mb-4">
                             <h6>Semifinal</h6>
-                            <p class="text-muted small mb-2">Use <strong>G1-4tos</strong>, <strong>G2-4tos</strong>, <strong>G3-4tos</strong>, <strong>G4-4tos</strong> = Ganadores de Cuartos 1, 2, 3 y 4 (no confundir con zonas A,B,C,D).</p>
-                            <div id="llave-semifinal-content"></div>
+                            <p class="text-muted small mb-2">Use <strong>G1-4tos</strong>, <strong>G2-4tos</strong>, <strong>G3-4tos</strong>, <strong>G4-4tos</strong> = ganadores de Cuartos 1, 2, 3 y 4 (no confundir con zonas A,B,C,D).</p>
+                            <div id="llave-semifinal-content">
+                                <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="1">
+                                    <label class="col-sm-2 col-form-label">Partido 1 (S1):</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="G1-4tos" placeholder="Ej: G1-4tos">
+                                    </div>
+                                    <div class="col-sm-1 text-center">VS</div>
+                                    <div class="col-sm-4">
+                                        <input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="G2-4tos" placeholder="Ej: G2-4tos">
+                                    </div>
+                                </div>
+                                <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="2">
+                                    <label class="col-sm-2 col-form-label">Partido 2 (S2):</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="G3-4tos" placeholder="Ej: G3-4tos">
+                                    </div>
+                                    <div class="col-sm-1 text-center">VS</div>
+                                    <div class="col-sm-4">
+                                        <input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="G4-4tos" placeholder="Ej: G4-4tos">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <!-- Llave Final -->
+                        <!-- Llave Final (input fijo para que siempre se vea) -->
                         <div id="llave-final-container" class="mb-4">
                             <h6>Final</h6>
-                            <div id="llave-final-content"></div>
+                            <p class="text-muted small mb-2">Use G1-semifinal, G2-semifinal = ganadores de las dos semifinales.</p>
+                            <div id="llave-final-content">
+                                <div class="form-group row mb-2 partido-llave" data-ronda="final" data-partido="1">
+                                    <label class="col-sm-2 col-form-label">Partido 1 (F1):</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" class="form-control pareja-1-input" name="llave_final[0][pareja_1]" value="G1-semifinal" placeholder="Ej: G1-semifinal">
+                                    </div>
+                                    <div class="col-sm-1 text-center">VS</div>
+                                    <div class="col-sm-4">
+                                        <input type="text" class="form-control pareja-2-input" name="llave_final[0][pareja_2]" value="G2-semifinal" placeholder="Ej: G2-semifinal">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="form-group row">
@@ -110,37 +206,41 @@ $(document).ready(function() {
     // Letras para las zonas (A, B, C, D, etc.)
     const letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
     
-    // Cargar configuración existente si hay
-    @if(isset($config))
+    // Rellenar solo los valores de inputs existentes (nunca vaciar el DOM de 8vos/4tos/semi/final)
+    function rellenarValoresLlave(ronda, partidos) {
+        if (typeof partidos === 'string') { try { partidos = JSON.parse(partidos); } catch(e) { return; } }
+        if (!Array.isArray(partidos) || partidos.length === 0) return;
+        $('.partido-llave[data-ronda="'+ronda+'"]').each(function(index) {
+            if (partidos[index]) {
+                $(this).find('.pareja-1-input').val(partidos[index].pareja_1 || '');
+                $(this).find('.pareja-2-input').val(partidos[index].pareja_2 || '');
+            }
+        });
+    }
+    
+    // Cargar configuración existente: solo rellenar valores, no reemplazar DOM (así no se pierden los inputs de octavos)
+    @if(isset($config) && $config !== null)
         const configExistente = @json($config);
-        cargarConfiguracionExistente(configExistente);
+        if (configExistente) cargarConfiguracionExistente(configExistente);
     @endif
     
-    // Función para cargar configuración existente
     function cargarConfiguracionExistente(config) {
-        // Mostrar/ocultar contenedores según configuración
+        var cantidadParejas = parseInt($('#cantidad_parejas').val()) || 16;
+        var zonas = Math.ceil(cantidadParejas / 4);
+        var letrasDisponibles = letrasZonas.slice(0, zonas);
         if (config.tiene_16avos_final) {
             $('#llave-16avos-container').show();
-            if (config.llave_16avos) {
+            if (config.llave_16avos && config.llave_16avos.length) {
                 cargarLlave('16avos', config.llave_16avos);
+            } else {
+                generarLlave('16avos', 16, letrasDisponibles);
             }
         }
-        if (config.tiene_8vos_final) {
-            if (config.llave_8vos) {
-                cargarLlave('8vos', config.llave_8vos);
-            }
-        }
-        if (config.tiene_4tos_final) {
-            if (config.llave_4tos) {
-                cargarLlave('4tos', config.llave_4tos);
-            }
-        }
-        if (config.llave_semifinal) {
-            cargarLlave('semifinal', config.llave_semifinal);
-        }
-        if (config.llave_final) {
-            cargarLlave('final', config.llave_final);
-        }
+        // 8vos, 4tos, semi, final: NUNCA vaciar el contenedor; solo rellenar valores en los inputs que ya existen
+        if (config.tiene_8vos_final && config.llave_8vos) rellenarValoresLlave('8vos', config.llave_8vos);
+        if (config.tiene_4tos_final && config.llave_4tos) rellenarValoresLlave('4tos', config.llave_4tos);
+        if (config.llave_semifinal) rellenarValoresLlave('semifinal', config.llave_semifinal);
+        if (config.llave_final) rellenarValoresLlave('final', config.llave_final);
     }
     
     // Placeholders por ronda
@@ -153,26 +253,24 @@ $(document).ready(function() {
     };
     
     function cargarLlave(ronda, partidos) {
+        if (typeof partidos === 'string') {
+            try { partidos = JSON.parse(partidos); } catch (e) { return; }
+        }
+        if (!Array.isArray(partidos) || partidos.length === 0) return;
         const container = $('#llave-' + ronda + '-content');
         container.empty();
         const codigoRonda = obtenerCodigoRonda(ronda);
         const ph = placeholdersRonda[ronda] || ['Ej: A1', 'Ej: B2'];
-        
         partidos.forEach(function(partido, index) {
             const partidoNum = index + 1;
             const codigoPartido = codigoRonda + partidoNum;
-            const partidoHtml = `
-                <div class="form-group row mb-2 partido-llave" data-ronda="${ronda}" data-partido="${partidoNum}">
-                    <label class="col-sm-2 col-form-label">Partido ${partidoNum} (${codigoPartido}):</label>
-                    <div class="col-sm-5">
-                        <input type="text" class="form-control pareja-1-input" name="llave_${ronda}[${index}][pareja_1]" value="${partido.pareja_1 || ''}" placeholder="${ph[0]}">
-                    </div>
-                    <div class="col-sm-1 text-center">VS</div>
-                    <div class="col-sm-4">
-                        <input type="text" class="form-control pareja-2-input" name="llave_${ronda}[${index}][pareja_2]" value="${partido.pareja_2 || ''}" placeholder="${ph[1]}">
-                    </div>
-                </div>
-            `;
+            const p1 = (partido && (partido.pareja_1 != null)) ? String(partido.pareja_1).replace(/</g,'&lt;') : '';
+            const p2 = (partido && (partido.pareja_2 != null)) ? String(partido.pareja_2).replace(/</g,'&lt;') : '';
+            const partidoHtml = '<div class="form-group row mb-2 partido-llave" data-ronda="'+ronda+'" data-partido="'+partidoNum+'">'+
+                '<label class="col-sm-2 col-form-label">Partido '+partidoNum+' ('+codigoPartido+'):</label>'+
+                '<div class="col-sm-5"><input type="text" class="form-control pareja-1-input" name="llave_'+ronda+'['+index+'][pareja_1]" value="'+p1+'" placeholder="'+ph[0]+'"></div>'+
+                '<div class="col-sm-1 text-center">VS</div>'+
+                '<div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_'+ronda+'['+index+'][pareja_2]" value="'+p2+'" placeholder="'+ph[1]+'"></div></div>';
             container.append(partidoHtml);
         });
     }
@@ -300,9 +398,12 @@ $(document).ready(function() {
         }
     });
     
-    // Generar llaves iniciales si no hay configuración existente
+    // Si no hay config, no vaciar 8vos/4tos/semi/final (ya vienen con HTML estático). Solo generar 16avos si el check está marcado.
     @if(!isset($config))
-        generarLlavesAutomaticamente();
+        if ($('#tiene_16avos').is(':checked')) {
+            var zonas = Math.ceil((parseInt($('#cantidad_parejas').val()) || 16) / 4);
+            generarLlave('16avos', 16, letrasZonas.slice(0, zonas));
+        }
     @endif
     
     // Guardar configuración
