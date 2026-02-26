@@ -28,6 +28,7 @@ Route::get("/tv_torneo_americano_sorteo", "HomeController@tvTorneoAmericanoSorte
 Route::post("/tv_torneo_americano_actualizar", "HomeController@tvTorneoAmericanoActualizar")->name("tvtorneoamericanoactualizar");
 Route::post("/tv_torneo_americano_cruces_actualizar", "HomeController@tvTorneoAmericanoCrucesActualizar")->name("tvtorneoamericanocrucesactualizar");
 Route::post("/tv_torneo_americano_sorteo_actualizar", "HomeController@tvTorneoAmericanoSorteoActualizar")->name("tvtorneoamericanosorteoactualizar");
+Route::get("/tv_torneo_version", "HomeController@tvTorneoVersion")->name("tvtorneoversion");
 
 // ################################# estas rutas debo tocar para volver al mantenimiento ################
 /*Route::get('/home_test', function () {	
