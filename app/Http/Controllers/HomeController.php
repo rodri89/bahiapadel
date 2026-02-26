@@ -16,6 +16,8 @@ use Session;
 
 class HomeController extends Controller
 {
+    /** Ruta relativa (desde public) donde se guardan las fotos de jugadores. Siempre en public, nunca en storage. */
+    const FOTOS_JUGADORES_DIR = 'images/jugadores';
 
     use AuthenticatesUsers;
 
@@ -65,16 +67,35 @@ class HomeController extends Controller
         return View('bahia_padel.admin.fotos.index'); 
     }
     
-    function adminConfig() {
-        // Cargar configuración existente si hay
-        $configuracion = DB::table('configuracion_cruces_puntuables')
-            ->whereNull('torneo_id') // Configuración global
+    function adminConfig(Request $request) {
+        // Listado de todas las configuraciones globales (para cuántas parejas es cada una)
+        $configuraciones = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id')
+            ->orderBy('cantidad_parejas')
             ->orderBy('id', 'desc')
-            ->first();
+            ->get(['id', 'cantidad_parejas', 'tiene_16avos_final', 'tiene_8vos_final', 'tiene_4tos_final', 'updated_at']);
         
+        // Cargar una configuración para editar (por id en query), o null si nueva=1 o no hay ninguna
         $config = null;
+        $editarId = $request->get('editar');
+        $nueva = $request->get('nueva');
+        if ($nueva) {
+            $configuracion = null;
+        } elseif ($editarId) {
+            $configuracion = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->where('id', $editarId)
+                ->first();
+        } else {
+            $configuracion = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+        
         if ($configuracion) {
             $config = [
+                'id' => $configuracion->id,
                 'cantidad_parejas' => $configuracion->cantidad_parejas,
                 'tiene_16avos_final' => $configuracion->tiene_16avos_final,
                 'tiene_8vos_final' => $configuracion->tiene_8vos_final,
@@ -88,13 +109,14 @@ class HomeController extends Controller
         }
         
         return View('bahia_padel.admin.config.index')
-            ->with('config', $config); 
+            ->with('configuraciones', $configuraciones)
+            ->with('config', $config);
     }
     
     function guardarConfigCruces(Request $request) {
         try {
             $data = [
-                'torneo_id' => null, // Configuración global por ahora
+                'torneo_id' => null,
                 'cantidad_parejas' => $request->cantidad_parejas,
                 'tiene_16avos_final' => $request->tiene_16avos_final ? 1 : 0,
                 'tiene_8vos_final' => $request->tiene_8vos_final ? 1 : 0,
@@ -107,18 +129,21 @@ class HomeController extends Controller
                 'updated_at' => now()
             ];
             
-            // Verificar si ya existe una configuración global
-            $existente = DB::table('configuracion_cruces_puntuables')
-                ->whereNull('torneo_id')
-                ->first();
-            
-            if ($existente) {
-                // Actualizar
-                DB::table('configuracion_cruces_puntuables')
-                    ->where('id', $existente->id)
-                    ->update($data);
+            $configId = $request->get('config_id');
+            if ($configId) {
+                $existente = DB::table('configuracion_cruces_puntuables')
+                    ->whereNull('torneo_id')
+                    ->where('id', $configId)
+                    ->first();
+                if ($existente) {
+                    DB::table('configuracion_cruces_puntuables')
+                        ->where('id', $configId)
+                        ->update($data);
+                } else {
+                    $data['created_at'] = now();
+                    DB::table('configuracion_cruces_puntuables')->insert($data);
+                }
             } else {
-                // Crear nueva
                 $data['created_at'] = now();
                 DB::table('configuracion_cruces_puntuables')->insert($data);
             }
@@ -339,20 +364,16 @@ class HomeController extends Controller
             $jugador->posicion = 0;
             $jugador->foto = 'images/jugador_img.png';
             
-            // Manejar subida de foto
+            // Manejar subida de foto (siempre en public, no en storage)
             if ($request->hasFile('foto')) {
                 try {
                     $image = $request->file('foto');
                     $name = time() . '_' . $image->getClientOriginalName();
-                    $path = 'images/jugadores/' . $name;
-                    
-                    // Crear directorio si no existe
-                    $directory = public_path('images/jugadores');
+                    $path = self::FOTOS_JUGADORES_DIR . '/' . $name;
+                    $directory = public_path(self::FOTOS_JUGADORES_DIR);
                     if (!file_exists($directory)) {
                         mkdir($directory, 0755, true);
                     }
-                    
-                    // Usar Image para procesar y guardar la imagen
                     Image::make($image->getRealPath())->save(public_path($path));
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
@@ -445,10 +466,9 @@ class HomeController extends Controller
                     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
                     $extension = $image->getClientOriginalExtension();
                     $name = time() . '_' . $safeName . '.' . $extension;
-                    $path = 'images/jugadores/' . $name;
-                    
-                    // Obtener rutas usando public_path para asegurar la ubicación correcta
-                    $directory = public_path('images/jugadores');
+                    $path = self::FOTOS_JUGADORES_DIR . '/' . $name;
+                    // Siempre guardar en public (no en storage)
+                    $directory = public_path(self::FOTOS_JUGADORES_DIR);
                     $imgPath = public_path($path);
                     
                     // Logging para diagnóstico
@@ -652,19 +672,8 @@ class HomeController extends Controller
                 
                 // Buscar el archivo en posibles ubicaciones alternativas
                 $nombreArchivo = basename($jugador->foto);
-                $posiblesRutas = [
-                    base_path('public/images/jugadores/' . $nombreArchivo),
-                    storage_path('app/public/images/jugadores/' . $nombreArchivo),
-                    public_path('images/jugadores/' . $nombreArchivo),
-                ];
-                
-                foreach ($posiblesRutas as $rutaAlternativa) {
-                    if (file_exists($rutaAlternativa)) {
-                        \Log::error('ARCHIVO ENCONTRADO EN: ' . $rutaAlternativa);
-                    } else {
-                        \Log::error('No encontrado en: ' . $rutaAlternativa);
-                    }
-                }
+                $rutaEsperada = public_path(self::FOTOS_JUGADORES_DIR . '/' . $nombreArchivo);
+                \Log::error('Archivo no encontrado en ruta esperada (public): ' . $rutaEsperada);
             }
             
             \Log::info('=== FIN VERIFICACIÓN ===');
@@ -718,20 +727,16 @@ class HomeController extends Controller
             $jugador->apellido = $request->apellido;
             $jugador->telefono = $request->telefono ?? 0;
             
-            // Manejar subida de foto solo si se envía una nueva
+            // Manejar subida de foto solo si se envía una nueva (siempre en public, no en storage)
             if ($request->hasFile('foto')) {
                 try {
                     $image = $request->file('foto');
                     $name = time() . '_' . $image->getClientOriginalName();
-                    $path = 'images/jugadores/' . $name;
-                    
-                    // Crear directorio si no existe
-                    $directory = public_path('images/jugadores');
+                    $path = self::FOTOS_JUGADORES_DIR . '/' . $name;
+                    $directory = public_path(self::FOTOS_JUGADORES_DIR);
                     if (!file_exists($directory)) {
                         mkdir($directory, 0755, true);
                     }
-                    
-                    // Usar Image para procesar y guardar la imagen
                     Image::make($image->getRealPath())->save(public_path($path));
                     $jugador->foto = $path;
                 } catch (\Exception $e) {

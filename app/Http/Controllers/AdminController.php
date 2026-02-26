@@ -206,21 +206,16 @@ class AdminController extends Controller
             if($request->hasfile('image')) {
                 try {
                     $image = $request->file('image');
-                    
-                    // Sanitizar nombre del archivo
                     $originalName = $image->getClientOriginalName();
                     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
                     $extension = $image->getClientOriginalExtension();
                     $name = time() . '_' . $safeName . '.' . $extension;
+                    // Siempre guardar en public (no en storage)
                     $path = 'images/jugadores/' . $name;
-                    
-                    // Crear directorio si no existe
                     $directory = public_path('images/jugadores');
                     if (!file_exists($directory)) {
                         mkdir($directory, 0755, true);
                     }
-                    
-                    // Guardar en la ruta correcta usando public_path
                     Image::make($image->getRealPath())->save(public_path($path));
                     
                     \Log::info('Foto guardada: ' . $path);

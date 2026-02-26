@@ -366,7 +366,6 @@
                             </div>
                             
                             <!-- Inputs Sets Pareja 2 -->
-                            @if(!$pareja2Esperando)
                             <div class="mb-3">                                    
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
@@ -380,7 +379,8 @@
                                                min="0"
                                                max="99"
                                                value="{{ $pareja2_set1 }}"
-                                               placeholder="0">
+                                               placeholder="0"
+                                               @if($pareja2Esperando) disabled @endif>
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
@@ -393,7 +393,8 @@
                                                min="0"
                                                max="99"
                                                value="{{ $pareja2_set2 }}"
-                                               placeholder="0">
+                                               placeholder="0"
+                                               @if($pareja2Esperando) disabled @endif>
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
@@ -406,11 +407,11 @@
                                                min="0"
                                                max="99"
                                                value="{{ $pareja2_set3 }}"
-                                               placeholder="0">
+                                               placeholder="0"
+                                               @if($pareja2Esperando) disabled @endif>
                                     </div>
                                 </div>
                             </div>
-                            @endif
                             
                             <!-- Pareja 2 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -552,24 +553,22 @@
                             </div>
                             
                             <!-- Inputs Sets Pareja 2 -->
-                            @if(!$pareja2Esperando)
                             <div class="mb-3">                                    
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
-                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set1 }}" placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set1 }}" placeholder="0" @if($pareja2Esperando) disabled @endif>
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
-                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set2 }}" placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set2 }}" placeholder="0" @if($pareja2Esperando) disabled @endif>
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
-                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set3 }}" placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set3 }}" placeholder="0" @if($pareja2Esperando) disabled @endif>
                                     </div>
                                 </div>
                             </div>
-                            @endif
                             
                             <!-- Pareja 2 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -705,24 +704,22 @@
                             </div>
                             
                             <!-- Inputs Sets Pareja 2 -->
-                            @if(!$pareja2Esperando)
                             <div class="mb-3">                                    
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 1</label>
-                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set1 }}" placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="1" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set1 }}" placeholder="0" @if($pareja2Esperando) disabled @endif>
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 2</label>
-                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set2 }}" placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="2" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set2 }}" placeholder="0" @if($pareja2Esperando) disabled @endif>
                                     </div>
                                     <div class="d-flex flex-column align-items-center">
                                         <label class="small mb-1" style="color: #000;">Set 3</label>
-                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set3 }}" placeholder="0">
+                                        <input type="number" class="form-control resultado-cruce" data-cruce-id="{{ $cruce['id'] }}" data-pareja="2" data-set="3" data-ronda="{{ $cruce['ronda'] }}" min="0" max="99" value="{{ $pareja2_set3 }}" placeholder="0" @if($pareja2Esperando) disabled @endif>
                                     </div>
                                 </div>
                             </div>
-                            @endif
                             
                             <!-- Pareja 2 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -867,6 +864,55 @@
         });
     }
     
+    /**
+     * Actualiza la llave siguiente (cuartos, semifinales, final) mostrando al ganador en el slot correspondiente sin recargar.
+     * @param {Object} ganadorLlave - { refs: string[], ronda_siguiente: string, jugador_1, jugador_2, nombre1, nombre2, foto1, foto2 }
+     */
+    function actualizarLlaveSiguienteConGanador(ganadorLlave) {
+        if (!ganadorLlave || !ganadorLlave.refs || !ganadorLlave.ronda_siguiente) return;
+        var titulosRonda = {
+            'cuartos': 'Cuartos Final',
+            'semifinales': 'Semifinales',
+            'final': 'Final'
+        };
+        var titulo = titulosRonda[ganadorLlave.ronda_siguiente] || ganadorLlave.ronda_siguiente;
+        var $ronda = $('.bracket-round-title').filter(function() { return $(this).text().trim() === titulo; }).closest('.bracket-round');
+        if ($ronda.length === 0) return;
+        var $cards = $ronda.find('.match-card');
+        var refs = Array.isArray(ganadorLlave.refs) ? ganadorLlave.refs : [ganadorLlave.refs];
+        var htmlGanador = '<div class="d-flex mr-3">' +
+            '<img src="' + (ganadorLlave.foto1 || '') + '" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover; margin-right: 5px;" onerror="this.src=\'{{ asset("images/jugador_img.png") }}\'">' +
+            '<img src="' + (ganadorLlave.foto2 || '') + '" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;" onerror="this.src=\'{{ asset("images/jugador_img.png") }}\'">' +
+            '</div>' +
+            '<div class="d-flex flex-column justify-content-center" style="height: 60px;">' +
+            '<div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">' + (ganadorLlave.nombre1 || '') + '</div>' +
+            '<div class="player-name" style="font-weight: bold; color: #000; font-size: 0.875rem;">' + (ganadorLlave.nombre2 || '') + '</div>' +
+            '</div>';
+        $cards.each(function() {
+            var $card = $(this);
+            var ref1 = ($card.attr('data-llave-ref1') || '').trim();
+            var ref2 = ($card.attr('data-llave-ref2') || '').trim();
+            var slotActualizar = null;
+            if (refs.indexOf(ref1) !== -1) slotActualizar = 1;
+            else if (refs.indexOf(ref2) !== -1) slotActualizar = 2;
+            if (!slotActualizar) return;
+            var $slot = $card.find('[data-pareja="' + slotActualizar + '"]').filter(function() { return $(this).attr('data-jugador-1') !== undefined; }).first();
+            if ($slot.length === 0) $slot = $card.find('[data-pareja="' + slotActualizar + '"]').first();
+            if ($slot.length === 0) return;
+            if ($slot.find('.d-flex.mr-3').length > 0) return; // ya tiene pareja asignada
+            $slot.attr('data-jugador-1', ganadorLlave.jugador_1 || '').attr('data-jugador-2', ganadorLlave.jugador_2 || '');
+            $slot.empty().append(htmlGanador);
+            $card.find('input.resultado-cruce[data-pareja="2"]').prop('disabled', false);
+            if (ganadorLlave.partido_id_siguiente) {
+                $card.attr('data-partido-id', ganadorLlave.partido_id_siguiente);
+            }
+            // Si ambas parejas ya están definidas, mostrar botón Guardar si no existe
+            if ($card.find('[data-pareja="1"] .d-flex.mr-3').length && $card.find('[data-pareja="2"] .d-flex.mr-3').length && $card.find('.guardar-cruce').length === 0) {
+                $card.append('<div class="text-center mt-2"><button type="button" class="btn btn-primary btn-sm guardar-cruce" data-cruce-id="' + ($card.attr('data-cruce-id') || '') + '" data-ronda="' + ($card.attr('data-ronda') || '') + '">Guardar</button></div>');
+            }
+        });
+    }
+    
     // Event listener para cambios en inputs de sets 1 y 2
     $(document).on('input change', '.resultado-cruce[data-set="1"], .resultado-cruce[data-set="2"]', function() {
         let cruceId = $(this).data('cruce-id');
@@ -1002,10 +1048,16 @@
                     mostrarSnackbar('Resultado guardado correctamente');
                     console.log('Resultado guardado exitosamente:', response);
                     
-                    // Recargar la página después de guardar
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1000);
+                    // Si el backend devolvió el ganador para la llave siguiente, actualizar esa llave sin recargar
+                    if (response.ganador_llave) {
+                        actualizarLlaveSiguienteConGanador(response.ganador_llave);
+                    }
+                    // Recargar solo si no se actualizó la llave (para sincronizar cualquier otro cambio)
+                    if (!response.ganador_llave) {
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1000);
+                    }
                 } else {
                     console.error('Error al guardar resultado:', response);
                     mostrarSnackbar(response.message || 'Error al guardar el resultado');

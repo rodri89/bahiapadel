@@ -36,13 +36,67 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
+            {{-- Listado de configuraciones existentes y botón nueva --}}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Configuraciones de cruces</h6>
+                    <a href="{{ route('adminconfig') }}?nueva=1" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Nueva configuración
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if($configuraciones->isEmpty())
+                        <p class="text-muted mb-0">No hay configuraciones guardadas. Crea una con el botón «Nueva configuración».</p>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Parejas</th>
+                                        <th>Rondas</th>
+                                        <th class="text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($configuraciones as $c)
+                                    <tr>
+                                        <td><strong>{{ $c->cantidad_parejas }}</strong> parejas</td>
+                                        <td class="text-muted small">
+                                            @if($c->tiene_16avos_final) 16avos · @endif
+                                            @if($c->tiene_8vos_final) 8vos · @endif
+                                            @if($c->tiene_4tos_final) 4tos @endif
+                                            Semifinal · Final
+                                        </td>
+                                        <td class="text-right">
+                                            <a href="{{ route('adminconfig') }}?editar={{ $c->id }}" class="btn btn-outline-primary btn-sm">Editar</a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Configuración de Cruces para Torneos Puntuables</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        @if(isset($config) && isset($config['id']))
+                            Editar configuración ({{ $config['cantidad_parejas'] }} parejas)
+                        @else
+                            Nueva configuración de cruces
+                        @endif
+                    </h6>
                 </div>
                 <div class="card-body">
                     <form id="form-config-cruces">
                         @csrf
+                        @if(isset($config) && !empty($config['id']))
+                            <input type="hidden" name="config_id" id="config_id" value="{{ $config['id'] }}">
+                        @else
+                            <input type="hidden" name="config_id" id="config_id" value="">
+                        @endif
                         
                         <!-- Cantidad de Parejas -->
                         <div class="form-group row">
@@ -411,6 +465,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         const formData = {
+            config_id: $('#config_id').val() || '',
             cantidad_parejas: $('#cantidad_parejas').val(),
             tiene_16avos_final: $('#tiene_16avos').is(':checked') ? 1 : 0,
             tiene_8vos_final: $('#tiene_8vos').is(':checked') ? 1 : 0,
@@ -430,6 +485,7 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     alert('Configuración guardada correctamente');
+                    window.location.reload();
                 } else {
                     alert('Error al guardar: ' + (response.message || 'Error desconocido'));
                 }

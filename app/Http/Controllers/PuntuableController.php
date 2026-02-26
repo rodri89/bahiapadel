@@ -607,6 +607,60 @@ class PuntuableController extends Controller
                 }
             }
             
+            // Tercera pasada: asignar por índice los partidos de BD que no se matchearon (evita perder parejas al recargar)
+            foreach ($crucesDesdeConfig as $idx => $c) {
+                $ronda = $c['ronda'] ?? null;
+                $tieneParejas = isset($c['pareja_1']['jugador_1'], $c['pareja_2']['jugador_1']) && (int)($c['pareja_1']['jugador_1'] ?? 0) > 0 && (int)($c['pareja_2']['jugador_1'] ?? 0) > 0;
+                if ($tieneParejas && !empty($c['partido_id'])) continue;
+                if ($ronda === 'cuartos') {
+                    $i = null;
+                    if (isset($c['id']) && preg_match('/cuartos_(\d+)/', $c['id'], $m)) $i = (int)$m[1] - 1;
+                    if ($i === null || !isset($cuartosOrdenados[$i])) continue;
+                    $partidoId = $cuartosOrdenados[$i];
+                    if (isset($partidosCuartosUsados[$partidoId])) continue;
+                    $gruposC = $partidosCuartosBD[$partidoId] ?? null;
+                    if (!$gruposC || $gruposC->count() < 2) continue;
+                    $g1 = $gruposC[0]; $g2 = $gruposC[1];
+                    $g1Vacio = (int)($g1->jugador_1 ?? 0) === 0 && (int)($g1->jugador_2 ?? 0) === 0;
+                    $g2Vacio = (int)($g2->jugador_1 ?? 0) === 0 && (int)($g2->jugador_2 ?? 0) === 0;
+                    $crucesDesdeConfig[$idx]['partido_id'] = $partidoId;
+                    $crucesDesdeConfig[$idx]['partido'] = $partidosObj[$partidoId] ?? null;
+                    $crucesDesdeConfig[$idx]['pareja_1'] = $g1Vacio ? null : ['jugador_1' => $g1->jugador_1, 'jugador_2' => $g1->jugador_2];
+                    $crucesDesdeConfig[$idx]['pareja_2'] = $g2Vacio ? null : ['jugador_1' => $g2->jugador_1, 'jugador_2' => $g2->jugador_2];
+                    $partidosCuartosUsados[$partidoId] = true;
+                }
+                if ($ronda === 'semifinales') {
+                    $i = null;
+                    if (isset($c['id']) && preg_match('/semifinales_(\d+)/', $c['id'], $m)) $i = (int)$m[1] - 1;
+                    if ($i === null || !isset($semifinalOrdenados[$i])) continue;
+                    $partidoId = $semifinalOrdenados[$i];
+                    $gruposS = $partidosSemifinalBD[$partidoId] ?? null;
+                    if (!$gruposS || $gruposS->count() < 2) continue;
+                    $g1 = $gruposS[0]; $g2 = $gruposS[1];
+                    $g1Vacio = (int)($g1->jugador_1 ?? 0) === 0 && (int)($g1->jugador_2 ?? 0) === 0;
+                    $g2Vacio = (int)($g2->jugador_1 ?? 0) === 0 && (int)($g2->jugador_2 ?? 0) === 0;
+                    $crucesDesdeConfig[$idx]['partido_id'] = $partidoId;
+                    $crucesDesdeConfig[$idx]['partido'] = $partidosObj[$partidoId] ?? null;
+                    $crucesDesdeConfig[$idx]['pareja_1'] = $g1Vacio ? null : ['jugador_1' => $g1->jugador_1, 'jugador_2' => $g1->jugador_2];
+                    $crucesDesdeConfig[$idx]['pareja_2'] = $g2Vacio ? null : ['jugador_1' => $g2->jugador_1, 'jugador_2' => $g2->jugador_2];
+                }
+                if ($ronda === 'final') {
+                    $i = null;
+                    if (isset($c['id']) && preg_match('/final_(\d+)/', $c['id'], $m)) $i = (int)$m[1] - 1;
+                    if ($i === null || !isset($finalOrdenados[$i])) continue;
+                    $partidoId = $finalOrdenados[$i];
+                    $gruposF = $partidosFinalBD[$partidoId] ?? null;
+                    if (!$gruposF || $gruposF->count() < 2) continue;
+                    $g1 = $gruposF[0]; $g2 = $gruposF[1];
+                    $g1Vacio = (int)($g1->jugador_1 ?? 0) === 0 && (int)($g1->jugador_2 ?? 0) === 0;
+                    $g2Vacio = (int)($g2->jugador_1 ?? 0) === 0 && (int)($g2->jugador_2 ?? 0) === 0;
+                    $crucesDesdeConfig[$idx]['partido_id'] = $partidoId;
+                    $crucesDesdeConfig[$idx]['partido'] = $partidosObj[$partidoId] ?? null;
+                    $crucesDesdeConfig[$idx]['pareja_1'] = $g1Vacio ? null : ['jugador_1' => $g1->jugador_1, 'jugador_2' => $g1->jugador_2];
+                    $crucesDesdeConfig[$idx]['pareja_2'] = $g2Vacio ? null : ['jugador_1' => $g2->jugador_1, 'jugador_2' => $g2->jugador_2];
+                }
+            }
+            
             // Si un partido de cuartos tiene resultados pero una pareja sigue null (grupo en BD con 0,0), rellenar con el ganador de la referencia (O1, O2, G1-8vos, etc.)
             $ganadoresOctavosPorNumero = [];
             $partidoIdToONumeroRelleno = [];
@@ -877,22 +931,33 @@ class PuntuableController extends Controller
                       ', Sets P1: ' . $partido->pareja_1_set_1 . '/' . $partido->pareja_1_set_2 . '/' . $partido->pareja_1_set_3 . 
                       ', Sets P2: ' . $partido->pareja_2_set_1 . '/' . $partido->pareja_2_set_2 . '/' . $partido->pareja_2_set_3);
             
-            // Crear siguientes rondas si es necesario
+            // Crear siguientes rondas si es necesario y obtener partido_id creado (para actualizar la llave sin recargar)
+            $partidoIdSiguiente = null;
             if ($ronda === 'octavos') {
-                $this->crearCuartosDesdeConfiguracionYOctavos($torneoId, $partido);
+                $partidoIdSiguiente = $this->crearCuartosDesdeConfiguracionYOctavos($torneoId, $partido);
             } else if ($ronda === 'cuartos') {
-                $this->crearSemifinalesSiEsNecesario($torneoId);
+                $partidoIdSiguiente = $this->crearSemifinalesSiEsNecesario($torneoId);
             } else if ($ronda === 'semifinales') {
-                $this->crearFinalSiEsNecesario($torneoId);
+                $partidoIdSiguiente = $this->crearFinalSiEsNecesario($torneoId);
+            }
+
+            // Preparar datos del ganador para actualizar la llave siguiente en el frontend (sin recargar)
+            $ganadorLlave = $this->obtenerGanadorLlaveParaFrontend($partido, $ronda, $request->cruce_id ?? '');
+            if ($ganadorLlave && $partidoIdSiguiente) {
+                $ganadorLlave['partido_id_siguiente'] = $partidoIdSiguiente;
             }
 
             \Log::info('=== FIN guardarResultadoPartidoPuntuable (éxito) ===');
             
-            return response()->json([
+            $respuesta = [
                 'success' => true,
                 'message' => 'Resultado guardado correctamente',
                 'partido_id' => $partido->id
-            ]);
+            ];
+            if ($ganadorLlave) {
+                $respuesta['ganador_llave'] = $ganadorLlave;
+            }
+            return response()->json($respuesta);
             
         } catch (\Exception $e) {
             \Log::error('=== ERROR en guardarResultadoPartidoPuntuable ===');
@@ -905,6 +970,77 @@ class PuntuableController extends Controller
                 'message' => 'Error al guardar el resultado: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Obtiene los datos del ganador del partido para que el frontend actualice la llave siguiente sin recargar.
+     * Retorna refs (O1, G1-8vos, etc.), ronda_siguiente, jugadores y datos para mostrar (nombre, foto).
+     */
+    private function obtenerGanadorLlaveParaFrontend($partido, $ronda, $cruceId) {
+        $ganador = $this->determinarGanadorPartido($partido);
+        if (!$ganador) {
+            return null;
+        }
+        $gruposPartido = DB::table('grupos')
+            ->where('partido_id', $partido->id)
+            ->orderBy('id')
+            ->get();
+        if ($gruposPartido->count() < 2) {
+            return null;
+        }
+        $g1 = $gruposPartido[0];
+        $g2 = $gruposPartido[1];
+        $jugador1 = ($ganador == 1) ? $g1->jugador_1 : $g2->jugador_1;
+        $jugador2 = ($ganador == 1) ? $g1->jugador_2 : $g2->jugador_2;
+
+        // Referencias que este ganador llena en la llave siguiente (para que el frontend encuentre el slot)
+        $refs = [];
+        if (preg_match('/^octavos_(\d+)$/i', trim($cruceId), $m)) {
+            $n = (int)$m[1];
+            $refs = ['O' . $n, 'G' . $n . '-8vos', 'G' . $n . '-octavos'];
+        } elseif (preg_match('/^cuartos_(\d+)$/i', trim($cruceId), $m)) {
+            $n = (int)$m[1];
+            $refs = ['G' . $n . '-4tos', 'G' . $n . '-cuartos'];
+        } elseif (preg_match('/^semifinales_(\d+)$/i', trim($cruceId), $m)) {
+            $n = (int)$m[1];
+            $refs = ['G' . $n . '-2tos', 'G' . $n . '-semis'];
+        } elseif (preg_match('/^final_(\d+)$/i', trim($cruceId), $m)) {
+            $refs = ['Ganador Final', 'Final'];
+        }
+        if (empty($refs)) {
+            return null;
+        }
+
+        $rondaSiguiente = null;
+        if ($ronda === 'octavos') {
+            $rondaSiguiente = 'cuartos';
+        } elseif ($ronda === 'cuartos') {
+            $rondaSiguiente = 'semifinales';
+        } elseif ($ronda === 'semifinales') {
+            $rondaSiguiente = 'final';
+        } elseif ($ronda === 'final') {
+            return null;
+        }
+
+        $jugadores = DB::table('jugadores')
+            ->whereIn('id', [$jugador1, $jugador2])
+            ->get()
+            ->keyBy('id');
+        $j1 = $jugadores->get($jugador1);
+        $j2 = $jugadores->get($jugador2);
+        $foto1Path = ($j1 && !empty($j1->foto)) ? $j1->foto : 'images/jugador_img.png';
+        $foto2Path = ($j2 && !empty($j2->foto)) ? $j2->foto : 'images/jugador_img.png';
+
+        return [
+            'refs' => $refs,
+            'ronda_siguiente' => $rondaSiguiente,
+            'jugador_1' => (int)$jugador1,
+            'jugador_2' => (int)$jugador2,
+            'nombre1' => $j1 ? trim(($j1->nombre ?? '') . ' ' . ($j1->apellido ?? '')) : '',
+            'nombre2' => $j2 ? trim(($j2->nombre ?? '') . ' ' . ($j2->apellido ?? '')) : '',
+            'foto1' => asset($foto1Path),
+            'foto2' => asset($foto2Path),
+        ];
     }
 
     /**
@@ -1164,13 +1300,15 @@ class PuntuableController extends Controller
             $this->crearCuartosDesdeConfiguracionYOctavos($torneoId, $partido);
         }
         
-        // Si se guardó un resultado de cuartos, verificar si se pueden crear las semifinales automáticamente
+        // Si se guardó un resultado de cuartos, crear semifinales desde configuración (C1..C4); fallback a lógica legacy
         if ($ronda === 'cuartos') {
+            $this->crearSemifinalesDesdeConfiguracionYCuartos($torneoId, $partido);
             $this->crearSemifinalesSiEsNecesario($torneoId);
         }
         
-        // Si se guardó un resultado de semifinales, verificar si se puede crear la final automáticamente
+        // Si se guardó un resultado de semifinales, crear final desde configuración (G1-semifinal, G2-semifinal); fallback a lógica legacy
         if ($ronda === 'semifinales') {
+            $this->crearFinalDesdeConfiguracionYSemifinales($torneoId, $partido);
             $this->crearFinalSiEsNecesario($torneoId);
         }
         
@@ -2137,14 +2275,37 @@ class PuntuableController extends Controller
 
     /**
      * Obtiene la configuración de cruces según cantidad de parejas.
-     * Busca en configuracion_cruces_puntuables donde cantidad_parejas coincida (ej: 16 parejas -> usa esa config).
+     * Primero busca config del torneo, luego global (torneo_id null).
+     * Si no hay para la cantidad exacta, intenta con 16 (llave estándar 8 octavos / 4 cuartos).
      */
     private function getConfiguracionCruces($torneoId, $cantidadParejas) {
-        return DB::table('configuracion_cruces_puntuables')
-            ->where('cantidad_parejas', $cantidadParejas)
-            ->whereNull('torneo_id')
-            ->orderBy('id', 'desc')
-            ->first();
+        foreach ([$torneoId, null] as $tid) {
+            $q = DB::table('configuracion_cruces_puntuables')
+                ->where('cantidad_parejas', $cantidadParejas)
+                ->orderBy('id', 'desc');
+            if ($tid === null) {
+                $q->whereNull('torneo_id');
+            } else {
+                $q->where('torneo_id', $tid);
+            }
+            $config = $q->first();
+            if ($config) {
+                return $config;
+            }
+        }
+        // Fallback: si hay 24 o más parejas y no hay config, usar config de 16 (misma estructura 8 octavos)
+        if ($cantidadParejas >= 16) {
+            $config = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->where('cantidad_parejas', 16)
+                ->whereNotNull('llave_4tos')
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($config) {
+                return $config;
+            }
+        }
+        return null;
     }
 
     /**
@@ -2164,6 +2325,11 @@ class PuntuableController extends Controller
             $zonaRonda = 'semifinal';
         } else if ($ronda === 'final') {
             $zonaRonda = 'final';
+        }
+        
+        if ($zonaRonda === '') {
+            \Log::warning('crearPartidoEliminatorio: ronda no reconocida: ' . $ronda);
+            return null;
         }
         
         // Para partidos vacíos (jugadores 0), verificar cantidad de partidos existentes de esa ronda
@@ -2223,7 +2389,7 @@ class PuntuableController extends Controller
         // Crear el partido
         $partido = $this->crearPartido();
         
-        // Crear grupo para pareja 1
+        // Crear grupo para pareja 1 (zona = 'cuartos final', 'semifinal', 'final', etc.)
         $grupo1 = new Grupo;
         $grupo1->torneo_id = $torneoId;
         $grupo1->zona = $zonaRonda;
@@ -2245,6 +2411,7 @@ class PuntuableController extends Controller
         $grupo2->partido_id = $partido->id;
         $grupo2->save();
         
+        \Log::info('crearPartidoEliminatorio: creados partido_id=' . $partido->id . ', zona=' . $zonaRonda . ', grupos id=' . $grupo1->id . ',' . $grupo2->id);
         return $partido->id;
     }
     
@@ -2442,9 +2609,11 @@ class PuntuableController extends Controller
     /**
      * Crea partidos de cuartos basándose en la configuración cuando se completa un partido de octavos
      * Resuelve las referencias (O1, O2, etc.) a los ganadores reales de octavos
+     * @return int|null ID del partido de cuartos creado en esta llamada, o null
      */
     private function crearCuartosDesdeConfiguracionYOctavos($torneoId, $partidoOctavos) {
         \Log::info('=== INICIO crearCuartosDesdeConfiguracionYOctavos ===');
+        $partidoIdCreado = null;
         \Log::info('Partido de octavos completado: partido_id=' . $partidoOctavos->id);
         
         // Obtener la configuración de cruces
@@ -2635,6 +2804,7 @@ class PuntuableController extends Controller
         }
         
         // Construir $partidosOctavos ordenados según config (O1=index0, O2=index1...) para resolver "otra pareja"
+        // Recargar partidos desde BD para tener resultados actualizados de todos los octavos
         $partidosOctavos = collect();
         if (!empty($partidoIdToONumero)) {
             $onumeroToPid = array_flip($partidoIdToONumero);
@@ -2661,6 +2831,8 @@ class PuntuableController extends Controller
                 }
             }
         }
+        // Asegurar índices 0-based para acceso por número de octavos (O1=0, O2=1, ...)
+        $partidosOctavos = $partidosOctavos->values();
         
         if ($numeroPartidoOctavos == 0) {
             \Log::warning('No se pudo determinar el número del partido de octavos');
@@ -2761,82 +2933,370 @@ class PuntuableController extends Controller
             // Resolver la otra pareja
             $otraReferencia = $esPareja1 ? $pareja2Ref : $pareja1Ref;
             $otraPareja = null;
+            \Log::info('Resolviendo otra referencia para cuartos ' . ($index + 1) . ': ' . $otraReferencia);
             
-            // Si la otra referencia es directa (A1, B2, etc.), resolverla desde posicionesPorZona
-            if (preg_match('/^([A-P])(\d+)$/', $otraReferencia, $matches)) {
-                $letra = $matches[1];
-                $posicion = (int)$matches[2];
-                
-                // Mapear zonas a letras
-                $letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
-                $zonaALetra = [];
-                foreach ($zonas as $index => $zona) {
-                    if (isset($letrasZonas[$index])) {
-                        $zonaALetra[$zona] = $letrasZonas[$index];
-                    }
-                }
-                
-                // Buscar la zona que corresponde a esta letra
-                foreach ($zonaALetra as $zona => $letraZona) {
-                    if ($letraZona === $letra) {
-                        if (isset($posicionesPorZona[$zona]) && isset($posicionesPorZona[$zona][$posicion - 1])) {
-                            $pareja = $posicionesPorZona[$zona][$posicion - 1];
-                            $otraPareja = [
-                                'jugador_1' => $pareja['jugador_1'],
-                                'jugador_2' => $pareja['jugador_2']
-                            ];
-                            \Log::info('Referencia directa resuelta: ' . $otraReferencia . ' -> J1=' . $otraPareja['jugador_1'] . ', J2=' . $otraPareja['jugador_2']);
-                            break;
-                        }
-                    }
-                }
-                
-                if (!$otraPareja) {
-                    \Log::info('No se pudo resolver la referencia directa: ' . $otraReferencia);
-                }
-            } else if (preg_match('/^O(\d+)$/', $otraReferencia, $matches) || preg_match('/^G(\d+)-8vos$/', $otraReferencia, $matches) || preg_match('/^G(\d+)-octavos$/', $otraReferencia, $matches)) {
+            // PRIMERO: referencias a ganador de octavos (O1, O2, G1-8vos) — antes que referencia directa, porque "O2" coincide con ([A-P])(\d+)
+            if (preg_match('/^O(\d+)$/i', trim($otraReferencia ?? ''), $matches) || preg_match('/^G(\d+)-8vos$/i', trim($otraReferencia ?? ''), $matches) || preg_match('/^G(\d+)-octavos$/i', trim($otraReferencia ?? ''), $matches)) {
                 // Es referencia a otro ganador de octavos (O1, G1-8vos, etc.)
                 $otroNumeroOctavos = (int)$matches[1];
-                \Log::info('La otra pareja es ganador de octavos ' . $otroNumeroOctavos);
+                \Log::info('La otra pareja es ganador de octavos ' . $otroNumeroOctavos . ', partidosOctavos count=' . $partidosOctavos->count());
                 
-                // Buscar si ese partido de octavos ya está completo
-                if ($otroNumeroOctavos <= count($partidosOctavos)) {
-                    $otroPartidoOctavos = $partidosOctavos[$otroNumeroOctavos - 1];
-                    $otroGanador = $this->determinarGanadorPartido($otroPartidoOctavos);
-                    
-                    if ($otroGanador) {
-                        $otroGruposPartido = DB::table('grupos')
-                            ->where('torneo_id', $torneoId)
-                            ->where('partido_id', $otroPartidoOctavos->id)
-                            ->orderBy('id')
-                            ->get();
+                // Acceso 0-based: O1 = índice 0, O2 = índice 1, ...
+                if ($otroNumeroOctavos >= 1 && $otroNumeroOctavos <= $partidosOctavos->count()) {
+                    $otroPartidoOctavos = $partidosOctavos->get($otroNumeroOctavos - 1);
+                    if ($otroPartidoOctavos) {
+                        $otroGanador = $this->determinarGanadorPartido($otroPartidoOctavos);
+                        \Log::info('Partido octavos ' . $otroNumeroOctavos . ' (id=' . ($otroPartidoOctavos->id ?? '?') . ') ganador=' . ($otroGanador ?? 'null'));
                         
-                        if ($otroGruposPartido->count() >= 2) {
-                            $og1 = $otroGruposPartido[0];
-                            $og2 = $otroGruposPartido[1];
-                            $otraPareja = [
-                                'jugador_1' => ($otroGanador == 1) ? $og1->jugador_1 : $og2->jugador_1,
-                                'jugador_2' => ($otroGanador == 1) ? $og1->jugador_2 : $og2->jugador_2
-                            ];
-                            \Log::info('Ganador del otro partido de octavos resuelto: J1=' . $otraPareja['jugador_1'] . ', J2=' . $otraPareja['jugador_2']);
+                        if ($otroGanador) {
+                            $otroGruposPartido = DB::table('grupos')
+                                ->where('torneo_id', $torneoId)
+                                ->where('partido_id', $otroPartidoOctavos->id)
+                                ->orderBy('id')
+                                ->get();
+                            
+                            if ($otroGruposPartido->count() >= 2) {
+                                $og1 = $otroGruposPartido[0];
+                                $og2 = $otroGruposPartido[1];
+                                $otraPareja = [
+                                    'jugador_1' => ($otroGanador == 1) ? $og1->jugador_1 : $og2->jugador_1,
+                                    'jugador_2' => ($otroGanador == 1) ? $og1->jugador_2 : $og2->jugador_2
+                                ];
+                                \Log::info('Ganador del otro partido de octavos resuelto: J1=' . $otraPareja['jugador_1'] . ', J2=' . $otraPareja['jugador_2']);
+                            }
                         }
                     }
+                } else {
+                    \Log::info('Índice octavos fuera de rango: ' . $otroNumeroOctavos . ' (count=' . $partidosOctavos->count() . ')');
                 }
+            } else if (preg_match('/^([A-Pa-p])(\d+)$/', trim($otraReferencia ?? ''), $matches)) {
+                // Referencia directa a zona (A1, B2, etc.) — excluir "O" que es ganador octavos
+                $letra = strtoupper($matches[1]);
+                $posicion = (int)$matches[2];
+                if ($letra === 'O') {
+                    \Log::info('O' . $posicion . ' interpretado como referencia directa (zona O); si es ganador octavos use O1,O2 en llave.');
+                }
+                $letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+                $zonaALetra = [];
+                foreach ($zonas as $idxZona => $z) {
+                    if (isset($letrasZonas[$idxZona])) {
+                        $zonaALetra[$z] = $letrasZonas[$idxZona];
+                    }
+                }
+                foreach ($zonaALetra as $zona => $letraZona) {
+                    if ($letraZona === $letra && isset($posicionesPorZona[$zona][$posicion - 1])) {
+                        $pareja = $posicionesPorZona[$zona][$posicion - 1];
+                        $otraPareja = [
+                            'jugador_1' => $pareja['jugador_1'],
+                            'jugador_2' => $pareja['jugador_2']
+                        ];
+                        \Log::info('Referencia directa resuelta: ' . $otraReferencia . ' -> J1=' . $otraPareja['jugador_1'] . ', J2=' . $otraPareja['jugador_2']);
+                        break;
+                    }
+                }
+                if (!$otraPareja) {
+                    \Log::info('No se pudo resolver la referencia directa: ' . $otraReferencia . ' (zonas: ' . implode(',', array_keys($posicionesPorZona ?? [])) . ')');
+                }
+            } else {
+                \Log::info('Formato de referencia no reconocido para cuartos: ' . json_encode($otraReferencia));
             }
             
             // Si ambas parejas están disponibles, crear el partido de cuartos
             $pareja1 = $esPareja1 ? ['jugador_1' => $ganadorJugador1, 'jugador_2' => $ganadorJugador2] : $otraPareja;
             $pareja2 = $esPareja1 ? $otraPareja : ['jugador_1' => $ganadorJugador1, 'jugador_2' => $ganadorJugador2];
             
-            if ($pareja1 && $pareja2) {
+            if ($pareja1 && $pareja2 && isset($pareja1['jugador_1'], $pareja2['jugador_1'])) {
                 \Log::info('Ambas parejas disponibles, creando partido de cuartos');
-                $this->crearPartidoEliminatorio($torneoId, $pareja1, $pareja2, 'cuartos');
+                $partidoCreado = $this->crearPartidoEliminatorio($torneoId, $pareja1, $pareja2, 'cuartos');
+                \Log::info('crearPartidoEliminatorio cuartos retornó: ' . ($partidoCreado ?? 'null'));
+                if ($partidoCreado) {
+                    $partidoIdCreado = $partidoCreado;
+                }
             } else {
-                \Log::info('Aún falta resolver la otra pareja para crear el partido de cuartos');
+                \Log::info('Aún falta resolver la otra pareja para crear el partido de cuartos (pareja1=' . json_encode($pareja1) . ', pareja2=' . json_encode($pareja2) . ')');
             }
         }
         
         \Log::info('=== FIN crearCuartosDesdeConfiguracionYOctavos ===');
+        return $partidoIdCreado;
+    }
+
+    /**
+     * Crea partidos de semifinales desde la configuración cuando se completa un partido de cuartos.
+     * Resuelve C1,C2,C3,C4 (o G1-4tos, G2-4tos) como ganador de cuartos 1,2,3,4 ANTES que referencia directa (evitar que "C2" se interprete como zona C).
+     */
+    private function crearSemifinalesDesdeConfiguracionYCuartos($torneoId, $partidoCuartos) {
+        \Log::info('=== INICIO crearSemifinalesDesdeConfiguracionYCuartos ===');
+        $partidoIdCreado = null;
+
+        $config = DB::table('configuracion_cruces_puntuables')
+            ->where(function ($q) use ($torneoId) {
+                $q->where('torneo_id', $torneoId)->orWhereNull('torneo_id');
+            })
+            ->whereNotNull('llave_semifinal')
+            ->orderByRaw('torneo_id IS NOT NULL DESC')
+            ->first();
+        if (!$config || !$config->llave_semifinal) {
+            \Log::info('No hay configuración llave_semifinal; usando lógica legacy');
+            return $partidoIdCreado;
+        }
+
+        $partidosCuartosIds = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('zona', 'cuartos final')
+            ->whereNotNull('partido_id')
+            ->orderBy('partido_id')
+            ->pluck('partido_id')
+            ->unique()
+            ->values();
+        if ($partidosCuartosIds->isEmpty()) {
+            return $partidoIdCreado;
+        }
+        $partidosCuartos = DB::table('partidos')->whereIn('id', $partidosCuartosIds->all())->get()->keyBy('id');
+        $partidosCuartosOrdenados = $partidosCuartosIds->map(function ($pid) use ($partidosCuartos) {
+            return $partidosCuartos->get($pid);
+        })->filter()->values();
+
+        $numeroPartidoCuartos = $partidosCuartosIds->search($partidoCuartos->id);
+        if ($numeroPartidoCuartos === false) {
+            \Log::info('Partido de cuartos no encontrado en lista de cuartos del torneo');
+            return $partidoIdCreado;
+        }
+        $numeroPartidoCuartos += 1;
+
+        $ganador = $this->determinarGanadorPartido($partidoCuartos);
+        if (!$ganador) {
+            \Log::info('Partido de cuartos sin ganador claro aún');
+            return $partidoIdCreado;
+        }
+        $gruposPartido = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('partido_id', $partidoCuartos->id)
+            ->orderBy('id')
+            ->get();
+        if ($gruposPartido->count() < 2) return $partidoIdCreado;
+        $g1 = $gruposPartido[0];
+        $g2 = $gruposPartido[1];
+        $ganadorJugador1 = ($ganador == 1) ? $g1->jugador_1 : $g2->jugador_1;
+        $ganadorJugador2 = ($ganador == 1) ? $g1->jugador_2 : $g2->jugador_2;
+
+        $llaveSemi = json_decode($config->llave_semifinal, true);
+        if (!$llaveSemi || !is_array($llaveSemi)) return $partidoIdCreado;
+
+        foreach ($llaveSemi as $index => $partidoSemi) {
+            $pareja1Ref = $partidoSemi['pareja_1'] ?? null;
+            $pareja2Ref = $partidoSemi['pareja_2'] ?? null;
+            $referenciaCoincide = false;
+            $esPareja1 = false;
+
+            if (preg_match('/^C(\d+)$/i', trim($pareja1Ref ?? ''), $m) || preg_match('/^G(\d+)-4tos$/i', trim($pareja1Ref ?? ''), $m) || preg_match('/^G(\d+)-cuartos$/i', trim($pareja1Ref ?? ''), $m)) {
+                if ((int)$m[1] === $numeroPartidoCuartos) {
+                    $referenciaCoincide = true;
+                    $esPareja1 = true;
+                }
+            }
+            if (!$referenciaCoincide && (preg_match('/^C(\d+)$/i', trim($pareja2Ref ?? ''), $m) || preg_match('/^G(\d+)-4tos$/i', trim($pareja2Ref ?? ''), $m) || preg_match('/^G(\d+)-cuartos$/i', trim($pareja2Ref ?? ''), $m))) {
+                if ((int)$m[1] === $numeroPartidoCuartos) {
+                    $referenciaCoincide = true;
+                    $esPareja1 = false;
+                }
+            }
+            if (!$referenciaCoincide) continue;
+
+            $otraReferencia = $esPareja1 ? $pareja2Ref : $pareja1Ref;
+            $otraPareja = null;
+
+            // PRIMERO: referencias a ganador de cuartos (C1..C4, G1-4tos) — antes que referencia directa
+            if (preg_match('/^C(\d+)$/i', trim($otraReferencia ?? ''), $m) || preg_match('/^G(\d+)-4tos$/i', trim($otraReferencia ?? ''), $m) || preg_match('/^G(\d+)-cuartos$/i', trim($otraReferencia ?? ''), $m)) {
+                $otroNum = (int)$m[1];
+                if ($otroNum >= 1 && $otroNum <= $partidosCuartosOrdenados->count()) {
+                    $otroPartido = $partidosCuartosOrdenados->get($otroNum - 1);
+                    if ($otroPartido) {
+                        $otroGanador = $this->determinarGanadorPartido($otroPartido);
+                        if ($otroGanador) {
+                            $og = DB::table('grupos')
+                                ->where('torneo_id', $torneoId)
+                                ->where('partido_id', $otroPartido->id)
+                                ->orderBy('id')
+                                ->get();
+                            if ($og->count() >= 2) {
+                                $og1 = $og[0];
+                                $og2 = $og[1];
+                                $otraPareja = [
+                                    'jugador_1' => ($otroGanador == 1) ? $og1->jugador_1 : $og2->jugador_1,
+                                    'jugador_2' => ($otroGanador == 1) ? $og1->jugador_2 : $og2->jugador_2
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            $pareja1 = $esPareja1 ? ['jugador_1' => $ganadorJugador1, 'jugador_2' => $ganadorJugador2] : $otraPareja;
+            $pareja2 = $esPareja1 ? $otraPareja : ['jugador_1' => $ganadorJugador1, 'jugador_2' => $ganadorJugador2];
+
+            if ($pareja1 && $pareja2 && isset($pareja1['jugador_1'], $pareja2['jugador_1'])) {
+                $partidoIdExistente = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', 'semifinal')
+                    ->whereNotNull('partido_id')
+                    ->get()
+                    ->groupBy('partido_id')
+                    ->keys();
+                $yaExiste = false;
+                foreach ($partidoIdExistente as $pid) {
+                    $gruposP = DB::table('grupos')->where('partido_id', $pid)->where('torneo_id', $torneoId)->where('zona', 'semifinal')->orderBy('id')->get();
+                    if ($gruposP->count() >= 2) {
+                        $a = $gruposP[0]->jugador_1 . '_' . $gruposP[0]->jugador_2;
+                        $b = $gruposP[1]->jugador_1 . '_' . $gruposP[1]->jugador_2;
+                        if (($a === $pareja1['jugador_1'] . '_' . $pareja1['jugador_2'] && $b === $pareja2['jugador_1'] . '_' . $pareja2['jugador_2']) ||
+                            ($a === $pareja2['jugador_1'] . '_' . $pareja2['jugador_2'] && $b === $pareja1['jugador_1'] . '_' . $pareja1['jugador_2'])) {
+                            $yaExiste = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$yaExiste) {
+                    $partidoIdCreado = $this->crearPartidoEliminatorio($torneoId, $pareja1, $pareja2, 'semifinales');
+                }
+            }
+        }
+        \Log::info('=== FIN crearSemifinalesDesdeConfiguracionYCuartos ===');
+        return $partidoIdCreado;
+    }
+
+    /**
+     * Crea la final desde la configuración cuando se completa un partido de semifinales.
+     * Resuelve G1-semifinal, G2-semifinal ANTES que referencia directa.
+     */
+    private function crearFinalDesdeConfiguracionYSemifinales($torneoId, $partidoSemifinal) {
+        \Log::info('=== INICIO crearFinalDesdeConfiguracionYSemifinales ===');
+        $partidoIdCreado = null;
+
+        $config = DB::table('configuracion_cruces_puntuables')
+            ->where(function ($q) use ($torneoId) {
+                $q->where('torneo_id', $torneoId)->orWhereNull('torneo_id');
+            })
+            ->whereNotNull('llave_final')
+            ->orderByRaw('torneo_id IS NOT NULL DESC')
+            ->first();
+        if (!$config || !$config->llave_final) {
+            \Log::info('No hay configuración llave_final; usando lógica legacy');
+            return $partidoIdCreado;
+        }
+
+        $partidosSemiIds = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('zona', 'semifinal')
+            ->whereNotNull('partido_id')
+            ->orderBy('partido_id')
+            ->pluck('partido_id')
+            ->unique()
+            ->values();
+        if ($partidosSemiIds->count() < 2) {
+            \Log::info('Aún no hay 2 partidos de semifinal');
+            return $partidoIdCreado;
+        }
+        $partidosSemi = DB::table('partidos')->whereIn('id', $partidosSemiIds->all())->get()->keyBy('id');
+        $partidosSemiOrdenados = $partidosSemiIds->map(function ($pid) use ($partidosSemi) {
+            return $partidosSemi->get($pid);
+        })->filter()->values();
+
+        $numeroPartidoSemi = $partidosSemiIds->search($partidoSemifinal->id);
+        if ($numeroPartidoSemi === false) return $partidoIdCreado;
+        $numeroPartidoSemi += 1;
+
+        $ganador = $this->determinarGanadorPartido($partidoSemifinal);
+        if (!$ganador) return $partidoIdCreado;
+        $gruposPartido = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('partido_id', $partidoSemifinal->id)
+            ->orderBy('id')
+            ->get();
+        if ($gruposPartido->count() < 2) return $partidoIdCreado;
+        $g1 = $gruposPartido[0];
+        $g2 = $gruposPartido[1];
+        $ganadorJugador1 = ($ganador == 1) ? $g1->jugador_1 : $g2->jugador_1;
+        $ganadorJugador2 = ($ganador == 1) ? $g1->jugador_2 : $g2->jugador_2;
+
+        $llaveFinal = json_decode($config->llave_final, true);
+        if (!$llaveFinal || !is_array($llaveFinal)) return $partidoIdCreado;
+
+        foreach ($llaveFinal as $index => $partidoFinal) {
+            $pareja1Ref = $partidoFinal['pareja_1'] ?? null;
+            $pareja2Ref = $partidoFinal['pareja_2'] ?? null;
+            $referenciaCoincide = false;
+            $esPareja1 = false;
+
+            if (preg_match('/^G(\d+)-semifinal$/i', trim($pareja1Ref ?? ''), $m) || preg_match('/^S(\d+)$/i', trim($pareja1Ref ?? ''), $m)) {
+                $n = (int)($m[1] ?? 0);
+                if ($n === $numeroPartidoSemi) {
+                    $referenciaCoincide = true;
+                    $esPareja1 = true;
+                }
+            }
+            if (!$referenciaCoincide && (preg_match('/^G(\d+)-semifinal$/i', trim($pareja2Ref ?? ''), $m) || preg_match('/^S(\d+)$/i', trim($pareja2Ref ?? ''), $m))) {
+                $n = (int)($m[1] ?? 0);
+                if ($n === $numeroPartidoSemi) {
+                    $referenciaCoincide = true;
+                    $esPareja1 = false;
+                }
+            }
+            if (!$referenciaCoincide) continue;
+
+            $otraReferencia = $esPareja1 ? $pareja2Ref : $pareja1Ref;
+            $otraPareja = null;
+
+            // PRIMERO: referencias a ganador de semifinal (G1-semifinal, G2-semifinal, S1, S2)
+            if (preg_match('/^G(\d+)-semifinal$/i', trim($otraReferencia ?? ''), $m) || preg_match('/^S(\d+)$/i', trim($otraReferencia ?? ''), $m)) {
+                $otroNum = (int)$m[1];
+                if ($otroNum >= 1 && $otroNum <= $partidosSemiOrdenados->count()) {
+                    $otroPartido = $partidosSemiOrdenados->get($otroNum - 1);
+                    if ($otroPartido) {
+                        $otroGanador = $this->determinarGanadorPartido($otroPartido);
+                        if ($otroGanador) {
+                            $og = DB::table('grupos')
+                                ->where('torneo_id', $torneoId)
+                                ->where('partido_id', $otroPartido->id)
+                                ->orderBy('id')
+                                ->get();
+                            if ($og->count() >= 2) {
+                                $og1 = $og[0];
+                                $og2 = $og[1];
+                                $otraPareja = [
+                                    'jugador_1' => ($otroGanador == 1) ? $og1->jugador_1 : $og2->jugador_1,
+                                    'jugador_2' => ($otroGanador == 1) ? $og1->jugador_2 : $og2->jugador_2
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            $pareja1 = $esPareja1 ? ['jugador_1' => $ganadorJugador1, 'jugador_2' => $ganadorJugador2] : $otraPareja;
+            $pareja2 = $esPareja1 ? $otraPareja : ['jugador_1' => $ganadorJugador1, 'jugador_2' => $ganadorJugador2];
+
+            if ($pareja1 && $pareja2 && isset($pareja1['jugador_1'], $pareja2['jugador_1'])) {
+                $finalExistente = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', 'final')
+                    ->whereNotNull('partido_id')
+                    ->get();
+                if ($finalExistente->count() >= 2) {
+                    DB::table('grupos')->where('id', $finalExistente[0]->id)->update([
+                        'jugador_1' => $pareja1['jugador_1'], 'jugador_2' => $pareja1['jugador_2']
+                    ]);
+                    DB::table('grupos')->where('id', $finalExistente[1]->id)->update([
+                        'jugador_1' => $pareja2['jugador_1'], 'jugador_2' => $pareja2['jugador_2']
+                    ]);
+                    $partidoIdCreado = $finalExistente[0]->partido_id;
+                } else {
+                    $partidoIdCreado = $this->crearPartidoEliminatorio($torneoId, $pareja1, $pareja2, 'final');
+                }
+            }
+        }
+        \Log::info('=== FIN crearFinalDesdeConfiguracionYSemifinales ===');
+        return $partidoIdCreado;
     }
 }
 
