@@ -418,13 +418,37 @@
             let currentIndex = 0;
             // 20 seconds slide interval
             let slideInterval = 20000; 
-            // 2 minutes full reload to get new results
-            let totalRefreshTime = 120000;
+            let torneoId = {{ $torneo->id ?? 0 }};
+            let ultimaVersionConocida = {{ $torneo->version ?? 0 }};
             
             // Datos iniciales para comparar
             let jugadores = @json($jugadores ?? []);
             let partidosPorZona = @json($partidosPorZona ?? []);
             let gruposExistentes = @json($gruposExistentes->toArray() ?? []);
+            
+            // Polling inteligente: verificar versión cada 2 segundos
+            function verificarVersionYActualizar() {
+                if (!torneoId) return;
+                
+                $.get('{{ route("tvtorneoversion") }}', { torneo_id: torneoId })
+                    .done(function(response) {
+                        const versionActual = response.version || 0;
+                        
+                        if (versionActual > ultimaVersionConocida) {
+                            console.log('Versión cambió:', ultimaVersionConocida, '->', versionActual);
+                            ultimaVersionConocida = versionActual;
+                            
+                            // Actualizar datos en lugar de recargar toda la página
+                            actualizarTablas();
+                        }
+                    })
+                    .fail(function() {
+                        // Silencioso, reintentar en el próximo intervalo
+                    });
+            }
+            
+            // Polling inteligente cada 2 segundos
+            setInterval(verificarVersionYActualizar, 2000);
             
             function showSlide(index) {
                 slides.removeClass('active');
@@ -598,20 +622,13 @@
                 }
             }
             
-            // Actualizar tablas cada 3 segundos
-            setInterval(function() {
-                actualizarTablas();
-            }, 3000);
-            
             // Primera actualización después de 3 segundos
             setTimeout(function() {
                 actualizarTablas();
             }, 3000);
             
-            // Reload page periodically
-            setTimeout(function() {
-                window.location.reload();
-            }, totalRefreshTime);
+            // Nota: El polling inteligente (verificarVersionYActualizar) ya se ejecuta cada 2s
+            // y llama a actualizarTablas() cuando detecta cambios
         });
     </script>
 </body>
