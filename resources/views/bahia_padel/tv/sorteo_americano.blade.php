@@ -247,8 +247,33 @@
             const torneoId = {{ $torneo->id ?? 0 }};
             let jugadores = @json($jugadores ?? []);
             let intervaloActualizacion = null;
+            let ultimaVersionConocida = {{ $torneo->version ?? 0 }};
             
-            // Actualizar grupos cada 3 segundos
+            // Polling inteligente: verificar versión cada 2 segundos
+            function verificarVersionYActualizar() {
+                if (!torneoId) return;
+                
+                $.get('{{ route("tvtorneoversion") }}', { torneo_id: torneoId })
+                    .done(function(response) {
+                        const versionActual = response.version || 0;
+                        
+                        if (versionActual > ultimaVersionConocida) {
+                            console.log('Versión cambió:', ultimaVersionConocida, '->', versionActual);
+                            ultimaVersionConocida = versionActual;
+                            
+                            // Actualizar datos
+                            actualizarGrupos();
+                        }
+                    })
+                    .fail(function() {
+                        // Silencioso, reintentar en el próximo intervalo
+                    });
+            }
+            
+            // Polling inteligente cada 2 segundos
+            setInterval(verificarVersionYActualizar, 2000);
+            
+            // Actualizar grupos cuando detecta cambios
             function actualizarGrupos() {
                 if (!torneoId) return;
                 
@@ -346,12 +371,12 @@
                 });
             }
             
-            // Actualizar cada 3 segundos
-            intervaloActualizacion = setInterval(actualizarGrupos, 3000);
             // Primera actualización después de 3 segundos
             setTimeout(actualizarGrupos, 3000);
+            
+            // Nota: El polling inteligente (verificarVersionYActualizar) ya se ejecuta cada 2s
+            // y llama a actualizarGrupos() cuando detecta cambios
         });
     </script>
 </body>
 </html>
-
