@@ -3,554 +3,375 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="30">
     <title>Bahia Padel - Cruces TV</title>
     <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/bracket.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/dark-mode.css') }}">
     <style>
-        /* Estilos optimizados para vista TV sin scroll - MAXIMIZADO */
-        * {
-            box-sizing: border-box;
-        }
+        /* BRACKET VISUAL - DISEÑO TIPO ÁRBOL */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
         html, body {
             height: 100vh;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
             width: 100vw;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #111827 40%, #1f2937 100%);
-            display: flex;
-            flex-direction: column;
-            color: #0f172a;
-            font-family: "Poppins", "Segoe UI", sans-serif;
-        }
-        
-        /* Header con título */
-        .header-tv {
-            flex: 0 0 auto;
-            padding: 1vw 1.5vw;
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 3px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1.5vw;
-        }
-        
-        h2.torneo-title {
-            font-size: 3vw;
-            color: rgba(255, 255, 255, 0.95);
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            margin: 0;
-            flex: 1;
-            text-align: center;
-            font-weight: 800;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        
-        .header-tv .btn {
-            font-size: 1.5vw;
-            padding: 0.8vw 1.5vw;
-            flex: 0 0 auto;
-        }
-        
-        /* Contenedor principal de bracket */
-        .bracket-container {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: hidden;
-            width: 100%;
-            padding: 0.5vw 0.5vw;
-            min-height: 0;
+            background: #0a0f1a;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #e2e8f0;
         }
         
-        .container-fluid {
-            width: 100%;
-            height: 100%;
+        /* Header compacto */
+        .header-tv {
+            height: 5vh;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 2px solid #fbbf24;
             display: flex;
-            flex-direction: column;
-            padding: 0;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5vw;
+        }
+        
+        .header-tv h2 {
+            font-size: 2.2vh;
+            font-weight: 300;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
             margin: 0;
         }
         
-        /* Fila de bracket */
+        #indicador-mitad {
+            color: #fbbf24;
+            font-size: 1.8vh;
+            font-weight: 300;
+            margin-left: 2vw;
+        }
+        
+        /* Container principal */
+        .bracket-container {
+            height: 95vh;
+            display: flex;
+            padding: 0;
+        }
+        
+        /* Fila de columnas */
         .bracket-row {
             display: flex;
-            flex-wrap: nowrap;
-            gap: 0.5vw;
-            align-items: stretch;
+            width: 100%;
             height: 100%;
-            margin: 0;
         }
         
-        /* Columnas del bracket */
+        /* Columna de ronda */
         .bracket-column {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            flex: 1;
             min-width: 0;
-            padding: 0.5vw;
-            overflow: visible;
+            position: relative;
         }
         
-        .bracket-column--cuartos,
-        .bracket-column--semis,
-        .bracket-column--final {
-            padding: 0.5vw;
-        }
-        
-        /* Ronda */
+        /* Ronda contenedor */
         .bracket-round {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            overflow: visible;
-        }
-        
-        .bracket-round-title {
-            font-size: 2.2vh; /* VH para consistencia */
-            letter-spacing: 0.08em;
-            color: rgba(255, 255, 255, 0.85);
-            text-transform: uppercase;
-            text-align: center;
-            margin: 0 0 1vh 0;
-            flex: 0 0 auto;
-            white-space: nowrap;
-            padding: 0;
-            font-weight: 700;
-        }
-        
-        /* Cuerpo de la ronda con matches */
-        .bracket-round-body {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5vh; /* Mínimo espacio entre cards para aprovechar verticalidad */
-            justify-content: space-around;
-            overflow: hidden;
             flex: 1;
-            padding: 0.2vh 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         
-        /* Centrar semifinales y final verticalmente */
-        .bracket-round--semis .bracket-round-body,
-        .bracket-round--final .bracket-round-body {
-            justify-content: center;
-            gap: 2vh; 
+        /* Título de ronda */
+        .bracket-round-title {
+            font-size: 1.6vh;
+            font-weight: 300;
+            color: #fbbf24;
+            text-align: center;
+            padding: 0.4vh 0;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            flex-shrink: 0;
+            height: 3vh;
         }
         
-        /* Tarjeta de partido flexible */
+        /* Body de ronda - altura calculada */
+        .bracket-round-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-height: 0;
+        }
+        
+        /* OCULTAR FOTOS */
+        .player-images { display: none !important; }
+        
+        /* PARTIDO */
         .match-card {
             display: flex;
             flex-direction: column;
-            flex: 1;
-            min-height: 0;
-            max-height: 16vh; /* Permitimos que crezca un poco más si hay espacio */
-            padding: 0.5vh 0.4vw; /* Menos padding lateral para dar lugar al contenido */
-            border-radius: 1vh;
-            background: rgba(255, 255, 255, 0.93);
-            border: 0.3vh solid rgba(15, 23, 42, 0.4);
-            box-shadow: 0 0.5vh 1vh rgba(17, 24, 39, 0.3);
-            backdrop-filter: blur(8px);
-            transition: box-shadow 0.3s ease;
-            overflow: hidden;
             justify-content: center;
-            gap: 0.5vh;
+            padding: 0 0.3vw;
+            position: relative;
         }
         
-        .match-card.winner {
-            box-shadow: none;
-        }
-        
-        .match-card.placeholder {
-            justify-content: center;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.45);
-            border: 0.3vh dashed rgba(148, 163, 184, 0.55);
-            box-shadow: none;
-        }
-        
-        /* Pareja */
+        /* PAREJA - línea simple */
         .player-pair {
             display: flex;
             align-items: center;
-            gap: 0.3vw;
-            flex: 1;
-            min-height: 0;
-            max-height: 100%; 
-            background: rgba(248, 250, 252, 0.85);
-            border-radius: 0.8vh;
-            padding: 0.2vh 0.3vw;
-            border: 0.2vh solid rgba(226, 232, 240, 0.6);
-            margin-bottom: 0;
-            overflow: hidden;
-        }
-        
-        .player-pair:last-child {
-            margin-bottom: 0;
+            padding: 0.2vh 0.4vw;
+            background: rgba(30,41,59,0.8);
+            border-left: 3px solid rgba(100,116,139,0.5);
+            margin: 1px 0;
         }
         
         .player-pair.winner {
-            background: rgba(46, 204, 113, 0.25);
-            border-color: rgba(46, 204, 113, 0.6);
-            box-shadow: inset 0 0 1vh rgba(46, 204, 113, 0.3);
+            border-left-color: #22c55e;
+            background: rgba(34,197,94,0.15);
+        }
+        
+        /* Asegurar que el ganador tenga el mismo tamaño de texto */
+        .player-pair.winner .player-names {
+            font-weight: 300 !important;
+            font-size: inherit !important;
         }
         
         .player-pair-content {
-            display: flex;
-            align-items: center;
-            gap: 0.5vw;
             flex: 1;
-            min-width: 0;
-            height: 100%;
-        }
-        
-        .match-card.placeholder .player-pair-content {
-            justify-content: center;
-        }
-        
-        /* Imágenes de jugadores */
-        .player-images {
             display: flex;
-            gap: 0.3vw;
-            flex: 0 0 auto;
             align-items: center;
-            height: 100%;
-            padding-left: 0;
+            min-width: 0;
         }
         
-        .player-images img {
-            width: 5.5vh; /* FOTO MÁS GRANDE */
-            height: 5.5vh;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 0.2vh solid rgba(148, 163, 184, 0.65);
-            box-shadow: 0 0.2vh 0.5vh rgba(15, 23, 42, 0.25);
-        }
-        
-        /* Nombres de jugadores */
+        /* Nombres - FINO Y GRANDE */
         .player-names {
-            font-size: 2.6vh; /* FUENTE MÁS GRANDE */
-            font-weight: 800;
-            line-height: 1.1;
             flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column; /* Stackeados para ganar espacio horizontal y tamaño */
-            justify-content: center;
-            align-items: flex-start;
-            padding-left: 0.5vw;
-            gap: 0; 
-        }
-        
-        .player-name {
-            text-transform: uppercase;
-            letter-spacing: 0.01em;
+            font-size: 2.3vh;
+            font-weight: 300;
+            color: #e2e8f0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
         }
         
-        .match-card.placeholder .player-names {
-            font-size: 2.2vh;
-            color: rgba(15, 23, 42, 0.65);
-            justify-content: center;
-            align-items: center;
-        }
-        
-        /* Input de puntuación */
-        .player-pair-input {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex: 0 0 auto;
-            padding-left: 0.5vw;
-        }
+        /* Score - FINO */
+        .player-pair-input { flex-shrink: 0; margin-left: 0.5vw; }
         
         .score-display {
-            font-size: 3vh;
-            font-weight: 800;
-            color: #fff;
-            background: rgba(11, 17, 32, 0.7);
-            padding: 0 0.5vw;
-            height: 4.5vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0.6vh;
-            min-width: 3.5vw;
-            line-height: 1;
-            flex: 0 0 auto;
+            font-size: 2.5vh;
+            font-weight: 300;
+            color: #e2e8f0;
+            background: rgba(71,85,105,0.5);
+            padding: 0.2vh 0.8vw;
+            border-radius: 3px;
+            min-width: 2.5vw;
+            text-align: center;
         }
         
-        /* Badge de posición */
-        .badge {
-            font-size: 1.2vh;
-            padding: 0.2vh 0.5vw;
-            border-radius: 0.4vh;
-            letter-spacing: 0.02em;
-            flex: 0 0 auto;
-            white-space: nowrap;
+        /* Ganador - SCORE NEGRO para nitidez */
+        .player-pair.winner .score-display {
+            background: #22c55e;
+            color: #000;
+            font-weight: 300 !important;
+            font-size: 2.5vh !important;
         }
         
-        /* Botón de tema */
+        /* Placeholder */
+        .match-card.placeholder .player-names {
+            color: rgba(148,163,184,0.4);
+            font-style: italic;
+            font-weight: 300;
+        }
+        
+        /* ========================================
+           DISTRIBUCIÓN ALTURA DINÁMICA POR RONDA
+           Usando flex: 1 los partidos se distribuyen equitativamente
+           ======================================== */
+        
+        .match-card {
+            flex: 1;
+            min-height: 0;
+        }
+        
+        /* Cuando NO hay mitades activas - mostrar todos */
+        /* 16AVOS: 16 partidos (o 8 si es solo octavos) */
+        .bracket-column--dieciseisavos .match-card { flex: 1; }
+        
+        /* OCTAVOS: cada partido ocupa el doble de altura que uno de 16avos */
+        .bracket-column--octavos .match-card { flex: 2; }
+        
+        /* CUARTOS: cada partido ocupa el doble de altura que uno de octavos */
+        .bracket-column--cuartos .match-card { flex: 4; }
+        
+        /* SEMIFINALES: cada partido ocupa el doble de altura que uno de cuartos */
+        .bracket-column--semis .match-card { flex: 8; }
+        
+        /* FINAL: centrada verticalmente */
+        .bracket-column--final .match-card { flex: 16; }
+        
+        /* ========================================
+           ANCHOS DE COLUMNAS
+           ======================================== */
+        
+        /* 5 rondas: 16avos, octavos, cuartos, semis, final */
+        .rondas-5 .bracket-column--dieciseisavos { width: 22%; }
+        .rondas-5 .bracket-column--octavos { width: 22%; }
+        .rondas-5 .bracket-column--cuartos { width: 20%; }
+        .rondas-5 .bracket-column--semis { width: 18%; }
+        .rondas-5 .bracket-column--final { width: 18%; }
+        
+        .rondas-5 .player-names { font-size: 2vh; }
+        .rondas-5 .score-display { font-size: 2.2vh; }
+        .rondas-5 .bracket-round-title { font-size: 1.4vh; }
+        .rondas-5 .player-pair.winner .score-display { font-size: 2.2vh !important; }
+        
+        /* 4 rondas: octavos, cuartos, semis, final */
+        .rondas-4 .bracket-column--octavos { width: 28%; }
+        .rondas-4 .bracket-column--cuartos { width: 24%; }
+        .rondas-4 .bracket-column--semis { width: 24%; }
+        .rondas-4 .bracket-column--final { width: 24%; }
+        
+        .rondas-4 .player-names { font-size: 2.3vh; }
+        .rondas-4 .score-display { font-size: 2.5vh; }
+        .rondas-4 .player-pair.winner .score-display { font-size: 2.5vh !important; }
+        
+        /* 3 rondas: cuartos, semis, final */
+        .rondas-3 .bracket-column--cuartos { width: 36%; }
+        .rondas-3 .bracket-column--semis { width: 32%; }
+        .rondas-3 .bracket-column--final { width: 32%; }
+        
+        .rondas-3 .player-names { font-size: 2.3vh; }
+        .rondas-3 .score-display { font-size: 2.5vh; }
+        .rondas-3 .player-pair { padding: 0.4vh 0.5vw; }
+        .rondas-3 .player-pair.winner .score-display { font-size: 2.5vh !important; }
+        
+
+        
+        /* Modal ganadores */
+        .modal-ganadores { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-content-ganadores { background: #1a1f2e; padding: 3vh; border-radius: 1vh; text-align: center; border: 3px solid #fbbf24; }
+        .modal-content-ganadores h2 { color: #fbbf24; font-size: 4vh; margin-bottom: 2vh; font-weight: 300; }
+        .btn-cerrar-modal { background: #4e73df; color: #fff; border: none; padding: 1vh 2vw; font-size: 2vh; cursor: pointer; border-radius: 0.5vh; margin-top: 2vh; font-weight: 300; }
+        
+        /* Botón tema */
         .theme-toggle {
             position: fixed;
-            top: 1.5vw;
-            right: 1.5vw;
+            top: 1vh;
+            right: 1vw;
             z-index: 1001;
-            background-color: #4e73df;
-            color: white;
+            background: #4e73df;
+            color: #fff;
             border: none;
             border-radius: 50%;
-            width: 4vw;
-            height: 4vw;
-            font-size: 2vw;
+            width: 4vh;
+            height: 4vh;
+            font-size: 2vh;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0.5vw 1vw rgba(0,0,0,0.3);
-            transition: background-color 0.3s ease;
         }
         
-        .theme-toggle:hover {
-            background-color: #5a7ee5;
+        /* ========================================
+           SISTEMA DE MITADES
+           ======================================== */
+        .bracket-row[data-mitad-activa="superior"] .match-card[data-mitad-index="inferior"],
+        .bracket-row[data-mitad-activa="inferior"] .match-card[data-mitad-index="superior"] {
+            display: none !important;
         }
+        
+        /* La final (ambas) siempre visible */
+        .bracket-row[data-mitad-activa] .match-card[data-mitad-index="ambas"] {
+            display: flex !important;
+        }
+        
+        /* Con mitades activas, los elementos visibles se distribuyen con flex
+           Los valores flex mantienen la proporción correcta del bracket */
     </style>
 </head>
 <body>
-
-<button class="theme-toggle" id="theme-toggle">
-    <i class="fas fa-sun"></i>
-</button>
-
-<div class="header-tv">
-    <button type="button" class="btn btn-secondary" id="btn-volver-clasificacion">
-        ← Volver
-    </button>
-    <h2 class="torneo-title">{{ $torneo->nombre ?? 'Torneo' }}</h2>
-    <div style="width: 80px;"></div> <!-- Spacer para balance -->
-</div>
-
-<input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">
-
-<div class="bracket-container">
-    <div class="container-fluid">
-        
+    <!-- Header -->
+    <div class="header-tv">
+        <h2>{{ $torneo->titulo ?? 'Torneo' }} - CRUCES</h2>
+        <span id="indicador-mitad"></span>
+    </div>
+    
+    <!-- Container principal -->
+    <div class="bracket-container">
         @php
-            $crucesCuartos = collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'cuartos')->values();
-            $crucesSemifinales = collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'semifinales')->values();
-            $crucesFinal = collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'final')->values();
+            // Organizar cruces por ronda si no viene ya organizado
+            if (!isset($crucesPorRonda)) {
+                $crucesPorRonda = [
+                    'dieciseisavos' => collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'dieciseisavos')->values()->toArray(),
+                    'octavos' => collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'octavos')->values()->toArray(),
+                    'cuartos' => collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'cuartos')->values()->toArray(),
+                    'semifinales' => collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'semifinales')->values()->toArray(),
+                    'final' => collect($cruces ?? [])->filter(fn($c) => ($c['ronda'] ?? '') === 'final')->values()->toArray(),
+                ];
+            }
+            
+            // SISTEMA ADAPTATIVO: Filtrar rondas completadas (ocultar anteriores que ya terminaron)
+            $rondasCompletadas = $rondasCompletadas ?? [];
+            $todasLasRondas = ['dieciseisavos', 'octavos', 'cuartos', 'semifinales', 'final'];
+            
+            // Encontrar la primera ronda NO completada
+            $primeraRondaActiva = null;
+            foreach ($todasLasRondas as $rondaNombre) {
+                if (!in_array($rondaNombre, $rondasCompletadas)) {
+                    $primeraRondaActiva = $rondaNombre;
+                    break;
+                }
+            }
+            
+            // Si todas están completadas, mostrar todas (para ver el campeón)
+            if ($primeraRondaActiva === null) {
+                $primeraRondaActiva = 'dieciseisavos';
+            }
+            
+            // Determinar qué rondas mostrar (solo las activas y futuras)
+            $tieneDieciseisavos = ($tieneDieciseisavos ?? count($crucesPorRonda['dieciseisavos'] ?? []) > 0) 
+                                  && array_search($primeraRondaActiva, $todasLasRondas) <= array_search('dieciseisavos', $todasLasRondas);
+            $tieneOctavos = ($tieneOctavos ?? count($crucesPorRonda['octavos'] ?? []) > 0) 
+                            && array_search($primeraRondaActiva, $todasLasRondas) <= array_search('octavos', $todasLasRondas);
+            $tieneCuartos = ($tieneCuartos ?? count($crucesPorRonda['cuartos'] ?? []) > 0) 
+                            && array_search($primeraRondaActiva, $todasLasRondas) <= array_search('cuartos', $todasLasRondas);
+            
+            // Calcular número de rondas ACTIVAS para ajustar CSS
+            $numRondas = 2; // siempre semis y final
+            if ($tieneCuartos) $numRondas++;
+            if ($tieneOctavos) $numRondas++;
+            if ($tieneDieciseisavos) $numRondas++;
+            
+            // Definir las rondas a mostrar en orden (solo activas)
+            $rondasMostrar = [];
+            if ($tieneDieciseisavos) $rondasMostrar[] = ['key' => 'dieciseisavos', 'title' => '16VOS', 'class' => 'dieciseisavos'];
+            if ($tieneOctavos) $rondasMostrar[] = ['key' => 'octavos', 'title' => 'OCTAVOS', 'class' => 'octavos'];
+            if ($tieneCuartos) $rondasMostrar[] = ['key' => 'cuartos', 'title' => 'CUARTOS', 'class' => 'cuartos'];
+            $rondasMostrar[] = ['key' => 'semifinales', 'title' => 'SEMIFINALES', 'class' => 'semis'];
+            $rondasMostrar[] = ['key' => 'final', 'title' => 'FINAL', 'class' => 'final'];
+            
+            // Determinar si necesitamos alternar por mitades (4+ rondas activas)
+            $necesitaAlternar = $numRondas >= 4;
+            
+            $jugadoresCollection = collect($jugadores);
         @endphp
 
-        <div class="bracket-row">
-            <!-- Cuartos de Final -->
-            <div class="bracket-column bracket-column--cuartos">
-                <div class="bracket-round bracket-round--cuartos">
-                    <div class="bracket-round-title">CUARTOS</div>
-                    <div class="bracket-round-body">
-                        @forelse($crucesCuartos as $index => $cruce)
-                            @php
-                                $pareja1 = is_array($cruce['pareja_1'] ?? null) ? $cruce['pareja_1'] : [];
-                                $pareja2 = is_array($cruce['pareja_2'] ?? null) ? $cruce['pareja_2'] : [];
-                                $jugadoresCollection = collect($jugadores);
-                                $jugador1Id = $pareja1['jugador_1'] ?? null;
-                                $jugador1PartnerId = $pareja1['jugador_2'] ?? null;
-                                $jugador2Id = $pareja2['jugador_1'] ?? null;
-                                $jugador2PartnerId = $pareja2['jugador_2'] ?? null;
-                                $jugador1_1 = $jugador1Id !== null ? $jugadoresCollection->firstWhere('id', $jugador1Id) : null;
-                                $jugador1_2 = $jugador1PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador1PartnerId) : null;
-                                $jugador2_1 = $jugador2Id !== null ? $jugadoresCollection->firstWhere('id', $jugador2Id) : null;
-                                $jugador2_2 = $jugador2PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador2PartnerId) : null;
-                                
-                                // Buscar resultado guardado para este cruce
-                                $resultadoCruce = null;
-                                $cruceId = $cruce['id'] ?? $index;
-                                foreach($resultadosGuardados ?? [] as $resultado) {
-                                    if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == 'cuartos') {
-                                        $resultadoCruce = $resultado;
-                                        break;
-                                    }
-                                }
-                                $score1 = $resultadoCruce['pareja_1_set_1'] ?? 0;
-                                $score2 = $resultadoCruce['pareja_2_set_1'] ?? 0;
-                            @endphp
-                            <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="cuartos" @if($score1 > 0 || $score2 > 0) class="match-card winner" @endif>
-                                <div class="player-pair pareja-cruce"
-                                     data-pareja="1"
-                                     data-jugador-1="{{ $pareja1['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}"
-                                     @if($score1 > $score2) class="player-pair pareja-cruce winner" @endif>
-                                    <div class="player-pair-content">
-                                        <div class="player-images">
-                                            <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_1)->nombre ?? '') . ' ' . (optional($jugador1_1)->apellido ?? '')) }}">
-                                            <img src="{{ asset(optional($jugador1_2)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_2)->nombre ?? '') . ' ' . (optional($jugador1_2)->apellido ?? '')) }}">
-                                        </div>
-                                        <div class="player-names">
-                                            <div class="player-name">{{ optional($jugador1_1)->nombre }} {{ optional($jugador1_1)->apellido }}</div>
-                                            <div class="player-name">{{ optional($jugador1_2)->nombre }} {{ optional($jugador1_2)->apellido }}</div>
-                                        </div>
-                                        @if(($pareja1['zona'] ?? null) && ($pareja1['posicion'] ?? null))
-                                            <span class="badge badge-info">{{ $pareja1['zona'] }}{{ $pareja1['posicion'] }}º</span>
-                                        @endif
-                                    </div>
-                                    <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">{{ $score1 }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="player-pair pareja-cruce"
-                                     data-pareja="2"
-                                     data-jugador-1="{{ $pareja2['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}"
-                                     @if($score2 > $score1) class="player-pair pareja-cruce winner" @endif>
-                                    <div class="player-pair-content">
-                                        <div class="player-images">
-                                            <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_1)->nombre ?? '') . ' ' . (optional($jugador2_1)->apellido ?? '')) }}">
-                                            <img src="{{ asset(optional($jugador2_2)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_2)->nombre ?? '') . ' ' . (optional($jugador2_2)->apellido ?? '')) }}">
-                                        </div>
-                                        <div class="player-names">
-                                            <div class="player-name">{{ optional($jugador2_1)->nombre }} {{ optional($jugador2_1)->apellido }}</div>
-                                            <div class="player-name">{{ optional($jugador2_2)->nombre }} {{ optional($jugador2_2)->apellido }}</div>
-                                        </div>
-                                        @if(($pareja2['zona'] ?? null) && ($pareja2['posicion'] ?? null))
-                                            <span class="badge badge-info">{{ $pareja2['zona'] }}{{ $pareja2['posicion'] }}º</span>
-                                        @endif
-                                    </div>
-                                    <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">{{ $score2 }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="match-card placeholder" data-ronda="cuartos">
-                                <div class="player-pair">
-                                    <div class="player-pair-content">
-                                        <div class="player-names">
-                                            Cruces de cuartos en preparación...
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-
-            <!-- Semifinales -->
-            <div class="bracket-column bracket-column--semis">
-                <div class="bracket-round bracket-round--semis" id="semifinales-container">
-                    <div class="bracket-round-title">SEMIFINALES</div>
-                    <div class="bracket-round-body" id="semifinales-content">
-                        @forelse($crucesSemifinales as $index => $cruce)
-                            @php
-                                $pareja1 = is_array($cruce['pareja_1'] ?? null) ? $cruce['pareja_1'] : [];
-                                $pareja2 = is_array($cruce['pareja_2'] ?? null) ? $cruce['pareja_2'] : [];
-                                $jugadoresCollection = collect($jugadores);
-                                $jugador1Id = $pareja1['jugador_1'] ?? null;
-                                $jugador1PartnerId = $pareja1['jugador_2'] ?? null;
-                                $jugador2Id = $pareja2['jugador_1'] ?? null;
-                                $jugador2PartnerId = $pareja2['jugador_2'] ?? null;
-                                $jugador1_1 = $jugador1Id !== null ? $jugadoresCollection->firstWhere('id', $jugador1Id) : null;
-                                $jugador1_2 = $jugador1PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador1PartnerId) : null;
-                                $jugador2_1 = $jugador2Id !== null ? $jugadoresCollection->firstWhere('id', $jugador2Id) : null;
-                                $jugador2_2 = $jugador2PartnerId !== null ? $jugadoresCollection->firstWhere('id', $jugador2PartnerId) : null;
-                                
-                                // Buscar resultado guardado para este cruce
-                                $resultadoCruce = null;
-                                $cruceId = $cruce['id'] ?? $index;
-                                foreach($resultadosGuardados ?? [] as $resultado) {
-                                    if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == 'semifinales') {
-                                        $resultadoCruce = $resultado;
-                                        break;
-                                    }
-                                }
-                                $score1 = $resultadoCruce['pareja_1_set_1'] ?? 0;
-                                $score2 = $resultadoCruce['pareja_2_set_1'] ?? 0;
-                            @endphp
-                            <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="semifinales" @if($score1 > 0 || $score2 > 0) class="match-card winner" @endif>
-                                <div class="player-pair pareja-cruce"
-                                     data-pareja="1"
-                                     data-jugador-1="{{ $pareja1['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}"
-                                     @if($score1 > $score2) class="player-pair pareja-cruce winner" @endif>
-                                    <div class="player-pair-content">
-                                        <div class="player-images">
-                                            <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_1)->nombre ?? '') . ' ' . (optional($jugador1_1)->apellido ?? '')) }}">
-                                            <img src="{{ asset(optional($jugador1_2)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_2)->nombre ?? '') . ' ' . (optional($jugador1_2)->apellido ?? '')) }}">
-                                        </div>
-                                        <div class="player-names">
-                                            <div class="player-name">{{ optional($jugador1_1)->nombre }} {{ optional($jugador1_1)->apellido }}</div>
-                                            <div class="player-name">{{ optional($jugador1_2)->nombre }} {{ optional($jugador1_2)->apellido }}</div>
-                                        </div>
-                                        @if(($pareja1['zona'] ?? null) && ($pareja1['posicion'] ?? null))
-                                            <span class="badge badge-info">{{ $pareja1['zona'] }}{{ $pareja1['posicion'] }}º</span>
-                                        @endif
-                                    </div>
-                                    <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">{{ $score1 }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="player-pair pareja-cruce"
-                                     data-pareja="2"
-                                     data-jugador-1="{{ $pareja2['jugador_1'] ?? '' }}"
-                                     data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}"
-                                     @if($score2 > $score1) class="player-pair pareja-cruce winner" @endif>
-                                    <div class="player-pair-content">
-                                        <div class="player-images">
-                                            <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_1)->nombre ?? '') . ' ' . (optional($jugador2_1)->apellido ?? '')) }}">
-                                            <img src="{{ asset(optional($jugador2_2)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_2)->nombre ?? '') . ' ' . (optional($jugador2_2)->apellido ?? '')) }}">
-                                        </div>
-                                        <div class="player-names">
-                                            <div class="player-name">{{ optional($jugador2_1)->nombre }} {{ optional($jugador2_1)->apellido }}</div>
-                                            <div class="player-name">{{ optional($jugador2_2)->nombre }} {{ optional($jugador2_2)->apellido }}</div>
-                                        </div>
-                                        @if(($pareja2['zona'] ?? null) && ($pareja2['posicion'] ?? null))
-                                            <span class="badge badge-info">{{ $pareja2['zona'] }}{{ $pareja2['posicion'] }}º</span>
-                                        @endif
-                                    </div>
-                                    <div class="player-pair-input">
-                                        <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">{{ $score2 }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="match-card placeholder" data-ronda="semifinales">
-                                <div class="player-pair">
-                                    <div class="player-pair-content">
-                                        <div class="player-names">
-                                            Esperando definiciones para semifinales...
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-
-            <!-- Final -->
-            <div class="bracket-column bracket-column--final">
-                <div class="bracket-round bracket-round--final" id="final-container">
-                    <div class="bracket-round-title">FINAL</div>
-                    <div class="bracket-round-body" id="final-content">
-                        @forelse($crucesFinal as $index => $cruce)
+        <div class="bracket-row rondas-{{ $numRondas }}" data-necesita-alternar="{{ $necesitaAlternar ? 'true' : 'false' }}">
+            @foreach($rondasMostrar as $rondaInfo)
+                @php
+                    $crucesRonda = $crucesPorRonda[$rondaInfo['key']] ?? [];
+                    
+                    // Para alternar mitades: si es 16avos u octavos, asignar mitad
+                    $esPrimeraColumna = $rondaInfo['key'] === 'dieciseisavos' || $rondaInfo['key'] === 'octavos';
+                    $mitad = '';
+                    if ($necesitaAlternar && $esPrimeraColumna) {
+                        // Las rondas tempranas se dividen por mitades
+                        $mitad = 'tiene-mitades'; // Indicador para JavaScript
+                    } elseif ($rondaInfo['key'] === 'final') {
+                        $mitad = 'final'; // La final siempre visible
+                    }
+                @endphp
+                <div class="bracket-column bracket-column--{{ $rondaInfo['class'] }}" data-mitad="{{ $mitad }}">
+                    <div class="bracket-round bracket-round--{{ $rondaInfo['class'] }}">
+                        <div class="bracket-round-title">{{ $rondaInfo['title'] }}</div>
+                        <div class="bracket-round-body">
+                            @forelse($crucesRonda as $index => $cruce)
                                 @php
                                     $pareja1 = is_array($cruce['pareja_1'] ?? null) ? $cruce['pareja_1'] : [];
                                     $pareja2 = is_array($cruce['pareja_2'] ?? null) ? $cruce['pareja_2'] : [];
-                                    $jugadoresCollection = collect($jugadores);
                                     $jugador1Id = $pareja1['jugador_1'] ?? null;
                                     $jugador1PartnerId = $pareja1['jugador_2'] ?? null;
                                     $jugador2Id = $pareja2['jugador_1'] ?? null;
@@ -564,81 +385,90 @@
                                     $resultadoCruce = null;
                                     $cruceId = $cruce['id'] ?? $index;
                                     foreach($resultadosGuardados ?? [] as $resultado) {
-                                        if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == 'final') {
+                                        if(($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == $rondaInfo['key']) {
                                             $resultadoCruce = $resultado;
                                             break;
                                         }
                                     }
                                     $score1 = $resultadoCruce['pareja_1_set_1'] ?? 0;
                                     $score2 = $resultadoCruce['pareja_2_set_1'] ?? 0;
+                                    $tieneResultado = $score1 > 0 || $score2 > 0;
+                                    
+                                    // Determinar mitad (superior o inferior) para alternar
+                                    // Cada ronda se divide por mitades: primera mitad = superior, segunda mitad = inferior
+                                    $mitadIndex = '';
+                                    if ($necesitaAlternar) {
+                                        $totalCruces = count($crucesRonda);
+                                        if ($rondaInfo['key'] === 'final') {
+                                            $mitadIndex = 'ambas'; // La final se muestra siempre
+                                        } elseif ($rondaInfo['key'] === 'semifinales') {
+                                            // Semis: partido 0 = superior, partido 1 = inferior
+                                            $mitadIndex = $index === 0 ? 'superior' : 'inferior';
+                                        } else {
+                                            // 16avos, octavos, cuartos: primera mitad = superior, segunda = inferior
+                                            $mitadIndex = $index < ($totalCruces / 2) ? 'superior' : 'inferior';
+                                        }
+                                    }
                                 @endphp
-                                <div class="match-card" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-ronda="final" @if($score1 > 0 || $score2 > 0) class="match-card winner" @endif>
+                                <div class="match-card{{ $tieneResultado ? ' winner' : '' }}" 
+                                     data-cruce-id="{{ $cruceId }}" 
+                                     data-ronda="{{ $rondaInfo['key'] }}"
+                                     data-mitad-index="{{ $mitadIndex }}">
                                     <!-- Pareja 1 -->
-                                    <div class="player-pair pareja-cruce" 
+                                    <div class="player-pair pareja-cruce{{ $score1 > $score2 ? ' winner' : '' }}"
                                          data-pareja="1"
                                          data-jugador-1="{{ $pareja1['jugador_1'] ?? '' }}"
-                                         data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}"
-                                         @if($score1 > $score2) class="player-pair pareja-cruce winner" @endif>
+                                         data-jugador-2="{{ $pareja1['jugador_2'] ?? '' }}">
                                         <div class="player-pair-content">
                                             <div class="player-images">
-                                                <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_1)->nombre ?? '') . ' ' . (optional($jugador1_1)->apellido ?? '')) }}">
-                                                <img src="{{ asset(optional($jugador1_2)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador1_2)->nombre ?? '') . ' ' . (optional($jugador1_2)->apellido ?? '')) }}">
+                                                <img src="{{ asset(optional($jugador1_1)->foto ?? 'images/jugador_img.png') }}" alt="">
+                                                <img src="{{ asset(optional($jugador1_2)->foto ?? 'images/jugador_img.png') }}" alt="">
                                             </div>
                                             <div class="player-names">
-                                                <div class="player-name">{{ optional($jugador1_1)->nombre }} {{ optional($jugador1_1)->apellido }}</div>
-                                                <div class="player-name">{{ optional($jugador1_2)->nombre }} {{ optional($jugador1_2)->apellido }}</div>
+                                                {{ optional($jugador1_1)->apellido ?? 'TBD' }} - {{ optional($jugador1_2)->apellido ?? '' }}
                                             </div>
-                                            @if(($pareja1['zona'] ?? null) && ($pareja1['posicion'] ?? null))
-                                                <span class="badge badge-info">{{ $pareja1['zona'] }}{{ $pareja1['posicion'] }}º</span>
-                                            @endif
                                         </div>
                                         <div class="player-pair-input">
-                                            <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="1">{{ $score1 }}</span>
+                                            <span class="score-display" data-cruce-id="{{ $cruceId }}" data-pareja="1">{{ $score1 }}</span>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Pareja 2 -->
-                                    <div class="player-pair pareja-cruce" 
+                                    <div class="player-pair pareja-cruce{{ $score2 > $score1 ? ' winner' : '' }}"
                                          data-pareja="2"
                                          data-jugador-1="{{ $pareja2['jugador_1'] ?? '' }}"
-                                         data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}"
-                                         @if($score2 > $score1) class="player-pair pareja-cruce winner" @endif>
+                                         data-jugador-2="{{ $pareja2['jugador_2'] ?? '' }}">
                                         <div class="player-pair-content">
                                             <div class="player-images">
-                                                <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_1)->nombre ?? '') . ' ' . (optional($jugador2_1)->apellido ?? '')) }}">
-                                                <img src="{{ asset(optional($jugador2_2)->foto ?? 'images/jugador_img.png') }}" alt="{{ trim((optional($jugador2_2)->nombre ?? '') . ' ' . (optional($jugador2_2)->apellido ?? '')) }}">
+                                                <img src="{{ asset(optional($jugador2_1)->foto ?? 'images/jugador_img.png') }}" alt="">
+                                                <img src="{{ asset(optional($jugador2_2)->foto ?? 'images/jugador_img.png') }}" alt="">
                                             </div>
                                             <div class="player-names">
-                                                <div class="player-name">{{ optional($jugador2_1)->nombre }} {{ optional($jugador2_1)->apellido }}</div>
-                                                <div class="player-name">{{ optional($jugador2_2)->nombre }} {{ optional($jugador2_2)->apellido }}</div>
+                                                {{ optional($jugador2_1)->apellido ?? 'TBD' }} - {{ optional($jugador2_2)->apellido ?? '' }}
                                             </div>
-                                            @if(($pareja2['zona'] ?? null) && ($pareja2['posicion'] ?? null))
-                                                <span class="badge badge-info">{{ $pareja2['zona'] }}{{ $pareja2['posicion'] }}º</span>
-                                            @endif
                                         </div>
                                         <div class="player-pair-input">
-                                            <span class="score-display" data-cruce-id="{{ $cruce['id'] ?? $index }}" data-pareja="2">{{ $score2 }}</span>
-                                        </div>
-                                    </div>
-                                    
-                                </div>
-                        @empty
-                            <div class="match-card placeholder" data-ronda="final">
-                                <div class="player-pair">
-                                    <div class="player-pair-content">
-                                        <div class="player-names">
-                                            La final se mostrará aquí cuando esté definida.
+                                            <span class="score-display" data-cruce-id="{{ $cruceId }}" data-pareja="2">{{ $score2 }}</span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        @endforelse
+                            @empty
+                                <div class="match-card placeholder" data-ronda="{{ $rondaInfo['key'] }}">
+                                    <div class="player-pair">
+                                        <div class="player-pair-content">
+                                            <div class="player-names">
+                                                Esperando definiciones...
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforelse
+                        </div>
                     </div>
                 </div>
-            </div>
+            @endforeach
         </div>
     </div>
-</div>
 
 <!-- Modal de Ganadores -->
 <div id="modal-ganadores" class="modal-ganadores">
@@ -661,6 +491,7 @@
     const baseUrl = '{{ url("/") }}';
     const jugadoresMap = new Map(jugadores.map(j => [Number(j.id), j]));
     let torneoId = {{ $torneo->id ?? 0 }};
+    let ultimaVersionConocida = {{ $torneo->version ?? 0 }};
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!torneoId) {
@@ -674,16 +505,89 @@
         setTimeout(ajustarEscalaBracket, 120);
         window.addEventListener('resize', () => setTimeout(ajustarEscalaBracket, 120));
         
-        // Actualizar resultados cada 3 segundos
-        setInterval(function() {
-            actualizarResultadosCruces();
-        }, 3000);
+        // SISTEMA ADAPTATIVO: Alternar mitades si es necesario
+        inicializarAlternanciaInteligente();
         
-        // Primera actualización después de 3 segundos
-        setTimeout(function() {
-            actualizarResultadosCruces();
-        }, 3000);
+        // Polling inteligente: verificar versión cada 2 segundos
+        setInterval(verificarVersionYActualizar, 2000);
     });
+    
+    // Sistema adaptativo: alterna entre mitad superior e inferior cuando hay 4+ rondas
+    let mitadActual = 'superior';
+    let intervalAlternancia = null;
+    
+    function inicializarAlternanciaInteligente() {
+        const bracketRow = document.querySelector('.bracket-row');
+        const necesitaAlternar = bracketRow?.dataset.necesitaAlternar === 'true';
+        
+        if (!necesitaAlternar) {
+            // No necesita alternar, mostrar todo
+            mostrarTodasLasMitades();
+            return;
+        }
+        
+        // Necesita alternar: iniciar alternancia cada 15 segundos
+        mitadActual = 'superior';
+        mostrarMitad(mitadActual);
+        
+        if (intervalAlternancia) clearInterval(intervalAlternancia);
+        intervalAlternancia = setInterval(() => {
+            mitadActual = mitadActual === 'superior' ? 'inferior' : 'superior';
+            mostrarMitad(mitadActual);
+        }, 15000); // Alternar cada 15 segundos
+    }
+    
+    function mostrarMitad(mitad) {
+        const bracketRow = document.querySelector('.bracket-row');
+        const indicador = document.getElementById('indicador-mitad');
+        
+        // Usar el atributo data-mitad-activa para CSS
+        if (bracketRow) {
+            bracketRow.dataset.mitadActiva = mitad;
+        }
+        
+        // Actualizar indicador visual
+        if (indicador) {
+            indicador.textContent = mitad === 'superior' ? '▲ MITAD SUPERIOR' : '▼ MITAD INFERIOR';
+            indicador.style.display = 'inline';
+        }
+    }
+    
+    function mostrarTodasLasMitades() {
+        const bracketRow = document.querySelector('.bracket-row');
+        const indicador = document.getElementById('indicador-mitad');
+        
+        // Quitar el atributo para mostrar todo
+        if (bracketRow) {
+            delete bracketRow.dataset.mitadActiva;
+        }
+        
+        // Ocultar indicador
+        if (indicador) {
+            indicador.style.display = 'none';
+        }
+    }
+    
+    // Polling inteligente: solo actualiza si la versión del torneo cambió
+    function verificarVersionYActualizar() {
+        if (!torneoId) return;
+        
+        $.get('{{ route("tvtorneoversion") }}', { torneo_id: torneoId })
+            .done(function(response) {
+                const versionActual = response.version || 0;
+                
+                if (versionActual > ultimaVersionConocida) {
+                    console.log('Versión cambió:', ultimaVersionConocida, '->', versionActual);
+                    ultimaVersionConocida = versionActual;
+                    
+                    // Recargar la página para obtener datos actualizados (incluidos nuevos cruces)
+                    window.location.reload();
+                }
+            })
+            .fail(function() {
+                // Silencioso, reintentar en el próximo intervalo
+            });
+    }
 
     function inicializarTema() {
         const themeToggle = document.getElementById('theme-toggle');
