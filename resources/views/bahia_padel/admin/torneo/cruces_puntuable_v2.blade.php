@@ -46,8 +46,11 @@
                     
                     <h2 class="text-center flex-grow-1 mb-0" style="color: #000;">{{ $torneo->nombre ?? 'Torneo' }}</h2>
                     
-                    <div class="d-flex align-items-center">
-                        <a href="{{ route('tvtorneoamericanocruces') }}?torneo_id={{ $torneo->id }}" target="_blank" class="btn btn-primary ml-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-success" id="btn-asignar-puntos" title="Asignar puntos al ranking">
+                            <i class="fa fa-trophy"></i> Asignar Puntos
+                        </button>
+                        <a href="{{ route('tvtorneoamericanocruces') }}?torneo_id={{ $torneo->id }}" target="_blank" class="btn btn-primary">
                             <i class="fa fa-desktop"></i> TV
                         </a>
                     </div>
@@ -757,6 +760,50 @@
     </div>
 </div>
 
+<!-- Modal Asignar Puntos al Ranking -->
+<div class="modal fade" id="modalAsignarPuntos" tabindex="-1" role="dialog" aria-labelledby="modalAsignarPuntosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAsignarPuntosLabel">Asignar Puntos al Ranking</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Jugadores que participaron en el torneo. Asigne la posición y el puntaje a cada uno y pulse Guardar.</p>
+                <div id="modal-asignar-puntos-loading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status"><span class="sr-only">Cargando...</span></div>
+                </div>
+                <div id="modal-asignar-puntos-content" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Jugador</th>
+                                    <th style="width: 220px;">Posición</th>
+                                    <th style="width: 120px;">Puntaje</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-puntos-jugadores">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="modal-asignar-puntos-empty" class="text-muted text-center py-4" style="display: none;">
+                    No hay jugadores participantes para este torneo.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btn-guardar-puntos-ranking">
+                    <i class="fa fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Snackbar -->
 <div id="snackbar" class="snackbar">Resultado guardado correctamente</div>
 
@@ -1091,6 +1138,94 @@
         }
     });
     
+    // --- Modal Asignar Puntos al Ranking ---
+    let referenciasPuntos = [];
+    $('#btn-asignar-puntos').on('click', function() {
+        $('#modalAsignarPuntos').modal('show');
+        $('#modal-asignar-puntos-loading').show();
+        $('#modal-asignar-puntos-content').hide();
+        $('#modal-asignar-puntos-empty').hide();
+        let tid = $('#torneo_id').val();
+        $.ajax({
+            url: '{{ route("obtenerparticipantestorneopuntuable") }}',
+            type: 'GET',
+            data: { torneo_id: tid },
+            dataType: 'json',
+            success: function(res) {
+                $('#modal-asignar-puntos-loading').hide();
+                referenciasPuntos = res.referencias || [];
+                let jugadores = res.jugadores || [];
+                if (jugadores.length === 0) {
+                    $('#modal-asignar-puntos-empty').show();
+                    return;
+                }
+                let tbody = $('#tbody-puntos-jugadores').empty();
+                let refMap = {};
+                referenciasPuntos.forEach(function(r) { refMap[r.codigo] = r.puntos; });
+                jugadores.forEach(function(j) {
+                    let puntosActual = (j.puntos !== undefined && j.puntos !== null) ? j.puntos : (refMap[j.referencia_codigo] !== undefined ? refMap[j.referencia_codigo] : '');
+                    let selectOpts = referenciasPuntos.map(function(r) {
+                        let sel = (j.referencia_codigo === r.codigo) ? ' selected' : '';
+                        return '<option value="' + r.codigo + '" data-puntos="' + r.puntos + '"' + sel + '>' + r.nombre + '</option>';
+                    }).join('');
+                    let fila = '<tr data-jugador-id="' + j.id + '">' +
+                        '<td>' + (j.nombre || '') + ' ' + (j.apellido || '') + '</td>' +
+                        '<td><select class="form-control form-control-sm select-posicion" data-jugador-id="' + j.id + '">' + selectOpts + '</select></td>' +
+                        '<td><input type="number" min="0" class="form-control form-control-sm input-puntos" data-jugador-id="' + j.id + '" value="' + puntosActual + '" placeholder="0"></td>' +
+                        '</tr>';
+                    tbody.append(fila);
+                });
+                $(document).off('change', '.select-posicion').on('change', '.select-posicion', function() {
+                    let opt = $(this).find('option:selected');
+                    let puntos = opt.data('puntos');
+                    $(this).closest('tr').find('.input-puntos').val(puntos);
+                });
+                $('#modal-asignar-puntos-content').show();
+            },
+            error: function() {
+                $('#modal-asignar-puntos-loading').hide();
+                $('#modal-asignar-puntos-empty').text('Error al cargar participantes.').show();
+            }
+        });
+    });
+    $('#btn-guardar-puntos-ranking').on('click', function() {
+        let tid = $('#torneo_id').val();
+        let items = [];
+        $('#tbody-puntos-jugadores tr').each(function() {
+            let jugadorId = $(this).data('jugador-id');
+            let posicion = $(this).find('.select-posicion').val();
+            let puntos = parseInt($(this).find('.input-puntos').val(), 10);
+            if (isNaN(puntos)) puntos = 0;
+            items.push({ jugador_id: jugadorId, referencia_codigo: posicion, puntos: puntos });
+        });
+        let btn = $(this);
+        btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Guardando...');
+        $.ajax({
+            url: '{{ route("guardarpuntosrankingtorneo") }}',
+            type: 'POST',
+            data: {
+                torneo_id: tid,
+                items: items,
+                _token: '{{ csrf_token() }}'
+            },
+            dataType: 'json',
+            success: function(res) {
+                btn.prop('disabled', false).html('<i class="fa fa-save"></i> Guardar');
+                if (res.success) {
+                    mostrarSnackbar(res.message || 'Puntos guardados en el ranking.');
+                    $('#modalAsignarPuntos').modal('hide');
+                } else {
+                    mostrarSnackbar(res.message || 'Error al guardar.');
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html('<i class="fa fa-save"></i> Guardar');
+                let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al guardar los puntos.';
+                mostrarSnackbar(msg);
+            }
+        });
+    });
+
     // Botón volver a clasificación
     $('#btn-volver-clasificacion').on('click', function() {
         let torneoId = $('#torneo_id').val();

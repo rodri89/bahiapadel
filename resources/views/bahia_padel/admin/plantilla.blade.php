@@ -82,13 +82,19 @@
       </li>
       
       <li class="nav-item">
-          <a class="nav-link" href="admin_fotos">
+          <a class="nav-link" href="{{ route('adminfotos') }}">
             <i class="fas fa-fw fa-address-card"></i>
             <span>Fotos</span></a>
       </li>
+
+      <li class="nav-item">
+          <a class="nav-link" href="{{ route('adminranking') }}">
+            <i class="fas fa-fw fa-trophy"></i>
+            <span>Ranking</span></a>
+      </li>
       
       <li class="nav-item">
-          <a class="nav-link" href="admin_config">
+          <a class="nav-link" href="{{ route('adminconfig') }}">
             <i class="fas fa-fw fa-cog"></i>
             <span>Config</span></a>
       </li>

@@ -70,6 +70,8 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_vivo','HomeController@adminVivo')->name('adminvivo');
 	Route::get('admin_torneos','HomeController@adminTorneos')->name('admintorneos');
 	Route::get('admin_fotos','HomeController@adminFotos')->name('adminfotos');
+	Route::get('admin_ranking','HomeController@adminRanking')->name('adminranking');
+	Route::post('guardar_referencias_puntuacion','HomeController@guardarReferenciasPuntuacion')->name('guardarreferenciaspuntuacion');
 	Route::get('admin_config','HomeController@adminConfig')->name('adminconfig');
 	Route::post('admin_config_guardar','HomeController@guardarConfigCruces')->name('adminconfigguardar');
 	Route::post('/registrar_torneo_admin', 'HomeController@registrarTorneo')->name('registrartorneoadmin');
@@ -101,6 +103,8 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('/crear_cuartos_desde_octavos', 'HomeController@crearCuartosDesdeOctavos')->name('crearcuartosdesdeoctavos');
 	Route::get('/admin_torneo_puntuable_cruces', 'PuntuableController@adminTorneoPuntuableCruces')->name('admintorneopuntuablecruces');
 	Route::get('/admin_torneo_puntuable_cruces_v2', 'PuntuableController@adminTorneoPuntuableCrucesV2')->name('admintorneopuntuablecrucesv2');
+	Route::get('/obtener_participantes_torneo_puntuable', 'PuntuableController@getParticipantesTorneoPuntuable')->name('obtenerparticipantestorneopuntuable');
+	Route::post('/guardar_puntos_ranking_torneo', 'PuntuableController@guardarPuntosRankingTorneo')->name('guardarpuntosrankingtorneo');
 	Route::post('/guardar_resultado_cruce_puntuable', 'PuntuableController@guardarResultadoCrucePuntuable')->name('guardarresultadocrucepuntuable');
 	Route::post('/guardar_resultado_partido_puntuable', 'PuntuableController@guardarResultadoPartidoPuntuable')->name('guardarresultadopartidopuntuable');
 	Route::post('/crear_cuartos_desde_octavos', 'PuntuableController@crearCuartosDesdeOctavosEndpoint')->name('crearcuartosdesdeoctavos');	

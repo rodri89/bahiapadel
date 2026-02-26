@@ -4,6 +4,20 @@
 
 @section('contenedor')
 
+<style>
+    /* Celda que muestra solo el icono de pareja: fondo gris oscuro, icono centrado */
+    .celda-icono {
+        background-color: #495057 !important;
+        vertical-align: middle !important;
+    }
+    .celda-icono .seleccion-dia-horario {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+    }
+</style>
+
 <div class="container body_admin">
     <div class="row justify-content-center">
             <input hidden id="torneo_id" value="{{$torneo->id}}">
@@ -525,7 +539,7 @@
             if (numPareja === 1) {
                 // Fila 1: img - partido A - partido 1 sin jugadores - partido 2 sin jugadores
                 celdasHTML = `
-                    <td>
+                    <td class="celda-icono">
                         <div class="seleccion-dia-horario" data-celda="1">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>
@@ -564,7 +578,7 @@
                             </button>
                         </div>
                     </td>
-                    <td>
+                    <td class="celda-icono">
                         <div class="seleccion-dia-horario" data-celda="5">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>
@@ -605,7 +619,7 @@
                             </button>
                         </div>
                     </td>
-                    <td class="columna-partido-3">
+                    <td class="columna-partido-3 celda-icono">
                         <div class="seleccion-dia-horario" data-celda="9">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>
@@ -644,7 +658,7 @@
                             </button>
                         </div>
                     </td>
-                    <td class="columna-partido-4" style="display:none;">
+                    <td class="columna-partido-4 celda-icono" style="display:none;">
                         <div class="seleccion-dia-horario" data-celda="14">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>
@@ -655,7 +669,7 @@
             // Formato 3 parejas
             if (numPareja === 1) {
                 celdasHTML = `
-                    <td>
+                    <td class="celda-icono">
                         <div class="seleccion-dia-horario" data-celda="1">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>
@@ -684,7 +698,7 @@
                             </button>
                         </div>
                     </td>
-                    <td>
+                    <td class="celda-icono">
                         <div class="seleccion-dia-horario" data-celda="5">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>
@@ -713,7 +727,7 @@
                             </button>
                         </div>
                     </td>
-                    <td class="columna-partido-3">
+                    <td class="columna-partido-3 celda-icono">
                         <div class="seleccion-dia-horario" data-celda="9">
                             <img src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" style="width:60px; height:60px; opacity:0.3;" alt="Pareja">
                         </div>

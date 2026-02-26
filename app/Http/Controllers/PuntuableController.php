@@ -823,6 +823,155 @@ class PuntuableController extends Controller
     }
 
     /**
+     * GET: Participantes del torneo puntuable (jugadores que aparecen en grupos) y referencias de puntos.
+     * Calcula automáticamente posición (campeón, sub, 3º/4º, cuartos, octavos, 16avos, no clasificados) según resultados del cuadro
+     * y ordena la lista por esa posición.
+     */
+    public function getParticipantesTorneoPuntuable(Request $request) {
+        $torneoId = $request->get('torneo_id');
+        if (!$torneoId) {
+            return response()->json(['success' => false, 'message' => 'torneo_id requerido'], 400);
+        }
+        // La tabla grupos tiene jugador_1 y jugador_2 por fila (una pareja por fila)
+        $ids = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->selectRaw('jugador_1 as id')
+            ->unionAll(DB::table('grupos')->where('torneo_id', $torneoId)->selectRaw('jugador_2 as id'))
+            ->pluck('id')
+            ->filter(function ($id) { return $id > 0; })
+            ->unique()
+            ->values();
+        $posiciones = $this->calcularPosicionesDesdeCruces($torneoId);
+        $referencias = DB::table('puntos_ranking_referencia')->orderBy('orden')->get(['codigo', 'nombre', 'puntos']);
+        $refMap = $referencias->keyBy('codigo');
+        $ordenPosicion = ['campeon' => 1, 'subcampeon' => 2, 'tercero_cuarto' => 3, 'cuartos' => 4, 'octavos' => 5, '16avos' => 6, 'no_clasificados' => 7];
+        $jugadores = DB::table('jugadores')->whereIn('id', $ids)->get(['id', 'nombre', 'apellido']);
+        foreach ($jugadores as $j) {
+            $codigo = $posiciones[$j->id] ?? 'no_clasificados';
+            $ref = $refMap->get($codigo);
+            $j->referencia_codigo = $codigo;
+            $j->puntos = $ref ? (int) $ref->puntos : 5;
+            $j->orden_posicion = $ordenPosicion[$codigo] ?? 99;
+        }
+        $jugadores = $jugadores->sortBy(function ($j) {
+            return sprintf('%02d_%s %s', $j->orden_posicion, $j->nombre ?? '', $j->apellido ?? '');
+        })->values()->all();
+        return response()->json(['success' => true, 'jugadores' => $jugadores, 'referencias' => $referencias]);
+    }
+
+    /**
+     * Calcula la posición de cada jugador en el torneo según resultados del cuadro eliminatorio.
+     * Retorna [ jugador_id => referencia_codigo ] (campeon, subcampeon, tercero_cuarto, cuartos, octavos, 16avos, no_clasificados).
+     */
+    private function calcularPosicionesDesdeCruces($torneoId) {
+        $posiciones = [];
+        $zonasOrden = [
+            ['zona' => 'final',           'ganador_codigo' => 'campeon',    'perdedor_codigo' => 'subcampeon'],
+            ['zona' => 'semifinal',       'ganador_codigo' => null,         'perdedor_codigo' => 'tercero_cuarto'],
+            ['zona' => 'cuartos final',   'ganador_codigo' => null,         'perdedor_codigo' => 'cuartos'],
+            ['zona' => 'octavos final',   'ganador_codigo' => null,         'perdedor_codigo' => 'octavos'],
+            ['zona' => '16avos final',   'ganador_codigo' => null,         'perdedor_codigo' => '16avos'],
+        ];
+        foreach ($zonasOrden as $config) {
+            $zona = $config['zona'];
+            $gruposZona = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->where('zona', $zona)
+                ->whereNotNull('partido_id')
+                ->where('partido_id', '>', 0)
+                ->orderBy('partido_id')
+                ->orderBy('id')
+                ->get();
+            $partidoIds = $gruposZona->pluck('partido_id')->unique()->filter()->values();
+            $partidos = $partidoIds->isEmpty() ? collect() : DB::table('partidos')->whereIn('id', $partidoIds)->get()->keyBy('id');
+            foreach ($partidoIds as $pid) {
+                $partido = $partidos->get($pid);
+                if (!$partido || !$this->partidoTieneResultado($partido)) continue;
+                $ganador = $this->determinarGanadorPartido($partido);
+                if ($ganador === null) continue;
+                $perdedor = $ganador === 1 ? 2 : 1;
+                $gruposPartido = $gruposZona->where('partido_id', $pid)->sortBy('id')->values();
+                if ($gruposPartido->count() < 2) continue;
+                $gGanador = $gruposPartido[$ganador - 1];
+                $gPerdedor = $gruposPartido[$perdedor - 1];
+                $idsGanador = [(int) $gGanador->jugador_1, (int) $gGanador->jugador_2];
+                $idsPerdedor = [(int) $gPerdedor->jugador_1, (int) $gPerdedor->jugador_2];
+                foreach ($idsGanador as $id) {
+                    if ($id > 0 && !isset($posiciones[$id]) && $config['ganador_codigo']) $posiciones[$id] = $config['ganador_codigo'];
+                }
+                foreach ($idsPerdedor as $id) {
+                    if ($id > 0 && !isset($posiciones[$id]) && $config['perdedor_codigo']) $posiciones[$id] = $config['perdedor_codigo'];
+                }
+            }
+        }
+        return $posiciones;
+    }
+
+    /** True si el partido tiene al menos un set con resultado cargado. */
+    private function partidoTieneResultado($partido) {
+        if (isset($partido->pareja_1_set_1) && ($partido->pareja_1_set_1 > 0 || (isset($partido->pareja_2_set_1) && $partido->pareja_2_set_1 > 0))) return true;
+        if (isset($partido->pareja_1_set_2) && ($partido->pareja_1_set_2 > 0 || (isset($partido->pareja_2_set_2) && $partido->pareja_2_set_2 > 0))) return true;
+        if (isset($partido->pareja_1_set_3) && ($partido->pareja_1_set_3 > 0 || (isset($partido->pareja_2_set_3) && $partido->pareja_2_set_3 > 0))) return true;
+        return false;
+    }
+
+    /**
+     * POST: Guardar puntos de ranking por torneo (ranking_puntos + actualizar ranking_totales).
+     */
+    public function guardarPuntosRankingTorneo(Request $request) {
+        $torneoId = $request->input('torneo_id');
+        $items = $request->input('items', []);
+        if (!$torneoId || !is_array($items)) {
+            return response()->json(['success' => false, 'message' => 'Datos inválidos'], 400);
+        }
+        $torneo = DB::table('torneos')->where('id', $torneoId)->first();
+        if (!$torneo) {
+            return response()->json(['success' => false, 'message' => 'Torneo no encontrado'], 404);
+        }
+        $categoria = isset($torneo->categoria) ? (int) $torneo->categoria : 6;
+        $tipo = isset($torneo->tipo) && in_array($torneo->tipo, ['masculino', 'femenino', 'mixto'], true) ? $torneo->tipo : 'masculino';
+        $fecha = isset($torneo->fecha_fin) && $torneo->fecha_fin
+            ? $torneo->fecha_fin
+            : (isset($torneo->fecha_inicio) ? $torneo->fecha_inicio : now()->format('Y-m-d'));
+        $temporada = (int) date('Y', strtotime($fecha));
+        $afectados = [];
+        foreach ($items as $item) {
+            $jugadorId = (int) ($item['jugador_id'] ?? 0);
+            $puntos = (int) ($item['puntos'] ?? 0);
+            $referenciaCodigo = (string) ($item['referencia_codigo'] ?? 'no_clasificados');
+            if ($jugadorId <= 0) continue;
+            $now = now();
+            DB::table('ranking_puntos')->updateOrInsert(
+                ['jugador_id' => $jugadorId, 'torneo_id' => $torneoId],
+                [
+                    'categoria' => $categoria,
+                    'tipo' => $tipo,
+                    'puntos' => $puntos,
+                    'referencia_codigo' => $referenciaCodigo,
+                    'temporada' => $temporada,
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+            if (!isset($afectados[$jugadorId])) $afectados[$jugadorId] = ['categoria' => $categoria, 'temporada' => $temporada, 'tipo' => $tipo];
+        }
+        foreach ($afectados as $jugadorId => $par) {
+            $total = DB::table('ranking_puntos')
+                ->where('jugador_id', $jugadorId)
+                ->where('categoria', $par['categoria'])
+                ->where('temporada', $par['temporada'])
+                ->where('tipo', $par['tipo'])
+                ->sum('puntos');
+            $now = now();
+            DB::table('ranking_totales')->updateOrInsert(
+                ['jugador_id' => $jugadorId, 'categoria' => $par['categoria'], 'temporada' => $par['temporada'], 'tipo' => $par['tipo']],
+                ['puntos_totales' => $total, 'updated_at' => $now, 'created_at' => $now]
+            );
+        }
+        return response()->json(['success' => true, 'message' => 'Puntos guardados en el ranking correctamente.']);
+    }
+
+    /**
      * Obtiene los cruces filtrados por zona/ronda
      * 
      * @param array $cruces Array de cruces

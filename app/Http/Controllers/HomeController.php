@@ -66,6 +66,125 @@ class HomeController extends Controller
     function adminFotos() {
         return View('bahia_padel.admin.fotos.index'); 
     }
+
+    /**
+     * Pantalla de ranking por categoría, temporada y tipo (masculino, femenino, mixto).
+     */
+    function adminRanking(Request $request) {
+        $tipos = ['masculino' => 'Masculino', 'femenino' => 'Femenino', 'mixto' => 'Mixto'];
+        $tipo = $request->get('tipo', 'masculino');
+        if (!array_key_exists($tipo, $tipos)) {
+            $tipo = 'masculino';
+        }
+        $categorias = DB::table('ranking_totales')
+            ->where('tipo', $tipo)
+            ->select('categoria')
+            ->distinct()
+            ->orderBy('categoria')
+            ->pluck('categoria');
+        $temporadas = DB::table('ranking_totales')
+            ->where('tipo', $tipo)
+            ->select('temporada')
+            ->distinct()
+            ->orderByDesc('temporada')
+            ->pluck('temporada');
+        $categoria = (int) ($request->get('categoria') ?? $categorias->first() ?? 6);
+        $temporada = (int) ($request->get('temporada') ?? $temporadas->first() ?? (int) date('Y'));
+        $ranking = collect();
+        $torneosRanking = collect();
+        $desglosePuntos = [];
+        if ($categorias->contains($categoria) && $temporadas->contains($temporada)) {
+            $ranking = DB::table('ranking_totales')
+                ->join('jugadores', 'jugadores.id', '=', 'ranking_totales.jugador_id')
+                ->where('ranking_totales.categoria', $categoria)
+                ->where('ranking_totales.temporada', $temporada)
+                ->where('ranking_totales.tipo', $tipo)
+                ->where('jugadores.activo', 1)
+                ->orderByDesc('ranking_totales.puntos_totales')
+                ->orderBy('jugadores.apellido')
+                ->orderBy('jugadores.nombre')
+                ->select(
+                    'ranking_totales.jugador_id',
+                    'ranking_totales.puntos_totales',
+                    'jugadores.nombre',
+                    'jugadores.apellido',
+                    'jugadores.foto'
+                )
+                ->get();
+            if ($ranking->isNotEmpty()) {
+                $torneoIds = DB::table('ranking_puntos')
+                    ->where('categoria', $categoria)
+                    ->where('temporada', $temporada)
+                    ->where('tipo', $tipo)
+                    ->distinct()
+                    ->pluck('torneo_id');
+                if ($torneoIds->isNotEmpty()) {
+                    $torneosRanking = DB::table('torneos')
+                        ->whereIn('id', $torneoIds)
+                        ->orderBy('id')
+                        ->get(['id', 'nombre', 'created_at']);
+                    $fechasTorneos = DB::table('fecha_torneos')
+                        ->whereIn('torneo_id', $torneoIds)
+                        ->selectRaw('torneo_id, MIN(fecha) as fecha')
+                        ->groupBy('torneo_id')
+                        ->pluck('fecha', 'torneo_id');
+                    $meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                    foreach ($torneosRanking as $t) {
+                        $fecha = $fechasTorneos[$t->id] ?? $t->created_at;
+                        $t->mes_label = $fecha ? $meses[(int)date('n', strtotime($fecha)) - 1] : '—';
+                    }
+                }
+                $puntosPorTorneo = DB::table('ranking_puntos')
+                    ->where('categoria', $categoria)
+                    ->where('temporada', $temporada)
+                    ->where('tipo', $tipo)
+                    ->whereIn('jugador_id', $ranking->pluck('jugador_id'))
+                    ->get(['jugador_id', 'torneo_id', 'puntos', 'referencia_codigo']);
+                foreach ($puntosPorTorneo as $r) {
+                    if (!isset($desglosePuntos[$r->jugador_id])) {
+                        $desglosePuntos[$r->jugador_id] = [];
+                    }
+                    $desglosePuntos[$r->jugador_id][$r->torneo_id] = (int) $r->puntos;
+                }
+            }
+        }
+        $referenciasPuntuacion = DB::table('puntos_ranking_referencia')->orderBy('orden')->get(['id', 'codigo', 'nombre', 'puntos', 'orden']);
+        return View('bahia_padel.admin.ranking.index')
+            ->with('tipos', $tipos)
+            ->with('categorias', $categorias)
+            ->with('temporadas', $temporadas)
+            ->with('tipo_seleccionado', $tipo)
+            ->with('categoria_seleccionada', $categoria)
+            ->with('temporada_seleccionada', $temporada)
+            ->with('ranking', $ranking)
+            ->with('torneos_ranking', $torneosRanking)
+            ->with('desglose_puntos', $desglosePuntos)
+            ->with('referencias_puntuacion', $referenciasPuntuacion);
+    }
+
+    /**
+     * POST: Guardar referencias de puntuación (nombre y puntos por posición).
+     */
+    function guardarReferenciasPuntuacion(Request $request) {
+        $items = $request->input('items', []);
+        if (!is_array($items)) {
+            return response()->json(['success' => false, 'message' => 'Datos inválidos'], 400);
+        }
+        foreach ($items as $item) {
+            $id = (int) ($item['id'] ?? 0);
+            if ($id <= 0) continue;
+            $nombre = isset($item['nombre']) ? (string) $item['nombre'] : null;
+            $puntos = isset($item['puntos']) ? (int) $item['puntos'] : null;
+            $update = [];
+            if ($nombre !== null) $update['nombre'] = $nombre;
+            if ($puntos !== null) $update['puntos'] = max(0, $puntos);
+            if (!empty($update)) {
+                $update['updated_at'] = now();
+                DB::table('puntos_ranking_referencia')->where('id', $id)->update($update);
+            }
+        }
+        return response()->json(['success' => true, 'message' => 'Referencias guardadas correctamente.']);
+    }
     
     function adminConfig(Request $request) {
         // Listado de todas las configuraciones globales (para cuántas parejas es cada una)
