@@ -43,7 +43,16 @@ Route::get('/', 'HomeFreeController@bahiaPadelHome')->name('index');
 
 Route::get('/bahia_padel', 'HomeFreeController@bahiaPadelHome')->name('bahiapadel');
 
-Route::get('/bahia_padel_admin', 'HomeFreeController@bahiaPadelAdmin')->name('bahiapadeladmin');	
+Route::get('/bahia_padel_admin', 'HomeFreeController@bahiaPadelAdmin')->name('bahiapadeladmin');
+
+Route::get('/torneos', 'HomeFreeController@torneos')->name('home.torneos');
+Route::get('/torneos/listado', 'HomeFreeController@getTorneosPublic')->name('home.torneos.listado');
+Route::get('/torneos/{id}', 'HomeFreeController@torneoDetalle')->name('home.torneo.detalle');
+Route::get('/torneos/{id}/zonas', 'HomeFreeController@torneoZonasPublic')->name('home.torneo.zonas');
+Route::get('/torneos/{id}/cruces', 'HomeFreeController@torneoCrucesPublic')->name('home.torneo.cruces');
+Route::get('/ranking', 'HomeFreeController@ranking')->name('home.ranking');
+Route::get('/calendario', 'HomeFreeController@calendario')->name('home.calendario');
+Route::get('/reglamento', 'HomeFreeController@reglamento')->name('home.reglamento');	
 
 Route::get('/index2', 'Auth\LoginController@showLoginForm')->name('index2');	
 

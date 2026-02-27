@@ -65,8 +65,116 @@ class HomeController extends Controller
         return View('bahia_padel.admin.fotos.index'); 
     }
     
-    function adminRanking() {
-        return View('bahia_padel.admin.ranking.index'); 
+    /**
+     * Panel de ranking por categoría (admin).
+     * Usa tablas ranking_totales y ranking_puntos + jugadores.
+     */
+    function adminRanking(Request $request) {
+        $tipos = [
+            'masculino' => 'Masculino',
+            'femenino' => 'Femenino',
+            'mixto' => 'Mixto',
+        ];
+        
+        $tipoSeleccionado = $request->get('tipo');
+        if (!array_key_exists($tipoSeleccionado, $tipos)) {
+            $tipoSeleccionado = 'masculino';
+        }
+
+        // Categorías y temporadas disponibles para este tipo
+        $categorias = DB::table('ranking_totales')
+            ->where('tipo', $tipoSeleccionado)
+            ->select('categoria')
+            ->distinct()
+            ->orderBy('categoria')
+            ->pluck('categoria');
+
+        $temporadas = DB::table('ranking_totales')
+            ->where('tipo', $tipoSeleccionado)
+            ->select('temporada')
+            ->distinct()
+            ->orderByDesc('temporada')
+            ->pluck('temporada');
+
+        $categoriaSeleccionada = (int) ($request->get('categoria') ?? ($categorias->first() ?? 6));
+        $temporadaSeleccionada = (int) ($request->get('temporada') ?? ($temporadas->first() ?? date('Y')));
+
+        $ranking = collect();
+        $torneosRanking = collect();
+        $desglosePuntos = [];
+        $referenciasPuntuacion = DB::table('puntos_ranking_referencia')
+            ->orderBy('orden')
+            ->get(['id', 'orden', 'codigo', 'nombre', 'puntos']);
+
+        if (!$categorias->isEmpty() && !$temporadas->isEmpty()) {
+            // Ranking total por jugador (tabla ranking_totales)
+            $ranking = DB::table('ranking_totales')
+                ->join('jugadores', 'jugadores.id', '=', 'ranking_totales.jugador_id')
+                ->where('ranking_totales.tipo', $tipoSeleccionado)
+                ->where('ranking_totales.categoria', $categoriaSeleccionada)
+                ->where('ranking_totales.temporada', $temporadaSeleccionada)
+                ->orderByDesc('ranking_totales.puntos_totales')
+                ->orderBy('jugadores.apellido')
+                ->orderBy('jugadores.nombre')
+                ->get([
+                    'ranking_totales.jugador_id',
+                    'ranking_totales.puntos_totales',
+                    'jugadores.nombre',
+                    'jugadores.apellido',
+                    'jugadores.foto',
+                ]);
+
+            // Torneos que suman al ranking (para columnas de desglose)
+            $torneosRanking = DB::table('ranking_puntos')
+                ->join('torneos', 'torneos.id', '=', 'ranking_puntos.torneo_id')
+                ->where('ranking_puntos.tipo', $tipoSeleccionado)
+                ->where('ranking_puntos.categoria', $categoriaSeleccionada)
+                ->where('ranking_puntos.temporada', $temporadaSeleccionada)
+                ->select('torneos.id', 'torneos.nombre', 'torneos.fecha_inicio', 'torneos.fecha_fin')
+                ->distinct()
+                ->orderBy('torneos.fecha_inicio')
+                ->get();
+
+            // Etiqueta corta de mes para la vista
+            $meses = ['01' => 'Ene', '02' => 'Feb', '03' => 'Mar', '04' => 'Abr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Ago', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dic'];
+            $torneosRanking = $torneosRanking->map(function ($t) use ($meses) {
+                $fecha = $t->fecha_inicio ?? $t->fecha_fin;
+                if ($fecha) {
+                    $mes = date('m', strtotime($fecha));
+                    $t->mes_label = $meses[$mes] ?? $mes;
+                } else {
+                    $t->mes_label = '—';
+                }
+                return $t;
+            });
+
+            // Desglose de puntos por torneo (tabla ranking_puntos)
+            if (!$torneosRanking->isEmpty()) {
+                $puntosPorTorneo = DB::table('ranking_puntos')
+                    ->where('tipo', $tipoSeleccionado)
+                    ->where('categoria', $categoriaSeleccionada)
+                    ->where('temporada', $temporadaSeleccionada)
+                    ->whereIn('torneo_id', $torneosRanking->pluck('id'))
+                    ->get(['jugador_id', 'torneo_id', 'puntos']);
+
+                foreach ($puntosPorTorneo as $row) {
+                    $desglosePuntos[$row->jugador_id][$row->torneo_id] = (int) $row->puntos;
+                }
+            }
+        }
+
+        return View('bahia_padel.admin.ranking.index', [
+            'tipos' => $tipos,
+            'tipo_seleccionado' => $tipoSeleccionado,
+            'categorias' => $categorias,
+            'categoria_seleccionada' => $categoriaSeleccionada,
+            'temporadas' => $temporadas,
+            'temporada_seleccionada' => $temporadaSeleccionada,
+            'ranking' => $ranking,
+            'torneos_ranking' => $torneosRanking,
+            'desglose_puntos' => $desglosePuntos,
+            'referencias_puntuacion' => $referenciasPuntuacion,
+        ]);
     }
 
     /**
@@ -8988,8 +9096,8 @@ class HomeController extends Controller
             $totalParejasClasificadas += count($posiciones);
         }
         
-        // Determinar si necesitamos octavos de final (más de 17 parejas)
-        $necesitaOctavos = $totalParejasClasificadas > 17;
+        // Determinar si necesitamos octavos de final (16 o más parejas = 8 partidos de octavos)
+        $necesitaOctavos = $totalParejasClasificadas >= 16;
         
         // Buscar configuración de cruces según la cantidad de parejas
         $configuracionCruces = null;

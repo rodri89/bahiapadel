@@ -3482,18 +3482,13 @@ class PuntuableController extends Controller
         return $partidoIdCreado;
     }
 
+    /**
+     * GET: Misma funcionalidad que getParticipantesTorneoPuntuable.
+     * Devuelve jugadores que participan en el torneo (desde grupos) y referencias de puntuación.
+     */
     public function obtenerParticipantesTorneoPuntuable(Request $request) {
         try {
-            $torneoId = $request->input('torneo_id');
-            
-            // TODO: Implementar obtención de participantes y referencias de puntuación
-            // Por ahora retornamos estructura vacía
-            
-            return response()->json([
-                'success' => true,
-                'jugadores' => [],
-                'referencias' => []
-            ]);
+            return $this->getParticipantesTorneoPuntuable($request);
         } catch (\Exception $e) {
             \Log::error('Error al obtener participantes: ' . $e->getMessage());
             return response()->json([

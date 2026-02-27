@@ -7,17 +7,18 @@
   <meta name="description" content="">
   <meta name="author" content="Rodrigo Banegas">
 
-  <title>Bahia Padel</title>
+  <title>@yield('title_header', 'Bahía Pádel')</title>
   <link rel="icon" type="image/x-icon" href="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" />
 
 <!-- Custom fonts for this template-->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
   <!-- Para que funcione el datatable-->
   <link rel="stylesheet" type="text/css" href="{{asset('datatable/jquery.dataTables.min.css')}}">
   <!-- Custom styles for this template-->
-  <link href="css/sb-admin-2.min.css" rel="stylesheet">
+  <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
   <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
 
   <!-- Para que funcione ajax-->
@@ -35,55 +36,54 @@
 
 <body>
   <div class="wrapper">
+    <nav class="navbar navbar-expand-md custom-header p-2 mb-4">
+      <div class="container-fluid">
+        <!-- Logo a la izquierda -->
+        <a class="navbar-brand d-flex align-items-center" href="{{ route('index') }}">
+          <img class="icono_header header_ic" src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}">
+        </a>
+        <!-- Botón hamburguesa a la derecha en mobile -->
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <!-- Menú colapsable -->
+        <div class="collapse navbar-collapse justify-content-end" id="mainNavbar">
+          <ul class="navbar-nav ml-auto menu-blanco">
+            <li class="nav-item mx-1">
+              <a class="nav-link header_btn" href="{{ route('index') }}">Home</a>
+            </li>
+            <li class="nav-item mx-1">
+              <a class="nav-link header_btn" href="{{ route('home.torneos') }}">Torneos</a>
+            </li>
+            <li class="nav-item mx-1">
+              <a class="nav-link header_btn" href="{{ route('home.ranking') }}">Ranking</a>
+            </li>
+            <li class="nav-item mx-1">
+              <a class="nav-link header_btn" href="{{ route('home.calendario') }}">Calendario</a>
+            </li>        
+            <li class="nav-item mx-1">
+              <a class="nav-link header_btn" href="{{ route('home.reglamento') }}">Reglamento</a>
+            </li>
+            <li class="nav-item mx-1">
+              <a class="nav-link header_btn" onclick="toggleDarkMode()" title="Toggle Dark Mode" style="cursor: pointer;">
+                <i class="fas fa-moon"></i>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
 
-  <nav class="navbar navbar-expand-md custom-header p-2 mb-4">
-  <div class="container-fluid">
-    <!-- Logo a la izquierda -->
-    <a class="navbar-brand d-flex align-items-center" href="#">
-      <img class="icono_header header_ic" src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}">
-    </a>
-    <!-- Botón hamburguesa a la derecha en mobile -->
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <!-- Menú colapsable -->
-    <div class="collapse navbar-collapse justify-content-end" id="mainNavbar">
-      <ul class="navbar-nav ml-auto menu-blanco">
-        <li class="nav-item mx-1">
-          <a class="nav-link header_btn" href="#">Home</a>
-        </li>
-        <li class="nav-item mx-1">
-          <a class="nav-link header_btn" href="#">Torneos</a>
-        </li>
-        <li class="nav-item mx-1">
-          <a class="nav-link header_btn" href="#">Categorías</a>
-        </li>
-        <li class="nav-item mx-1">
-          <a class="nav-link header_btn" href="#">Jugadores</a>
-        </li>
-        <li class="nav-item mx-1">
-          <a class="nav-link header_btn" href="#">Vivo</a>
-        </li>
-        <li class="nav-item mx-1">
-          <a class="nav-link header_btn" onclick="toggleDarkMode()" title="Toggle Dark Mode" style="cursor: pointer;">
-            <i class="fas fa-moon"></i>
-          </a>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
-  </div>
     <!-- Todo el contenido de la página aquí -->    
     <main>
-      <!-- Begin Page Content -->
-      <div class="container-fluid">
+      <div class="container-fluid py-4">
         @yield('contenedor')
       </div>
     </main>
+
     <footer class="sticky-footer">
       <div class="copyright text-center my-auto">
-        <span>Copyright &copy; BahiaPadel - REB @nline</span>
+        <span>Copyright &copy; BahiaPadel</span>
       </div>
     </footer>
   </div>
@@ -118,7 +118,7 @@
   <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
 
   <!-- Custom scripts for all pages-->
-  <script src="js/sb-admin-2.min.js"></script>
+  <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
 
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script type="text/javascript" src="{{asset('datatable/jquery.dataTables.min.js')}}"></script>
