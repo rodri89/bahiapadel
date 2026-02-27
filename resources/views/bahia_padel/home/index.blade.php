@@ -19,7 +19,6 @@
 </section>
 
 <section class="py-4 page-content-home">
-    <h1 class="h3 mb-4">Inicio</h1>
-    <p class="text-secondary mb-4">Contenido de la sección Home. (Por definir)</p>
+   
 </section>
 @endsection
