@@ -108,8 +108,8 @@
         }
         
         .player-images img {
-            width: 4.5vh;
-            height: 4.5vh;
+            width: 5.5vh;
+            height: 5.5vh;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid rgba(255,255,255,0.4);
