@@ -1143,17 +1143,45 @@ class PuntuableController extends Controller
         $jugador2 = ($ganador == 1) ? $g1->jugador_2 : $g2->jugador_2;
 
         // Referencias que este ganador llena en la llave siguiente (para que el frontend encuentre el slot)
+        // Importante: aquí incluimos TODAS las variantes que se usan en la configuración
+        // para que coincidan con los data-llave-ref1/data-llave-ref2 de la vista.
         $refs = [];
         if (preg_match('/^octavos_(\d+)$/i', trim($cruceId), $m)) {
+            // Ganador de octavos N puede referenciarse como:
+            //  - O{N}          (código simple de octavos)
+            //  - G{N}-8vos     (ganador octavos)
+            //  - G{N}-octavos  (alias textual)
             $n = (int)$m[1];
-            $refs = ['O' . $n, 'G' . $n . '-8vos', 'G' . $n . '-octavos'];
+            $refs = [
+                'O' . $n,
+                'G' . $n . '-8vos',
+                'G' . $n . '-octavos',
+            ];
         } elseif (preg_match('/^cuartos_(\d+)$/i', trim($cruceId), $m)) {
+            // Ganador de cuartos N puede referenciarse como:
+            //  - G{N}-4tos     (según comentario de configuración)
+            //  - G{N}-cuartos  (alias textual)
+            //  - C{N}          (C1,C2,C3,C4 = ganadores de cuartos 1..4)
             $n = (int)$m[1];
-            $refs = ['G' . $n . '-4tos', 'G' . $n . '-cuartos'];
+            $refs = [
+                'G' . $n . '-4tos',
+                'G' . $n . '-cuartos',
+                'C' . $n,
+            ];
         } elseif (preg_match('/^semifinales_(\d+)$/i', trim($cruceId), $m)) {
+            // Ganador de semifinales N puede referenciarse como:
+            //  - G{N}-2tos       (nombre interno)
+            //  - G{N}-semis      (alias interno)
+            //  - G{N}-semifinal  (usado en configuración: G1-semifinal, G2-semifinal)
             $n = (int)$m[1];
-            $refs = ['G' . $n . '-2tos', 'G' . $n . '-semis'];
+            $refs = [
+                'G' . $n . '-2tos',
+                'G' . $n . '-semis',
+                'G' . $n . '-semifinal',
+            ];
         } elseif (preg_match('/^final_(\d+)$/i', trim($cruceId), $m)) {
+            // Ganador de la final: pueden existir varias etiquetas en futuras vistas,
+            // pero para el cuadro actual no necesita llenar otra llave.
             $refs = ['Ganador Final', 'Final'];
         }
         if (empty($refs)) {

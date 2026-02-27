@@ -160,7 +160,8 @@
                 </div>
             </div>
             
-            <!-- Tabla de selección de cruces a la derecha -->
+            <!-- Tabla de selección de cruces a la derecha (oculta en puntuables) -->
+            @if(($tipoTorneo ?? '') !== 'puntuable')
             <div class="col-lg-4">
                 <div class="card shadow bg-white px-4 py-3" style="border-radius: 12px; border: 1px solid #e3e6f0;">
                     <h3 class="text-center mb-4" style="color:#4e73df; font-weight:700;">
@@ -209,6 +210,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
         
         <div class="row">

@@ -185,6 +185,109 @@ class HomeController extends Controller
         }
         return response()->json(['success' => true, 'message' => 'Referencias guardadas correctamente.']);
     }
+
+    /**
+     * POST: Generar datos de prueba para un torneo: parejas al azar, zonas y horarios.
+     * Elimina grupos existentes (fase de grupos, no eliminatoria) y crea nuevos con partidos.
+     */
+    function generarDatosPruebaTorneo(Request $request) {
+        $torneoId = (int) $request->input('torneo_id');
+        $cantidadParejas = (int) $request->input('cantidad_parejas');
+        if ($torneoId <= 0 || $cantidadParejas < 4 || $cantidadParejas > 32) {
+            return response()->json(['success' => false, 'message' => 'Torneo inválido o cantidad de parejas debe ser entre 4 y 32.'], 400);
+        }
+        $torneo = DB::table('torneos')->where('id', $torneoId)->where('activo', 1)->first();
+        if (!$torneo) {
+            return response()->json(['success' => false, 'message' => 'Torneo no encontrado.'], 404);
+        }
+        $zonasEliminatoria = ['cuartos final', 'semifinal', 'final', 'octavos final', '16avos final'];
+        $gruposBorrar = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->whereNotIn('zona', $zonasEliminatoria)
+            ->get(['id', 'partido_id']);
+        $partidoIds = $gruposBorrar->pluck('partido_id')->filter()->unique()->values()->all();
+        DB::table('grupos')->whereIn('id', $gruposBorrar->pluck('id'))->delete();
+        if (!empty($partidoIds)) {
+            DB::table('partidos')->whereIn('id', $partidoIds)->delete();
+        }
+        $jugadores = DB::table('jugadores')->where('activo', 1)->inRandomOrder()->get(['id'])->pluck('id')->all();
+        $necesarios = $cantidadParejas * 2;
+        if (count($jugadores) < 4) {
+            return response()->json(['success' => false, 'message' => 'Se necesitan al menos 4 jugadores activos para generar parejas.'], 400);
+        }
+        $jugadores = array_slice($jugadores, 0, min($necesarios, count($jugadores)));
+        $nParejas = (int) floor(count($jugadores) / 2);
+        $parejas = [];
+        for ($i = 0; $i < $nParejas; $i++) {
+            $parejas[] = [$jugadores[$i * 2], $jugadores[$i * 2 + 1]];
+        }
+        // Preferir grupos de 3; usar 4 solo cuando haga falta. Máximo 4 por grupo. Mínimos grupos de 4.
+        $q = (int) floor($nParejas / 3);
+        $r = $nParejas % 3;
+        $zoneSizes = [];
+        if ($r == 0) {
+            $zoneSizes = array_fill(0, $q, 3);
+        } elseif ($r == 1) {
+            if ($q >= 1) {
+                $zoneSizes = array_merge([4], array_fill(0, $q - 1, 3));
+            } else {
+                $zoneSizes = [$nParejas];
+            }
+        } else {
+            if ($q >= 2) {
+                $zoneSizes = array_merge([4, 4], array_fill(0, $q - 2, 3));
+            } elseif ($q == 1) {
+                $zoneSizes = [3, 2];
+            } else {
+                $zoneSizes = [2];
+            }
+        }
+        $numZonas = count($zoneSizes);
+        $fechaBase = isset($torneo->fecha_inicio) && $torneo->fecha_inicio ? $torneo->fecha_inicio : date('Y-m-d');
+        $now = now();
+        $partidoDefaults = [
+            'pareja_1_set_1' => 0, 'pareja_1_set_1_tie_break' => 0, 'pareja_2_set_1' => 0, 'pareja_2_set_1_tie_break' => 0,
+            'pareja_1_set_2' => 0, 'pareja_1_set_2_tie_break' => 0, 'pareja_2_set_2' => 0, 'pareja_2_set_2_tie_break' => 0,
+            'pareja_1_set_3' => 0, 'pareja_1_set_3_tie_break' => 0, 'pareja_2_set_3' => 0, 'pareja_2_set_3_tie_break' => 0,
+            'pareja_1_set_super_tie_break' => 0, 'pareja_2_set_super_tie_break' => 0,
+            'created_at' => $now, 'updated_at' => $now
+        ];
+        $horaInicio = 8;
+        $slot = 0;
+        $offsetParejas = 0;
+        for ($z = 0; $z < $numZonas; $z++) {
+            $zonaNombre = chr(65 + $z);
+            $tamZona = $zoneSizes[$z];
+            $paresZona = array_slice($parejas, $offsetParejas, $tamZona);
+            $offsetParejas += $tamZona;
+            $k = count($paresZona);
+            for ($i = 0; $i < $k; $i++) {
+                for ($j = $i + 1; $j < $k; $j++) {
+                    $partidoId = DB::table('partidos')->insertGetId($partidoDefaults);
+                    $hora = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
+                    $slot++;
+                    $gruposInsert = [
+                        [
+                            'torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $hora,
+                            'jugador_1' => $paresZona[$i][0], 'jugador_2' => $paresZona[$i][1], 'partido_id' => $partidoId,
+                            'created_at' => $now, 'updated_at' => $now
+                        ],
+                        [
+                            'torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $hora,
+                            'jugador_1' => $paresZona[$j][0], 'jugador_2' => $paresZona[$j][1], 'partido_id' => $partidoId,
+                            'created_at' => $now, 'updated_at' => $now
+                        ]
+                    ];
+                    DB::table('grupos')->insert($gruposInsert);
+                }
+            }
+        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Se generaron ' . $nParejas . ' parejas en ' . $numZonas . ' zonas con partidos y horarios.',
+            'torneo_id' => $torneoId
+        ]);
+    }
     
     function adminConfig(Request $request) {
         // Listado de todas las configuraciones globales (para cuántas parejas es cada una)
@@ -881,7 +984,9 @@ class HomeController extends Controller
 
     public function guardarFechaAdminTorneo(Request $request) {
         $torneoId = $request->torneo_id;
-        $zona = $request->zona;
+        // Normalizar zona: solo guardar letra (A, B, C, D), nunca "Zona A"
+        $zonaRaw = trim($request->zona ?? 'A');
+        $zona = (preg_match('/^Zona\s+([A-Z])$/i', $zonaRaw, $m)) ? strtoupper($m[1]) : (strlen($zonaRaw) === 1 ? strtoupper($zonaRaw) : $zonaRaw);
         $tieneCuatroParejas = $request->input('tiene_cuatro_parejas', 0) == 1;
         $tieneCuatroParejasEliminatoria = $request->input('tiene_cuatro_parejas_eliminatoria', 0) == 1;
         
@@ -1188,13 +1293,18 @@ class HomeController extends Controller
                 return response()->json(['success' => false, 'message' => 'Faltan parámetros'], 400);
             }
             
+            // Normalizar zona: la vista envía "A", "B"; en BD puede estar "A" o "Zona A"
+            $zonaLike = strlen($zona) === 1 ? [$zona, 'Zona ' . $zona] : [$zona];
+
             // Obtener todos los grupos de esta zona (incluyendo "ganador X" y "perdedor X")
             $grupos = DB::table('grupos')
                 ->where('torneo_id', $torneoId)
-                ->where(function($query) use ($zona) {
-                    $query->where('zona', $zona)
+                ->where(function($query) use ($zona, $zonaLike) {
+                    $query->whereIn('zona', $zonaLike)
                           ->orWhere('zona', 'ganador ' . $zona)
-                          ->orWhere('zona', 'perdedor ' . $zona);
+                          ->orWhere('zona', 'perdedor ' . $zona)
+                          ->orWhere('zona', 'ganador Zona ' . $zona)
+                          ->orWhere('zona', 'perdedor Zona ' . $zona);
                 })
                 ->whereNotIn('zona', ['cuartos final', 'semifinal', 'final'])
                 ->where(function($query) {
@@ -1448,16 +1558,27 @@ class HomeController extends Controller
             }
 
             // Obtener todas las zonas únicas del torneo (excluyendo zonas de eliminatoria)
-                    $zonas = DB::table('grupos')
-                        ->where('torneo_id', $torneoId)
-                        ->whereNotIn('zona', ['cuartos final', 'semifinal', 'final'])
-                        ->where('zona', 'not like', 'ganador %')
-                        ->where('zona', 'not like', 'perdedor %')
-                        ->select('zona')
-                        ->distinct()
-                        ->orderBy('zona')
-                        ->pluck('zona')
-                        ->toArray();
+            $zonasRaw = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->whereNotIn('zona', ['cuartos final', 'semifinal', 'final'])
+                ->where('zona', 'not like', 'ganador %')
+                ->where('zona', 'not like', 'perdedor %')
+                ->select('zona')
+                ->distinct()
+                ->orderBy('zona')
+                ->pluck('zona')
+                ->toArray();
+
+            // Normalizar: la vista espera letras sueltas (A, B, C). "Zona A" -> "A"
+            $zonas = [];
+            foreach ($zonasRaw as $z) {
+                if (preg_match('/^Zona\s+([A-Z])$/i', trim($z), $m)) {
+                    $zonas[] = strtoupper($m[1]);
+                } else {
+                    $zonas[] = $z;
+                }
+            }
+            $zonas = array_values(array_unique($zonas));
 
             // Si no hay zonas, retornar al menos 'A'
             if (empty($zonas)) {

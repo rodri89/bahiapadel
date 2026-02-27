@@ -176,6 +176,12 @@
                   <span class="sr-only">Dark Mode</span>
                 </a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#" onclick="event.preventDefault(); $('#modalDatosPruebaTorneo').modal('show'); cargarTorneosModalPrueba();" title="Cargar parejas y zonas de prueba">
+                  <i class="fas fa-flask"></i>
+                  <span class="sr-only">Datos de prueba</span>
+                </a>
+              </li>
               <li class="nav-item active">
                 <a class="nav-link " onclick="showLogout()">Logout
                   <span class="sr-only">(current)</span>
@@ -224,6 +230,38 @@
     <i class="fas fa-angle-up"></i>
   </a>
 
+  <!-- Modal Datos de prueba: cargar parejas y zonas al azar -->
+  <div class="modal fade" id="modalDatosPruebaTorneo" tabindex="-1" role="dialog" aria-labelledby="modalDatosPruebaTorneoLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" style="color: #000;" id="modalDatosPruebaTorneoLabel">Cargar datos de prueba</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">Genera parejas al azar, arma las zonas y asigna horarios para hacer pruebas. Se usarán jugadores activos del sistema.</p>
+          <div class="form-group">
+            <label for="modalPruebaTorneoId">Torneo</label>
+            <select id="modalPruebaTorneoId" class="form-control">
+              <option value="">-- Cargando... --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="modalPruebaCantidadParejas">Cantidad de parejas</label>
+            <input type="number" id="modalPruebaCantidadParejas" class="form-control" min="4" max="32" value="24" placeholder="24">
+          </div>
+          <div id="modalPruebaMensaje" class="small text-muted mb-0"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-primary" id="btnGenerarDatosPrueba">
+            <i class="fas fa-random"></i> Generar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Logout Modal-->
   <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -264,6 +302,63 @@
     function showLogout() {
       $("#logoutModal").modal();        
     }
+
+    function cargarTorneosModalPrueba() {
+      var $sel = $('#modalPruebaTorneoId');
+      $sel.html('<option value="">-- Cargando... --</option>');
+      $.post('{{ route("gettorneos") }}', { _token: '{{ csrf_token() }}' }, function(data) {
+        var torneos = data.torneos || [];
+        $sel.empty();
+        $sel.append('<option value="">-- Seleccionar torneo --</option>');
+        var torneoIdUrl = (function() { var m = window.location.search.match(/torneo_id=(\d+)/); return m ? m[1] : null; })();
+        torneos.forEach(function(t) {
+          var opt = $('<option></option>').attr('value', t.id).text((t.nombre || 'Torneo') + ' (ID ' + t.id + ')');
+          if (String(t.id) === String(torneoIdUrl)) opt.attr('selected', true);
+          $sel.append(opt);
+        });
+      }).fail(function() { $sel.html('<option value="">Error al cargar</option>'); });
+    }
+
+    $(function() {
+      $('#btnGenerarDatosPrueba').on('click', function() {
+        var torneoId = $('#modalPruebaTorneoId').val();
+        var cantidad = parseInt($('#modalPruebaCantidadParejas').val(), 10);
+        if (!torneoId) { $('#modalPruebaMensaje').text('Seleccioná un torneo.').css('color', '#c00'); return; }
+        if (isNaN(cantidad) || cantidad < 4 || cantidad > 32) { $('#modalPruebaMensaje').text('Cantidad de parejas entre 4 y 32.').css('color', '#c00'); return; }
+        $('#modalPruebaMensaje').text('').css('color', '');
+        var btn = $(this);
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Generando...');
+        $.post('{{ route("generardatospruebatorneo") }}', { torneo_id: torneoId, cantidad_parejas: cantidad, _token: '{{ csrf_token() }}' }, function(res) {
+          btn.prop('disabled', false).html('<i class="fas fa-random"></i> Generar');
+          if (res.success) {
+            $('#modalDatosPruebaTorneo').modal('hide');
+            if (res.torneo_id) {
+              var f = document.createElement('form');
+              f.method = 'POST';
+              f.action = '{{ route("admintorneoselected") }}';
+              var inp = document.createElement('input');
+              inp.type = 'hidden'; inp.name = 'torneo_id'; inp.value = res.torneo_id;
+              f.appendChild(inp);
+              var tok = document.createElement('input');
+              tok.type = 'hidden'; tok.name = '_token'; tok.value = '{{ csrf_token() }}';
+              f.appendChild(tok);
+              document.body.appendChild(f);
+              f.submit();
+            } else {
+              if (typeof mostrarSnackbar === 'function') mostrarSnackbar(res.message || 'Datos generados.');
+              else if (typeof showSnackbar === 'function') showSnackbar(res.message || 'Datos generados.');
+              else alert(res.message || 'Datos generados.');
+            }
+          } else {
+            $('#modalPruebaMensaje').text(res.message || 'Error').css('color', '#c00');
+          }
+        }, 'json').fail(function(xhr) {
+          btn.prop('disabled', false).html('<i class="fas fa-random"></i> Generar');
+          var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al generar.';
+          $('#modalPruebaMensaje').text(msg).css('color', '#c00');
+        });
+      });
+    });
     
   function mostrarSnackbar(texto) {    
       var x = document.getElementById("snackbar");
