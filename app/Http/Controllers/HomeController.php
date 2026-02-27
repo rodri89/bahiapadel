@@ -1941,6 +1941,22 @@ class HomeController extends Controller
             ], 500);
         }
     }
+    
+    /**
+     * Endpoint para consultar la versión actual del torneo.
+     * Las vistas TV lo usan para detectar si deben recargar datos.
+     */
+    public function tvTorneoVersion(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        if (!$torneoId) {
+            return response()->json(['version' => 0]);
+        }
+        
+        $version = \App\Torneo::getVersion($torneoId);
+        
+        return response()->json(['version' => $version]);
+    }
 
     public function tvTorneoAmericano(Request $request) {
         $torneoId = $request->torneo_id;
@@ -2615,6 +2631,11 @@ class HomeController extends Controller
         }
         
         $partido->save();
+        
+        // Incrementar versión del torneo para notificar a vistas TV
+        if ($torneoId) {
+            \App\Torneo::incrementarVersion($torneoId);
+        }
         
         // Siempre devolver el partido_id para que el frontend lo actualice
         return response()->json([
@@ -3314,6 +3335,11 @@ class HomeController extends Controller
             // Incluir información de partidos actualizados si existe
             if (isset($debugInfo['partidos_actualizados'])) {
                 $response['partidos_actualizados'] = $debugInfo['partidos_actualizados'];
+            }
+            
+            // Incrementar versión del torneo para notificar a vistas TV
+            if ($grupo && $grupo->torneo_id) {
+                \App\Torneo::incrementarVersion($grupo->torneo_id);
             }
             
             return response()->json($response);
@@ -5591,11 +5617,13 @@ class HomeController extends Controller
         $resultadosGuardados = [];
         
         // Obtener todos los grupos eliminatorios con sus partidos
-        // Incluir zonas que comienzan con "cuartos final|" además de las exactas
+        // Incluir todas las rondas: dieciseisavos, octavos, cuartos, semifinal, final
         $gruposEliminatorios = DB::table('grupos')
             ->where('torneo_id', $torneoId)
             ->where(function($query) {
-                $query->whereIn('zona', ['cuartos final', 'semifinal', 'final'])
+                $query->whereIn('zona', ['dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
+                      ->orWhere('zona', 'like', 'dieciseisavos final|%')
+                      ->orWhere('zona', 'like', 'octavos final|%')
                       ->orWhere('zona', 'like', 'cuartos final|%');
             })
             ->whereNotNull('partido_id')
@@ -5611,13 +5639,13 @@ class HomeController extends Controller
         foreach ($gruposEliminatorios as $grupo) {
             $partidoId = $grupo->partido_id;
             if (!isset($partidosAgrupados[$partidoId])) {
-                // Normalizar la zona: si tiene "|", usar solo "cuartos final" para la agrupación
+                // Normalizar la zona: si tiene "|", usar solo la base para la agrupación
                 $zonaNormalizada = $grupo->zona;
                 if (strpos($zonaNormalizada, '|') !== false) {
-                    $zonaNormalizada = 'cuartos final';
+                    $zonaNormalizada = explode('|', $zonaNormalizada)[0];
                 }
                 $partidosAgrupados[$partidoId] = [
-                    'zona' => $zonaNormalizada,
+                    'zona' => trim($zonaNormalizada),
                     'partido_id' => $partidoId,
                     'grupos' => []
                 ];
@@ -5640,6 +5668,8 @@ class HomeController extends Controller
         
         // Construir cruces desde los partidos existentes
         $crucesPorRonda = [
+            'dieciseisavos' => [],
+            'octavos' => [],
             'cuartos' => [],
             'semifinales' => [],
             'final' => []
@@ -5653,7 +5683,13 @@ class HomeController extends Controller
                 
                 // Determinar la ronda según la zona
                 $ronda = 'cuartos';
-                if ($datosPartido['zona'] === 'semifinal') {
+                if ($datosPartido['zona'] === 'dieciseisavos final') {
+                    $ronda = 'dieciseisavos';
+                } else if ($datosPartido['zona'] === 'octavos final') {
+                    $ronda = 'octavos';
+                } else if ($datosPartido['zona'] === 'cuartos final') {
+                    $ronda = 'cuartos';
+                } else if ($datosPartido['zona'] === 'semifinal') {
                     $ronda = 'semifinales';
                 } else if ($datosPartido['zona'] === 'final') {
                     $ronda = 'final';
@@ -5697,10 +5733,18 @@ class HomeController extends Controller
             }
         }
         
+        // Determinar qué rondas existen para la vista
+        $tieneDieciseisavos = count($crucesPorRonda['dieciseisavos']) > 0;
+        $tieneOctavos = count($crucesPorRonda['octavos']) > 0;
+        $tieneCuartos = count($crucesPorRonda['cuartos']) > 0;
+        
         // Calcular posiciones de cada zona para mostrar en la vista (necesario para clasificados)
         $grupos = DB::table('grupos')
                         ->where('grupos.torneo_id', $torneoId)
-                        ->whereNotIn('grupos.zona', ['cuartos final', 'semifinal', 'final'])
+                        ->whereNotIn('grupos.zona', ['dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
+                        ->where('grupos.zona', 'not like', 'dieciseisavos final|%')
+                        ->where('grupos.zona', 'not like', 'octavos final|%')
+                        ->where('grupos.zona', 'not like', 'cuartos final|%')
                         ->orderBy('grupos.zona')
                         ->orderBy('grupos.id')
                         ->get();
@@ -6141,15 +6185,55 @@ class HomeController extends Controller
             }
         }
         
+        // SISTEMA ADAPTATIVO: Detectar qué rondas están completadas (todos los partidos tienen ganador)
+        $rondasCompletadas = [];
+        
+        foreach ($crucesPorRonda as $rondaNombre => $crucesRonda) {
+            if (empty($crucesRonda)) continue;
+            
+            $todosCrucesCompletos = true;
+            foreach ($crucesRonda as $cruce) {
+                // Buscar si este cruce tiene resultado
+                $tieneResultado = false;
+                $cruceId = $cruce['id'] ?? null;
+                
+                foreach ($resultadosGuardados as $resultado) {
+                    if (($resultado['cruce_id'] ?? null) == $cruceId && ($resultado['ronda'] ?? '') == $rondaNombre) {
+                        // Verificar que haya un ganador definido (al menos un set completo)
+                        $set1_p1 = $resultado['pareja_1_set_1'] ?? 0;
+                        $set1_p2 = $resultado['pareja_2_set_1'] ?? 0;
+                        if ($set1_p1 > 0 || $set1_p2 > 0) {
+                            $tieneResultado = true;
+                        }
+                        break;
+                    }
+                }
+                
+                if (!$tieneResultado) {
+                    $todosCrucesCompletos = false;
+                    break;
+                }
+            }
+            
+            if ($todosCrucesCompletos) {
+                $rondasCompletadas[] = $rondaNombre;
+            }
+        }
+        
         return View('bahia_padel.tv.cruces_americano')
                     ->with('torneo', $torneo)
                     ->with('jugadores', $jugadores)
                     ->with('clasificados', $clasificados)
                     ->with('cruces', $cruces)
+                    ->with('crucesPorRonda', $crucesPorRonda)
                     ->with('posicionesPorZona', $posicionesPorZona)
                     ->with('resultadosGuardados', $resultadosGuardados)
                     ->with('primerosClasificados', $primerosClasificados)
-                    ->with('totalClasificados', count($clasificados));
+                    ->with('totalClasificados', count($clasificados))
+                    ->with('tieneDieciseisavos', $tieneDieciseisavos)
+                    ->with('tieneOctavos', $tieneOctavos)
+                    ->with('tieneCuartos', $tieneCuartos)
+                    ->with('rondasCompletadas', $rondasCompletadas);
     }
     
     public function tvTorneoAmericanoCrucesActualizar(Request $request) {
@@ -7356,6 +7440,9 @@ class HomeController extends Controller
         if ($ronda === 'semifinales') {
             $this->crearFinalSiEsNecesario($torneoId);
         }
+        
+        // Incrementar versión del torneo para notificar a vistas TV
+        \App\Torneo::incrementarVersion($torneoId);
         
         return response()->json([
             'success' => true, 
