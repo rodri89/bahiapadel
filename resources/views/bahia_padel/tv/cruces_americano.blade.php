@@ -97,8 +97,29 @@
             min-height: 0;
         }
         
-        /* OCULTAR FOTOS */
-        .player-images { display: none !important; }
+        /* FOTOS DE JUGADORES - Circulitos que sobresalen */
+        .player-images {
+            display: flex;
+            align-items: center;
+            gap: 0.3vw;
+            margin-right: 0.6vw;
+            margin-left: -0.2vw;
+            flex-shrink: 0;
+        }
+        
+        .player-images img {
+            width: 4.5vh;
+            height: 4.5vh;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        
+        .player-pair.winner .player-images img {
+            border-color: #22c55e;
+            box-shadow: 0 2px 8px rgba(34,197,94,0.4);
+        }
         
         /* PARTIDO */
         .match-card {
