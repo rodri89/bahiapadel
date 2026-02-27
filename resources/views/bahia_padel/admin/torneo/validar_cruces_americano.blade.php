@@ -59,6 +59,105 @@
     .posicion-item.tercero {
         /* Sin estilo por defecto, solo se aplicará amarillo a los mejores */
     }
+    
+    /* Estilos para las tarjetas de cruces */
+    .cruces-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        max-height: 450px;
+        overflow-y: auto;
+        padding: 5px;
+    }
+    
+    .cruce-card {
+        background: #fff;
+        border: 2px solid #e3e6f0;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    
+    .cruce-card:hover {
+        border-color: #4e73df;
+        box-shadow: 0 2px 8px rgba(78, 115, 223, 0.2);
+    }
+    
+    .cruce-card-header {
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        color: #fff;
+        padding: 6px 10px;
+        text-align: center;
+    }
+    
+    .cruce-label {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+    
+    .cruce-card-body {
+        padding: 8px;
+    }
+    
+    .cruce-pareja {
+        background: #f8f9fc;
+        border: 2px dashed #d1d3e2;
+        border-radius: 6px;
+        padding: 8px;
+        cursor: pointer;
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+    
+    .cruce-pareja:hover {
+        background: #eaecf4;
+        border-color: #4e73df;
+    }
+    
+    .cruce-pareja.filled {
+        background: #d4edda;
+        border: 2px solid #28a745;
+        border-style: solid;
+    }
+    
+    .cruce-pareja .pareja-placeholder {
+        color: #858796;
+        font-size: 0.75rem;
+        font-style: italic;
+    }
+    
+    .cruce-pareja .pareja-info {
+        text-align: center;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+    
+    .cruce-pareja .pareja-info .pareja-badge {
+        display: inline-block;
+        background: #4e73df;
+        color: #fff;
+        padding: 1px 6px;
+        border-radius: 10px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+    
+    .cruce-pareja .pareja-info .pareja-nombres {
+        color: #2e2e2e;
+        font-weight: 500;
+    }
+    
+    .cruce-vs {
+        text-align: center;
+        font-weight: 700;
+        color: #858796;
+        font-size: 0.75rem;
+        padding: 3px 0;
+    }
 </style>
 
 <div class="bracket-container">
@@ -160,53 +259,52 @@
                 </div>
             </div>
             
-            <!-- Tabla de selección de cruces a la derecha (oculta en puntuables) -->
+            <!-- Tarjetas de cruces precargados (oculta en puntuables) -->
             @if(($tipoTorneo ?? '') !== 'puntuable')
             <div class="col-lg-4">
                 <div class="card shadow bg-white px-4 py-3" style="border-radius: 12px; border: 1px solid #e3e6f0;">
-                    <h3 class="text-center mb-4" style="color:#4e73df; font-weight:700;">
+                    <h3 class="text-center mb-3" style="color:#4e73df; font-weight:700;">
                         @if($necesitaOctavos ?? false)
-                            Armar Octavos de Final
+                            Octavos de Final
                         @else
-                            Armar Cruces
+                            Cuartos de Final
                         @endif
                     </h3>
                     
-                    <!-- Tabla de selección 4x2 o 8x2 según necesite octavos -->
-                    <div class="table-responsive" style="max-height: {{ ($necesitaOctavos ?? false) ? '600px' : '400px' }}; overflow-y: auto;">
-                        <table class="table table-bordered" style="font-size: 0.9rem;">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th style="text-align: center; width: 50%;">Pareja 1</th>
-                                    <th style="text-align: center; width: 50%;">Pareja 2</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                    $numFilas = ($necesitaOctavos ?? false) ? 8 : 4;
-                                @endphp
-                                @for($fila = 1; $fila <= $numFilas; $fila++)
-                                <tr>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="{{ $fila }}" data-columna="1">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                    <td style="text-align: center; padding: 8px;">
-                                        <select class="form-control form-control-sm select-pareja-cruce" data-fila="{{ $fila }}" data-columna="2">
-                                            <option value="">Seleccionar...</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                @endfor
-                            </tbody>
-                        </table>
+                    @if(isset($configuracionAmericano) && $configuracionAmericano)
+                    <div class="alert alert-success py-2 px-3 mb-3" style="font-size: 0.85rem;">
+                        <i class="fa fa-check-circle"></i> Config: <strong>{{ $configuracionAmericano->nombre ?? 'Sin nombre' }}</strong>
+                    </div>
+                    @endif
+                    
+                    <!-- Tarjetas de cruces -->
+                    <div id="cruces-cards-container" class="cruces-cards-grid">
+                        @php
+                            $numCruces = ($necesitaOctavos ?? false) ? 8 : 4;
+                            $prefijo = ($necesitaOctavos ?? false) ? 'O' : 'C';
+                        @endphp
+                        @for($i = 1; $i <= $numCruces; $i++)
+                        <div class="cruce-card" data-cruce-num="{{ $i }}">
+                            <div class="cruce-card-header">
+                                <span class="cruce-label">{{ $prefijo }}{{ $i }}</span>
+                            </div>
+                            <div class="cruce-card-body">
+                                <div class="cruce-pareja cruce-pareja-1" data-num="{{ $i }}" data-pos="1">
+                                    <span class="pareja-placeholder">Pareja 1</span>
+                                </div>
+                                <div class="cruce-vs">vs</div>
+                                <div class="cruce-pareja cruce-pareja-2" data-num="{{ $i }}" data-pos="2">
+                                    <span class="pareja-placeholder">Pareja 2</span>
+                                </div>
+                            </div>
+                        </div>
+                        @endfor
                     </div>
                     
                     <div class="text-center mt-3">
-                        <button type="button" class="btn btn-primary btn-lg" id="btn-armar-cruces">
-                            Armar
-                        </button>
+                        <small class="text-muted d-block mb-2">
+                            <i class="fa fa-info-circle"></i> Clic en una pareja para cambiarla
+                        </small>
                     </div>
                 </div>
             </div>
@@ -329,13 +427,9 @@ $(document).ready(function() {
     var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
     
     // Asegurar que los cruces existentes tengan la ronda correcta
-    // Si necesitamos octavos y hay cruces sin ronda o con ronda 'cuartos', verificar si deberían ser octavos
     if (necesitaOctavos) {
         cruces.forEach(function(cruce, index) {
-            // Si el cruce no tiene ronda o tiene ronda 'cuartos', pero debería ser octavos
-            // Verificar si hay 8 cruces (octavos) o 4 cruces (cuartos)
             if (!cruce.ronda || cruce.ronda === 'cuartos') {
-                // Si hay más de 4 cruces, los primeros 8 deberían ser octavos
                 if (cruces.length > 4 && index < 8) {
                     cruce.ronda = 'octavos';
                 }
@@ -346,7 +440,7 @@ $(document).ready(function() {
     var jugadores = @json($jugadores);
     var posicionesPorZona = @json($posicionesPorZona);
     var torneoId = $('#torneo_id').val();
-    var parejaSeleccionada = null; // { pareja: 1 o 2, cruceIndex: índice del cruce }
+    var tarjetaSeleccionada = null; // { num: número de cruce, pos: 1 o 2 }
     
     // Preparar datos de posiciones para JavaScript (formato: posiciones[zona][posicion])
     var posicionesJS = {};
@@ -374,123 +468,199 @@ $(document).ready(function() {
         });
     }
     
-    // Renderizar cruces automáticamente si existen al cargar la página (después de inicializar jugadoresMap)
-    if (cruces && cruces.length > 0) {
-        var crucesOctavos = cruces.filter(function(c) { 
-            return c.ronda === 'octavos' || c.ronda === '16avos'; 
+    // Array para guardar los cruces de las tarjetas
+    var crucesCards = [];
+    var numCruces = necesitaOctavos ? 8 : 4;
+    for (var i = 0; i < numCruces; i++) {
+        crucesCards.push({
+            pareja_1: null,
+            pareja_2: null
         });
-        var crucesCuartos = cruces.filter(function(c) { 
-            return c.ronda === 'cuartos'; 
-        });
-        
-        // Renderizar cruces de octavos si existen
-        if (crucesOctavos.length > 0) {
-            renderizarCrucesEnCuartos(crucesOctavos, true);
-            // Mostrar sección de octavos
-            $('#cruces-octavos').closest('.col-12').show();
-        }
-        
-        // Renderizar cruces de cuartos si existen
-        if (crucesCuartos.length > 0) {
-            renderizarCrucesEnCuartos(crucesCuartos, false);
-            // Mostrar sección de cuartos
-            $('#cruces-cuartos').closest('.col-12').show();
-        }
-        
-        // Si hay cruces pero no tienen ronda definida, intentar determinar por cantidad
-        if (crucesOctavos.length === 0 && crucesCuartos.length === 0 && cruces.length > 0) {
-            if (cruces.length === 16) {
-                // 16 cruces = 16avos
-                cruces.forEach(function(c) { c.ronda = '16avos'; });
-                renderizarCrucesEnCuartos(cruces, true);
-                $('#cruces-octavos').closest('.col-12').show();
-            } else if (cruces.length === 8) {
-                // 8 cruces = octavos
-                cruces.forEach(function(c) { c.ronda = 'octavos'; });
-                renderizarCrucesEnCuartos(cruces, true);
-                $('#cruces-octavos').closest('.col-12').show();
-            } else if (cruces.length === 4) {
-                // 4 cruces = cuartos
-                cruces.forEach(function(c) { c.ronda = 'cuartos'; });
-                renderizarCrucesEnCuartos(cruces, false);
-                $('#cruces-cuartos').closest('.col-12').show();
-            }
-        }
     }
     
-    // Poblar los selectores con opciones dinámicas
-    function poblarSelectoresParejas() {
-        var opcionesHTML = '<option value="">Seleccionar...</option>';
-        
-        // Recorrer todas las zonas y posiciones
-        for (var zona in posicionesJS) {
-            for (var pos in posicionesJS[zona]) {
-                var pareja = posicionesJS[zona][pos];
-                var jugador1 = jugadoresMap[pareja.jugador_1] || {};
-                var jugador2 = jugadoresMap[pareja.jugador_2] || {};
-                var nombrePareja = (jugador1.nombre || '') + ' ' + (jugador1.apellido || '') + ' / ' + 
-                                   (jugador2.nombre || '') + ' ' + (jugador2.apellido || '');
-                var valor = zona + '_' + pos;
-                var texto = pos + zona + ' - ' + nombrePareja;
-                opcionesHTML += '<option value="' + valor + '">' + texto + '</option>';
-            }
+    // === CONFIGURACIÓN Y MAPEO DE ZONAS ===
+    var llavesPreconfiguradas = @json($llavesPreconfiguradas ?? []);
+    var configuracionAmericano = @json($configuracionAmericano ?? null);
+    
+    // Mapear las zonas del torneo a letras (A, B, C, D...)
+    // Las zonas vienen ordenadas, asignarlas a letras correspondientes
+    var zonasOrdenadas = Object.keys(posicionesJS).sort(function(a, b) {
+        // Ordenar numéricamente si son números, sino alfabéticamente
+        var numA = parseInt(a);
+        var numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+        }
+        return a.localeCompare(b);
+    });
+    
+    var letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+    var letraAZona = {};
+    var zonaALetra = {};
+    
+    console.log('Zonas ordenadas:', zonasOrdenadas);
+    
+    zonasOrdenadas.forEach(function(zona, index) {
+        if (index < letrasZonas.length) {
+            var letra = letrasZonas[index];
+            letraAZona[letra] = zona;
+            zonaALetra[zona] = letra;
+        }
+    });
+    
+    console.log('Mapeo letraAZona:', letraAZona);
+    console.log('Mapeo zonaALetra:', zonaALetra);
+    console.log('Llaves preconfiguradas recibidas:', llavesPreconfiguradas);
+    
+    // Función para obtener pareja desde referencia (ej: "A1")
+    function obtenerParejaDesdeReferencia(referencia) {
+        if (!referencia) {
+            console.log('Referencia vacía');
+            return null;
         }
         
-        // Aplicar a todos los selectores
-        $('.select-pareja-cruce').html(opcionesHTML);
+        console.log('Procesando referencia:', referencia);
+        
+        var match = referencia.match(/^([A-P])(\d+)$/);
+        if (match) {
+            var letra = match[1];
+            var posicion = parseInt(match[2]);
+            var zona = letraAZona[letra];
+            
+            console.log('Letra:', letra, '- Posición:', posicion, '- Zona encontrada:', zona);
+            
+            if (zona && posicionesJS[zona]) {
+                console.log('Posiciones en zona', zona, ':', Object.keys(posicionesJS[zona]));
+                
+                if (posicionesJS[zona][posicion]) {
+                    var pareja = posicionesJS[zona][posicion];
+                    console.log('Pareja encontrada:', pareja);
+                    return {
+                        jugador_1: pareja.jugador_1,
+                        jugador_2: pareja.jugador_2,
+                        zona: zona,
+                        posicion: posicion,
+                        referencia: referencia
+                    };
+                } else {
+                    console.log('Posición', posicion, 'no encontrada en zona', zona);
+                }
+            } else {
+                console.log('Zona no encontrada para letra', letra);
+            }
+        } else {
+            console.log('Referencia no coincide con patrón A1-P9:', referencia);
+        }
+        return null;
     }
     
-    // Llamar a poblar selectores al cargar
-    poblarSelectoresParejas();
+    // Función para actualizar la visualización de una tarjeta
+    function actualizarTarjetaVisual(num, pos, datosPare) {
+        var selector = '.cruce-pareja[data-num="' + num + '"][data-pos="' + pos + '"]';
+        var $tarjeta = $(selector);
+        
+        console.log('Actualizando tarjeta num=' + num + ', pos=' + pos, 'Selector:', selector, 'Elemento encontrado:', $tarjeta.length > 0);
+        
+        if (!datosPare) {
+            console.log('datosPare es null para tarjeta', num, pos);
+            $tarjeta.removeClass('filled');
+            $tarjeta.html('<span class="pareja-placeholder">Pareja ' + pos + '</span>');
+            return;
+        }
+        
+        var jugador1 = jugadoresMap[datosPare.jugador_1];
+        var jugador2 = jugadoresMap[datosPare.jugador_2];
+        
+        console.log('Jugador1:', jugador1, 'Jugador2:', jugador2);
+        
+        if (!jugador1 || !jugador2) {
+            console.log('Jugadores no encontrados para tarjeta', num, pos);
+            $tarjeta.removeClass('filled');
+            $tarjeta.html('<span class="pareja-placeholder">Pareja ' + pos + '</span>');
+            return;
+        }
+        
+        var letraZona = zonaALetra[datosPare.zona] || datosPare.zona;
+        var badge = letraZona + datosPare.posicion;
+        var nombre1 = (jugador1.nombre || '').split(' ')[0]; // Solo primer nombre
+        var apellido1 = jugador1.apellido || '';
+        var nombre2 = (jugador2.nombre || '').split(' ')[0];
+        var apellido2 = jugador2.apellido || '';
+        
+        var html = '<div class="pareja-info">' +
+            '<span class="pareja-badge">' + badge + '</span>' +
+            '<div class="pareja-nombres">' + nombre1 + ' ' + apellido1 + '</div>' +
+            '<div class="pareja-nombres">' + nombre2 + ' ' + apellido2 + '</div>' +
+            '</div>';
+        
+        console.log('HTML generado para tarjeta', num, pos, ':', html);
+        $tarjeta.addClass('filled').html(html);
+    }
     
-    // Función para generar cruces desde la tabla
-    function generarCrucesDesdeTabla() {
+    // === AUTO-CARGAR CRUCES DESDE CONFIGURACIÓN ===
+    console.log('=== CONFIGURACIÓN COMPLETA ===');
+    console.log('configuracionAmericano:', configuracionAmericano);
+    console.log('llavesPreconfiguradas:', JSON.stringify(llavesPreconfiguradas, null, 2));
+    
+    if (llavesPreconfiguradas && llavesPreconfiguradas.llaves && llavesPreconfiguradas.llaves.length > 0) {
+        console.log('Auto-cargando cruces desde configuración:', llavesPreconfiguradas);
+        console.log('Llaves a procesar:');
+        llavesPreconfiguradas.llaves.forEach(function(llave, idx) {
+            console.log('  Llave ' + (idx+1) + ': pareja_1=' + llave.pareja_1 + ', pareja_2=' + llave.pareja_2);
+        });
+        
+        llavesPreconfiguradas.llaves.forEach(function(llave, index) {
+            if (index >= numCruces) return;
+            
+            var pareja1 = obtenerParejaDesdeReferencia(llave.pareja_1);
+            var pareja2 = obtenerParejaDesdeReferencia(llave.pareja_2);
+            
+            crucesCards[index] = {
+                pareja_1: pareja1,
+                pareja_2: pareja2
+            };
+            
+            // Actualizar visual
+            actualizarTarjetaVisual(index + 1, 1, pareja1);
+            actualizarTarjetaVisual(index + 1, 2, pareja2);
+        });
+        
+        // También generar los cruces grandes abajo
+        generarCrucesDesdeCards();
+    }
+    
+    // === CLICK EN TARJETAS PARA EDITAR ===
+    $(document).on('click', '.cruce-pareja', function(e) {
+        e.stopPropagation();
+        var num = $(this).data('num');
+        var pos = $(this).data('pos');
+        
+        tarjetaSeleccionada = { num: num, pos: pos };
+        
+        // Mostrar modal
+        $('#modalSeleccionarParejaLabel').text('Seleccionar Pareja ' + pos + ' para Cruce ' + num);
+        $('#modalSeleccionarPareja').modal('show');
+    });
+    
+    // Función para generar cruces desde las tarjetas
+    function generarCrucesDesdeCards() {
         var crucesTemp = [];
-        
-        // Determinar si necesitamos octavos de final
-        var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
-        var numFilas = necesitaOctavos ? 8 : 4;
         var ronda = necesitaOctavos ? 'octavos' : 'cuartos';
         
-        // Leer las selecciones de la tabla (4x2 o 8x2 según corresponda)
-        // Cada fila es un cruce: pareja1 (columna 1) vs pareja2 (columna 2)
-        
-        for (var fila = 1; fila <= numFilas; fila++) {
-            var pareja1Select = $('.select-pareja-cruce[data-fila="' + fila + '"][data-columna="1"]');
-            var pareja2Select = $('.select-pareja-cruce[data-fila="' + fila + '"][data-columna="2"]');
-            
-            var valor1 = pareja1Select.val();
-            var valor2 = pareja2Select.val();
-            
-            if (valor1 && valor2) {
-                var partes1 = valor1.split('_');
-                var partes2 = valor2.split('_');
-                var zona1 = partes1[0];
-                var pos1 = parseInt(partes1[1]);
-                var zona2 = partes2[0];
-                var pos2 = parseInt(partes2[1]);
-                
-                var pareja1Data = posicionesJS[zona1][pos1];
-                var pareja2Data = posicionesJS[zona2][pos2];
-                
+        crucesCards.forEach(function(cruce, index) {
+            if (cruce.pareja_1 && cruce.pareja_2) {
                 crucesTemp.push({
-                    id: 'cruce_manual_' + fila,
+                    id: 'cruce_card_' + (index + 1),
                     ronda: ronda,
-                    pareja_1: {
-                        jugador_1: pareja1Data.jugador_1,
-                        jugador_2: pareja1Data.jugador_2,
-                        zona: zona1,
-                        posicion: pos1
-                    },
-                    pareja_2: {
-                        jugador_1: pareja2Data.jugador_1,
-                        jugador_2: pareja2Data.jugador_2,
-                        zona: zona2,
-                        posicion: pos2
-                    }
+                    pareja_1: cruce.pareja_1,
+                    pareja_2: cruce.pareja_2
                 });
             }
-        }
+        });
+        
+        // Actualizar el array global y renderizar
+        cruces = crucesTemp;
+        renderizarCrucesEnCuartos(crucesTemp, necesitaOctavos);
         
         return crucesTemp;
     }
@@ -503,7 +673,7 @@ $(document).ready(function() {
         container.empty();
         
         if (!crucesData || crucesData.length === 0) {
-            container.html('<p class="text-center text-muted">No hay cruces para mostrar. Selecciona parejas en la tabla superior.</p>');
+            container.html('<p class="text-center text-muted">No hay cruces para mostrar. Selecciona parejas en las tarjetas de arriba.</p>');
             return;
         }
         
@@ -513,10 +683,13 @@ $(document).ready(function() {
             var jugador2_1 = jugadoresMap[cruce.pareja_2.jugador_1] || null;
             var jugador2_2 = jugadoresMap[cruce.pareja_2.jugador_2] || null;
             
+            var letraZona1 = zonaALetra[cruce.pareja_1.zona] || cruce.pareja_1.zona;
+            var letraZona2 = zonaALetra[cruce.pareja_2.zona] || cruce.pareja_2.zona;
+            
             var cruceHTML = `
                 <div class="match-card cruce-editable" data-cruce-index="${index}" data-ronda="${ronda}">
                     <!-- Pareja 1 -->
-                    <div class="player-pair pareja-editable" 
+                    <div class="player-pair pareja-editable-grande" 
                          data-pareja="1"
                          data-cruce-index="${index}"
                          style="cursor: pointer;">
@@ -529,7 +702,7 @@ $(document).ready(function() {
                                 ${jugador1_1 ? '<div class="player-name" style="color: #000;">' + jugador1_1.nombre + ' ' + jugador1_1.apellido + '</div>' : ''}
                                 ${jugador1_2 ? '<div class="player-name" style="color: #000;">' + jugador1_2.nombre + ' ' + jugador1_2.apellido + '</div>' : ''}
                             </div>
-                            ${cruce.pareja_1 && cruce.pareja_1.zona && cruce.pareja_1.posicion ? '<span class="badge badge-info">' + cruce.pareja_1.zona + cruce.pareja_1.posicion + 'º</span>' : ''}
+                            ${cruce.pareja_1 && cruce.pareja_1.zona && cruce.pareja_1.posicion ? '<span class="badge badge-info">' + letraZona1 + cruce.pareja_1.posicion + 'º</span>' : ''}
                         </div>
                     </div>
                     
@@ -538,7 +711,7 @@ $(document).ready(function() {
                     </div>
                     
                     <!-- Pareja 2 -->
-                    <div class="player-pair pareja-editable" 
+                    <div class="player-pair pareja-editable-grande" 
                          data-pareja="2"
                          data-cruce-index="${index}"
                          style="cursor: pointer;">
@@ -551,7 +724,7 @@ $(document).ready(function() {
                                 ${jugador2_1 ? '<div class="player-name" style="color: #000;">' + jugador2_1.nombre + ' ' + jugador2_1.apellido + '</div>' : ''}
                                 ${jugador2_2 ? '<div class="player-name" style="color: #000;">' + jugador2_2.nombre + ' ' + jugador2_2.apellido + '</div>' : ''}
                             </div>
-                            ${cruce.pareja_2 && cruce.pareja_2.zona && cruce.pareja_2.posicion ? '<span class="badge badge-info">' + cruce.pareja_2.zona + cruce.pareja_2.posicion + 'º</span>' : ''}
+                            ${cruce.pareja_2 && cruce.pareja_2.zona && cruce.pareja_2.posicion ? '<span class="badge badge-info">' + letraZona2 + cruce.pareja_2.posicion + 'º</span>' : ''}
                         </div>
                     </div>
                 </div>
@@ -560,54 +733,30 @@ $(document).ready(function() {
             container.append(cruceHTML);
         });
         
-        // Actualizar el array de cruces global
-        // Si esOctavos, agregar/reemplazar solo los cruces de octavos
-        // Si no esOctavos, agregar/reemplazar solo los cruces de cuartos
+        // Mostrar/ocultar secciones según corresponda
         if (esOctavos) {
-            // Filtrar cruces existentes que NO sean octavos o 16avos
-            cruces = cruces.filter(function(c) {
-                return c.ronda !== 'octavos' && c.ronda !== '16avos';
-            });
-            // Agregar los nuevos cruces de octavos
-            cruces = cruces.concat(crucesData);
+            $('#cruces-octavos').closest('.col-12').show();
         } else {
-            // Filtrar cruces existentes que NO sean cuartos
-            cruces = cruces.filter(function(c) {
-                return c.ronda !== 'cuartos';
-            });
-            // Agregar los nuevos cruces de cuartos
-            cruces = cruces.concat(crucesData);
+            $('#cruces-cuartos').closest('.col-12').show();
         }
     }
     
-    // Botón Armar Cruces
-    $('#btn-armar-cruces').on('click', function() {
-        var crucesNuevos = generarCrucesDesdeTabla();
-        if (crucesNuevos.length === 0) {
-            alert('Por favor, selecciona al menos un cruce completo (pareja 1 y pareja 2 en la misma fila)');
-            return;
-        }
-        var necesitaOctavos = {{ ($necesitaOctavos ?? false) ? 'true' : 'false' }};
-        var crucesOctavos = crucesNuevos.filter(function(c) { return c.ronda === 'octavos'; });
-        var crucesCuartos = crucesNuevos.filter(function(c) { return c.ronda === 'cuartos'; });
+    // También permitir editar haciendo clic en los cruces grandes de abajo
+    $(document).on('click', '.pareja-editable-grande', function(e) {
+        e.stopPropagation();
+        var pareja = $(this).data('pareja');
+        var cruceIndex = $(this).data('cruce-index');
         
-        if (necesitaOctavos && crucesOctavos.length > 0) {
-            renderizarCrucesEnCuartos(crucesOctavos, true);
-        }
-        if (crucesCuartos.length > 0) {
-            renderizarCrucesEnCuartos(crucesCuartos, false);
-        }
+        // Traducir a tarjeta: cruceIndex es el número de cruce (0-based)
+        tarjetaSeleccionada = { num: cruceIndex + 1, pos: pareja };
+        
+        $('#modalSeleccionarParejaLabel').text('Seleccionar Pareja ' + pareja + ' para Cruce ' + (cruceIndex + 1));
+        $('#modalSeleccionarPareja').modal('show');
     });
     
     // Construir lista de todas las parejas disponibles
     function construirListaParejas() {
         var todasLasParejas = [];
-        var jugadoresMap = {};
-        
-        // Crear mapa de jugadores para acceso rápido
-        jugadores.forEach(function(j) {
-            jugadoresMap[j.id] = j;
-        });
         
         // Recorrer todas las zonas y posiciones
         Object.keys(posicionesPorZona).forEach(function(zona) {
@@ -713,9 +862,10 @@ $(document).ready(function() {
                 'margin-bottom': '0.25rem'
             }).text(pareja.jugador1_nombre + ' / ' + pareja.jugador2_nombre);
             
+            var letraZona = zonaALetra[pareja.zona] || pareja.zona;
             var badge = $('<span>')
                 .addClass('badge badge-info')
-                .text(pareja.zona + pareja.posicion + 'º');
+                .text(letraZona + pareja.posicion + 'º');
             
             var stats = $('<small>')
                 .addClass('text-muted d-block mt-1')
@@ -732,20 +882,6 @@ $(document).ready(function() {
     // Inicializar lista
     renderizarListaParejas(todasLasParejas);
     
-    // Al hacer clic en una pareja, abrir modal
-    $(document).on('click', '.pareja-editable', function(e) {
-        e.stopPropagation();
-        var pareja = $(this).data('pareja');
-        var cruceIndex = $(this).data('cruce-index');
-        
-        parejaSeleccionada = {
-            pareja: pareja,
-            cruceIndex: cruceIndex
-        };
-        
-        $('#modalSeleccionarPareja').modal('show');
-    });
-    
     // Buscador de parejas
     $('#buscador-pareja').on('keyup', function() {
         var filtro = $(this).val().toLowerCase();
@@ -756,67 +892,41 @@ $(document).ready(function() {
         renderizarListaParejas(parejasFiltradas);
     });
     
-    // Al seleccionar una pareja del modal
+    // Al seleccionar una pareja del modal (para tarjetas pequeñas y cruces grandes)
     $(document).on('click', '.pareja-option', function() {
-        if (!parejaSeleccionada) return;
+        if (!tarjetaSeleccionada) return;
         
         var parejaData = $(this).data('pareja');
-        var pareja = parejaSeleccionada.pareja;
-        var cruceIndex = parejaSeleccionada.cruceIndex;
+        var num = tarjetaSeleccionada.num;
+        var pos = tarjetaSeleccionada.pos;
         
-        // Obtener datos de los jugadores
-        var jugador1 = jugadores.find(j => j.id == parejaData.jugador_1);
-        var jugador2 = jugadores.find(j => j.id == parejaData.jugador_2);
+        // Guardar en el array de crucesCards
+        var nuevaPareja = {
+            jugador_1: parejaData.jugador_1,
+            jugador_2: parejaData.jugador_2,
+            zona: parejaData.zona,
+            posicion: parejaData.posicion
+        };
         
-        if (jugador1 && jugador2 && cruces[cruceIndex]) {
-            // Actualizar el array de cruces
-            cruces[cruceIndex]['pareja_' + pareja] = {
-                jugador_1: parejaData.jugador_1,
-                jugador_2: parejaData.jugador_2,
-                zona: parejaData.zona,
-                posicion: parejaData.posicion
-            };
-            
-            // Actualizar el DOM
-            var parejaElement = $('.pareja-editable[data-pareja="' + pareja + '"][data-cruce-index="' + cruceIndex + '"]');
-            var imagenes = parejaElement.find('.player-images img');
-            var nombres = parejaElement.find('.player-names .player-name');
-            var badge = parejaElement.find('.badge');
-            
-            // Actualizar imágenes
-            var img1Src = jugador1.foto && jugador1.foto !== 'images/jugador_img.png' 
-                ? '{{ asset("") }}' + jugador1.foto 
-                : '{{ asset("images/jugador_img.png") }}';
-            var img2Src = jugador2.foto && jugador2.foto !== 'images/jugador_img.png' 
-                ? '{{ asset("") }}' + jugador2.foto 
-                : '{{ asset("images/jugador_img.png") }}';
-            
-            imagenes.eq(0).attr('src', img1Src).attr('alt', jugador1.nombre + ' ' + jugador1.apellido);
-            imagenes.eq(1).attr('src', img2Src).attr('alt', jugador2.nombre + ' ' + jugador2.apellido);
-            
-            // Actualizar nombres
-            nombres.eq(0).text(jugador1.nombre + ' ' + jugador1.apellido);
-            nombres.eq(1).text(jugador2.nombre + ' ' + jugador2.apellido);
-            
-            // Actualizar badge
-            if (badge.length) {
-                badge.text(parejaData.zona + parejaData.posicion + 'º');
-            } else {
-                parejaElement.find('.player-names').after('<span class="badge badge-info">' + parejaData.zona + parejaData.posicion + 'º</span>');
-            }
-        }
+        crucesCards[num - 1]['pareja_' + pos] = nuevaPareja;
+        
+        // Actualizar visual de la tarjeta pequeña
+        actualizarTarjetaVisual(num, pos, nuevaPareja);
+        
+        // Regenerar cruces grandes
+        generarCrucesDesdeCards();
         
         $('#modalSeleccionarPareja').modal('hide');
-        $('#buscador-pareja').val(''); // Limpiar buscador
-        renderizarListaParejas(todasLasParejas); // Restaurar lista completa
-        parejaSeleccionada = null;
+        $('#buscador-pareja').val('');
+        renderizarListaParejas(todasLasParejas);
+        tarjetaSeleccionada = null;
     });
     
     // Limpiar buscador cuando se cierra el modal
     $('#modalSeleccionarPareja').on('hidden.bs.modal', function() {
         $('#buscador-pareja').val('');
         renderizarListaParejas(todasLasParejas);
-        parejaSeleccionada = null;
+        tarjetaSeleccionada = null;
     });
     
     // Botón volver a resultados

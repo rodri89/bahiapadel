@@ -1098,6 +1098,9 @@ class PuntuableController extends Controller
 
             \Log::info('=== FIN guardarResultadoPartidoPuntuable (éxito) ===');
             
+            // Incrementar versión del torneo para notificar a vistas TV
+            \App\Torneo::incrementarVersion($torneoId);
+            
             $respuesta = [
                 'success' => true,
                 'message' => 'Resultado guardado correctamente',
@@ -1488,6 +1491,9 @@ class PuntuableController extends Controller
             $this->crearFinalDesdeConfiguracionYSemifinales($torneoId, $partido);
             $this->crearFinalSiEsNecesario($torneoId);
         }
+        
+        // Incrementar versión del torneo para notificar a vistas TV
+        \App\Torneo::incrementarVersion($torneoId);
         
         return response()->json([
             'success' => true, 
@@ -3475,5 +3481,25 @@ class PuntuableController extends Controller
         \Log::info('=== FIN crearFinalDesdeConfiguracionYSemifinales ===');
         return $partidoIdCreado;
     }
-}
 
+    public function obtenerParticipantesTorneoPuntuable(Request $request) {
+        try {
+            $torneoId = $request->input('torneo_id');
+            
+            // TODO: Implementar obtención de participantes y referencias de puntuación
+            // Por ahora retornamos estructura vacía
+            
+            return response()->json([
+                'success' => true,
+                'jugadores' => [],
+                'referencias' => []
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al obtener participantes: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}

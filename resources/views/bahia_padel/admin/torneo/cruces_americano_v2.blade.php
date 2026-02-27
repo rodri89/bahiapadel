@@ -21,6 +21,9 @@
                         <a href="{{ route('tvtorneoamericanocruces') }}?torneo_id={{ $torneo->id }}" target="_blank" class="btn btn-primary ml-2">
                             <i class="fa fa-desktop"></i> TV
                         </a>
+                        <a href="{{ route('tvtorneosrotacion') }}?torneos={{ $torneo->id }}&intervalo=60" target="_blank" class="btn btn-info ml-2">
+                            <i class="fa fa-tv"></i> Rotación
+                        </a>
                     </div>
                 </div>
                 <!-- Hack removed, clearer structure -->

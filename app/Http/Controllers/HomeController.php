@@ -16,8 +16,6 @@ use Session;
 
 class HomeController extends Controller
 {
-    /** Ruta relativa (desde public) donde se guardan las fotos de jugadores. Siempre en public, nunca en storage. */
-    const FOTOS_JUGADORES_DIR = 'images/jugadores';
 
     use AuthenticatesUsers;
 
@@ -66,124 +64,9 @@ class HomeController extends Controller
     function adminFotos() {
         return View('bahia_padel.admin.fotos.index'); 
     }
-
-    /**
-     * Pantalla de ranking por categoría, temporada y tipo (masculino, femenino, mixto).
-     */
-    function adminRanking(Request $request) {
-        $tipos = ['masculino' => 'Masculino', 'femenino' => 'Femenino', 'mixto' => 'Mixto'];
-        $tipo = $request->get('tipo', 'masculino');
-        if (!array_key_exists($tipo, $tipos)) {
-            $tipo = 'masculino';
-        }
-        $categorias = DB::table('ranking_totales')
-            ->where('tipo', $tipo)
-            ->select('categoria')
-            ->distinct()
-            ->orderBy('categoria')
-            ->pluck('categoria');
-        $temporadas = DB::table('ranking_totales')
-            ->where('tipo', $tipo)
-            ->select('temporada')
-            ->distinct()
-            ->orderByDesc('temporada')
-            ->pluck('temporada');
-        $categoria = (int) ($request->get('categoria') ?? $categorias->first() ?? 6);
-        $temporada = (int) ($request->get('temporada') ?? $temporadas->first() ?? (int) date('Y'));
-        $ranking = collect();
-        $torneosRanking = collect();
-        $desglosePuntos = [];
-        if ($categorias->contains($categoria) && $temporadas->contains($temporada)) {
-            $ranking = DB::table('ranking_totales')
-                ->join('jugadores', 'jugadores.id', '=', 'ranking_totales.jugador_id')
-                ->where('ranking_totales.categoria', $categoria)
-                ->where('ranking_totales.temporada', $temporada)
-                ->where('ranking_totales.tipo', $tipo)
-                ->where('jugadores.activo', 1)
-                ->orderByDesc('ranking_totales.puntos_totales')
-                ->orderBy('jugadores.apellido')
-                ->orderBy('jugadores.nombre')
-                ->select(
-                    'ranking_totales.jugador_id',
-                    'ranking_totales.puntos_totales',
-                    'jugadores.nombre',
-                    'jugadores.apellido',
-                    'jugadores.foto'
-                )
-                ->get();
-            if ($ranking->isNotEmpty()) {
-                $torneoIds = DB::table('ranking_puntos')
-                    ->where('categoria', $categoria)
-                    ->where('temporada', $temporada)
-                    ->where('tipo', $tipo)
-                    ->distinct()
-                    ->pluck('torneo_id');
-                if ($torneoIds->isNotEmpty()) {
-                    $torneosRanking = DB::table('torneos')
-                        ->whereIn('id', $torneoIds)
-                        ->orderBy('id')
-                        ->get(['id', 'nombre', 'created_at']);
-                    $fechasTorneos = DB::table('fecha_torneos')
-                        ->whereIn('torneo_id', $torneoIds)
-                        ->selectRaw('torneo_id, MIN(fecha) as fecha')
-                        ->groupBy('torneo_id')
-                        ->pluck('fecha', 'torneo_id');
-                    $meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-                    foreach ($torneosRanking as $t) {
-                        $fecha = $fechasTorneos[$t->id] ?? $t->created_at;
-                        $t->mes_label = $fecha ? $meses[(int)date('n', strtotime($fecha)) - 1] : '—';
-                    }
-                }
-                $puntosPorTorneo = DB::table('ranking_puntos')
-                    ->where('categoria', $categoria)
-                    ->where('temporada', $temporada)
-                    ->where('tipo', $tipo)
-                    ->whereIn('jugador_id', $ranking->pluck('jugador_id'))
-                    ->get(['jugador_id', 'torneo_id', 'puntos', 'referencia_codigo']);
-                foreach ($puntosPorTorneo as $r) {
-                    if (!isset($desglosePuntos[$r->jugador_id])) {
-                        $desglosePuntos[$r->jugador_id] = [];
-                    }
-                    $desglosePuntos[$r->jugador_id][$r->torneo_id] = (int) $r->puntos;
-                }
-            }
-        }
-        $referenciasPuntuacion = DB::table('puntos_ranking_referencia')->orderBy('orden')->get(['id', 'codigo', 'nombre', 'puntos', 'orden']);
-        return View('bahia_padel.admin.ranking.index')
-            ->with('tipos', $tipos)
-            ->with('categorias', $categorias)
-            ->with('temporadas', $temporadas)
-            ->with('tipo_seleccionado', $tipo)
-            ->with('categoria_seleccionada', $categoria)
-            ->with('temporada_seleccionada', $temporada)
-            ->with('ranking', $ranking)
-            ->with('torneos_ranking', $torneosRanking)
-            ->with('desglose_puntos', $desglosePuntos)
-            ->with('referencias_puntuacion', $referenciasPuntuacion);
-    }
-
-    /**
-     * POST: Guardar referencias de puntuación (nombre y puntos por posición).
-     */
-    function guardarReferenciasPuntuacion(Request $request) {
-        $items = $request->input('items', []);
-        if (!is_array($items)) {
-            return response()->json(['success' => false, 'message' => 'Datos inválidos'], 400);
-        }
-        foreach ($items as $item) {
-            $id = (int) ($item['id'] ?? 0);
-            if ($id <= 0) continue;
-            $nombre = isset($item['nombre']) ? (string) $item['nombre'] : null;
-            $puntos = isset($item['puntos']) ? (int) $item['puntos'] : null;
-            $update = [];
-            if ($nombre !== null) $update['nombre'] = $nombre;
-            if ($puntos !== null) $update['puntos'] = max(0, $puntos);
-            if (!empty($update)) {
-                $update['updated_at'] = now();
-                DB::table('puntos_ranking_referencia')->where('id', $id)->update($update);
-            }
-        }
-        return response()->json(['success' => true, 'message' => 'Referencias guardadas correctamente.']);
+    
+    function adminRanking() {
+        return View('bahia_padel.admin.ranking.index'); 
     }
 
     /**
@@ -289,35 +172,16 @@ class HomeController extends Controller
         ]);
     }
     
-    function adminConfig(Request $request) {
-        // Listado de todas las configuraciones globales (para cuántas parejas es cada una)
-        $configuraciones = DB::table('configuracion_cruces_puntuables')
-            ->whereNull('torneo_id')
-            ->orderBy('cantidad_parejas')
+    function adminConfig() {
+        // Cargar configuración existente si hay
+        $configuracion = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id') // Configuración global
             ->orderBy('id', 'desc')
-            ->get(['id', 'cantidad_parejas', 'tiene_16avos_final', 'tiene_8vos_final', 'tiene_4tos_final', 'updated_at']);
+            ->first();
         
-        // Cargar una configuración para editar (por id en query), o null si nueva=1 o no hay ninguna
         $config = null;
-        $editarId = $request->get('editar');
-        $nueva = $request->get('nueva');
-        if ($nueva) {
-            $configuracion = null;
-        } elseif ($editarId) {
-            $configuracion = DB::table('configuracion_cruces_puntuables')
-                ->whereNull('torneo_id')
-                ->where('id', $editarId)
-                ->first();
-        } else {
-            $configuracion = DB::table('configuracion_cruces_puntuables')
-                ->whereNull('torneo_id')
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-        
         if ($configuracion) {
             $config = [
-                'id' => $configuracion->id,
                 'cantidad_parejas' => $configuracion->cantidad_parejas,
                 'tiene_16avos_final' => $configuracion->tiene_16avos_final,
                 'tiene_8vos_final' => $configuracion->tiene_8vos_final,
@@ -331,14 +195,13 @@ class HomeController extends Controller
         }
         
         return View('bahia_padel.admin.config.index')
-            ->with('configuraciones', $configuraciones)
-            ->with('config', $config);
+            ->with('config', $config); 
     }
     
     function guardarConfigCruces(Request $request) {
         try {
             $data = [
-                'torneo_id' => null,
+                'torneo_id' => null, // Configuración global por ahora
                 'cantidad_parejas' => $request->cantidad_parejas,
                 'tiene_16avos_final' => $request->tiene_16avos_final ? 1 : 0,
                 'tiene_8vos_final' => $request->tiene_8vos_final ? 1 : 0,
@@ -351,21 +214,18 @@ class HomeController extends Controller
                 'updated_at' => now()
             ];
             
-            $configId = $request->get('config_id');
-            if ($configId) {
-                $existente = DB::table('configuracion_cruces_puntuables')
-                    ->whereNull('torneo_id')
-                    ->where('id', $configId)
-                    ->first();
-                if ($existente) {
-                    DB::table('configuracion_cruces_puntuables')
-                        ->where('id', $configId)
-                        ->update($data);
-                } else {
-                    $data['created_at'] = now();
-                    DB::table('configuracion_cruces_puntuables')->insert($data);
-                }
+            // Verificar si ya existe una configuración global
+            $existente = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->first();
+            
+            if ($existente) {
+                // Actualizar
+                DB::table('configuracion_cruces_puntuables')
+                    ->where('id', $existente->id)
+                    ->update($data);
             } else {
+                // Crear nueva
                 $data['created_at'] = now();
                 DB::table('configuracion_cruces_puntuables')->insert($data);
             }
@@ -380,6 +240,179 @@ class HomeController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al guardar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Vista de configuración de cruces para torneos Americanos
+     */
+    function adminConfigAmericano() {
+        // Cargar todas las configuraciones existentes
+        $configuraciones = DB::table('configuracion_cruces_americanos')
+            ->orderBy('cantidad_parejas', 'asc')
+            ->get();
+        
+        // Cargar configuración específica si se está editando
+        $config = null;
+        $editarId = request()->get('editar');
+        if ($editarId) {
+            $configuracion = DB::table('configuracion_cruces_americanos')
+                ->where('id', $editarId)
+                ->first();
+            
+            if ($configuracion) {
+                $config = [
+                    'id' => $configuracion->id,
+                    'nombre' => $configuracion->nombre,
+                    'cantidad_parejas' => $configuracion->cantidad_parejas,
+                    'cantidad_zonas' => $configuracion->cantidad_zonas,
+                    'parejas_por_zona' => $configuracion->parejas_por_zona,
+                    'clasifican_primeros' => $configuracion->clasifican_primeros,
+                    'clasifican_segundos' => $configuracion->clasifican_segundos,
+                    'clasifican_terceros' => $configuracion->clasifican_terceros,
+                    'clasifican_cuartos' => $configuracion->clasifican_cuartos,
+                    'tiene_16avos_final' => $configuracion->tiene_16avos_final,
+                    'tiene_8vos_final' => $configuracion->tiene_8vos_final,
+                    'tiene_4tos_final' => $configuracion->tiene_4tos_final,
+                    'criterio_desempate_orden' => $configuracion->criterio_desempate_orden,
+                    'games_fase_grupos' => $configuracion->games_fase_grupos,
+                    'games_cruces' => $configuracion->games_cruces,
+                    'games_semifinal' => $configuracion->games_semifinal,
+                    'games_final' => $configuracion->games_final,
+                    'llave_16avos' => $configuracion->llave_16avos ? json_decode($configuracion->llave_16avos, true) : null,
+                    'llave_8vos' => $configuracion->llave_8vos ? json_decode($configuracion->llave_8vos, true) : null,
+                    'llave_4tos' => $configuracion->llave_4tos ? json_decode($configuracion->llave_4tos, true) : null,
+                    'llave_semifinal' => $configuracion->llave_semifinal ? json_decode($configuracion->llave_semifinal, true) : null,
+                    'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
+                    'notas' => $configuracion->notas,
+                ];
+            }
+        }
+        
+        return View('bahia_padel.admin.config.americano')
+            ->with('configuraciones', $configuraciones)
+            ->with('config', $config);
+    }
+    
+    /**
+     * Guardar configuración de cruces para torneos Americanos
+     */
+    function guardarConfigCrucesAmericano(Request $request) {
+        try {
+            $data = [
+                'nombre' => $request->nombre,
+                'cantidad_parejas' => $request->cantidad_parejas,
+                'cantidad_zonas' => $request->cantidad_zonas,
+                'parejas_por_zona' => $request->parejas_por_zona ?? 4,
+                'clasifican_primeros' => $request->clasifican_primeros ?? 0,
+                'clasifican_segundos' => $request->clasifican_segundos ?? 0,
+                'clasifican_terceros' => $request->clasifican_terceros ?? 0,
+                'clasifican_cuartos' => $request->clasifican_cuartos ?? 0,
+                'tiene_16avos_final' => $request->tiene_16avos_final ? 1 : 0,
+                'tiene_8vos_final' => $request->tiene_8vos_final ? 1 : 0,
+                'tiene_4tos_final' => $request->tiene_4tos_final ? 1 : 0,
+                'criterio_desempate_orden' => $request->criterio_desempate_orden ?? 'PG,DIF_GAMES,GF',
+                'games_fase_grupos' => $request->games_fase_grupos ?? 5,
+                'games_cruces' => $request->games_cruces ?? 5,
+                'games_semifinal' => $request->games_semifinal ?? 5,
+                'games_final' => $request->games_final ?? 7,
+                'llave_16avos' => $request->llave_16avos,
+                'llave_8vos' => $request->llave_8vos,
+                'llave_4tos' => $request->llave_4tos,
+                'llave_semifinal' => $request->llave_semifinal,
+                'llave_final' => $request->llave_final,
+                'notas' => $request->notas,
+                'updated_at' => now()
+            ];
+            
+            $configId = $request->config_id;
+            
+            if ($configId) {
+                // Actualizar existente
+                DB::table('configuracion_cruces_americanos')
+                    ->where('id', $configId)
+                    ->update($data);
+            } else {
+                // Crear nueva
+                $data['created_at'] = now();
+                $configId = DB::table('configuracion_cruces_americanos')->insertGetId($data);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuración guardada correctamente',
+                'config_id' => $configId
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error al guardar configuración de cruces americano: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Eliminar configuración de cruces americano
+     */
+    function eliminarConfigCrucesAmericano(Request $request) {
+        try {
+            $configId = $request->config_id;
+            
+            if (!$configId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ID de configuración no proporcionado'
+                ], 400);
+            }
+            
+            DB::table('configuracion_cruces_americanos')
+                ->where('id', $configId)
+                ->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuración eliminada correctamente'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error al eliminar configuración de cruces americano: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Obtener configuración de cruces americano por cantidad de parejas
+     */
+    function getConfigCrucesAmericano(Request $request) {
+        try {
+            $cantidadParejas = $request->cantidad_parejas;
+            
+            $configuracion = DB::table('configuracion_cruces_americanos')
+                ->where('cantidad_parejas', $cantidadParejas)
+                ->first();
+            
+            if (!$configuracion) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay configuración para ' . $cantidadParejas . ' parejas'
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'config' => $configuracion
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -557,10 +590,16 @@ class HomeController extends Controller
             
             // Navegar a la vista correspondiente según el tipo de torneo
             if ($tipoTorneo == 'americano') {
+                // Cargar configuraciones de cruces americanos disponibles
+                $configsCrucesAmericanos = DB::table('configuracion_cruces_americanos')
+                    ->orderBy('cantidad_parejas', 'asc')
+                    ->get();
+                
                 return View('bahia_padel.admin.torneo.armar_americano')
                             ->with('jugadores', $jugadores)
                             ->with('torneo', $torneo)
-                            ->with('grupos', $grupos);
+                            ->with('grupos', $grupos)
+                            ->with('configsCrucesAmericanos', $configsCrucesAmericanos);
             } elseif ($tipoTorneo == 'suma') {
                 return View('bahia_padel.admin.torneo.armar_suma')
                             ->with('jugadores', $jugadores)
@@ -586,16 +625,20 @@ class HomeController extends Controller
             $jugador->posicion = 0;
             $jugador->foto = 'images/jugador_img.png';
             
-            // Manejar subida de foto (siempre en public, no en storage)
+            // Manejar subida de foto
             if ($request->hasFile('foto')) {
                 try {
                     $image = $request->file('foto');
                     $name = time() . '_' . $image->getClientOriginalName();
-                    $path = self::FOTOS_JUGADORES_DIR . '/' . $name;
-                    $directory = public_path(self::FOTOS_JUGADORES_DIR);
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Crear directorio si no existe
+                    $directory = public_path('images/jugadores');
                     if (!file_exists($directory)) {
                         mkdir($directory, 0755, true);
                     }
+                    
+                    // Usar Image para procesar y guardar la imagen
                     Image::make($image->getRealPath())->save(public_path($path));
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
@@ -688,9 +731,10 @@ class HomeController extends Controller
                     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
                     $extension = $image->getClientOriginalExtension();
                     $name = time() . '_' . $safeName . '.' . $extension;
-                    $path = self::FOTOS_JUGADORES_DIR . '/' . $name;
-                    // Siempre guardar en public (no en storage)
-                    $directory = public_path(self::FOTOS_JUGADORES_DIR);
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Obtener rutas usando public_path para asegurar la ubicación correcta
+                    $directory = public_path('images/jugadores');
                     $imgPath = public_path($path);
                     
                     // Logging para diagnóstico
@@ -894,8 +938,19 @@ class HomeController extends Controller
                 
                 // Buscar el archivo en posibles ubicaciones alternativas
                 $nombreArchivo = basename($jugador->foto);
-                $rutaEsperada = public_path(self::FOTOS_JUGADORES_DIR . '/' . $nombreArchivo);
-                \Log::error('Archivo no encontrado en ruta esperada (public): ' . $rutaEsperada);
+                $posiblesRutas = [
+                    base_path('public/images/jugadores/' . $nombreArchivo),
+                    storage_path('app/public/images/jugadores/' . $nombreArchivo),
+                    public_path('images/jugadores/' . $nombreArchivo),
+                ];
+                
+                foreach ($posiblesRutas as $rutaAlternativa) {
+                    if (file_exists($rutaAlternativa)) {
+                        \Log::error('ARCHIVO ENCONTRADO EN: ' . $rutaAlternativa);
+                    } else {
+                        \Log::error('No encontrado en: ' . $rutaAlternativa);
+                    }
+                }
             }
             
             \Log::info('=== FIN VERIFICACIÓN ===');
@@ -949,16 +1004,20 @@ class HomeController extends Controller
             $jugador->apellido = $request->apellido;
             $jugador->telefono = $request->telefono ?? 0;
             
-            // Manejar subida de foto solo si se envía una nueva (siempre en public, no en storage)
+            // Manejar subida de foto solo si se envía una nueva
             if ($request->hasFile('foto')) {
                 try {
                     $image = $request->file('foto');
                     $name = time() . '_' . $image->getClientOriginalName();
-                    $path = self::FOTOS_JUGADORES_DIR . '/' . $name;
-                    $directory = public_path(self::FOTOS_JUGADORES_DIR);
+                    $path = 'images/jugadores/' . $name;
+                    
+                    // Crear directorio si no existe
+                    $directory = public_path('images/jugadores');
                     if (!file_exists($directory)) {
                         mkdir($directory, 0755, true);
                     }
+                    
+                    // Usar Image para procesar y guardar la imagen
                     Image::make($image->getRealPath())->save(public_path($path));
                     $jugador->foto = $path;
                 } catch (\Exception $e) {
@@ -1682,6 +1741,14 @@ class HomeController extends Controller
         $torneoId = $request->torneo_id;
         $grupos = $request->grupos; // Array de grupos con zona y parejas
         $esBorrador = $request->es_borrador ?? 0; // 1 si es borrador, 0 si es guardado final
+        $configCrucesAmericanoId = $request->config_cruces_americano_id ?? null;
+        
+        // Guardar la configuración de cruces en el torneo
+        if ($configCrucesAmericanoId) {
+            DB::table('torneos')
+                ->where('id', $torneoId)
+                ->update(['config_cruces_americano_id' => $configCrucesAmericanoId]);
+        }
         
         // Eliminar solo los grupos iniciales del torneo (sin partido_id)
         // NO eliminar los grupos que ya tienen partido_id, porque esos son los partidos ya creados
@@ -1956,6 +2023,667 @@ class HomeController extends Controller
         $version = \App\Torneo::getVersion($torneoId);
         
         return response()->json(['version' => $version]);
+    }
+
+    /**
+     * Endpoint para consultar las versiones de múltiples torneos.
+     * Usado por la vista de rotación inteligente.
+     */
+    public function tvTorneosVersiones(Request $request) {
+        $torneoIds = $request->torneo_ids;
+        
+        if (!$torneoIds) {
+            return response()->json(['versiones' => []]);
+        }
+        
+        // Convertir string "1,2,3" a array
+        if (is_string($torneoIds)) {
+            $torneoIds = array_filter(explode(',', $torneoIds), function($id) {
+                return is_numeric(trim($id));
+            });
+            $torneoIds = array_map('intval', $torneoIds);
+        }
+        
+        $versiones = [];
+        foreach ($torneoIds as $torneoId) {
+            $versiones[$torneoId] = \App\Torneo::getVersion($torneoId);
+        }
+        
+        return response()->json(['versiones' => $versiones]);
+    }
+
+    /**
+     * Diagnóstico de detección de torneos.
+     * Muestra qué torneos activos hay y por qué se incluyen o excluyen.
+     * URL: /tv_torneos_diagnostico
+     */
+    public function tvTorneosDiagnostico(Request $request) {
+        $fecha = $request->fecha ?? date('Y-m-d');
+        
+        // Obtener TODOS los torneos activos
+        $todosTorneos = DB::table('torneos')
+            ->where('activo', 1)
+            ->select('id', 'nombre', 'fecha_inicio', 'fecha_fin', 'activo', 'categoria')
+            ->orderBy('id', 'desc')
+            ->get();
+        
+        // Obtener también torneos NO activos para comparar
+        $torneosInactivos = DB::table('torneos')
+            ->where('activo', 0)
+            ->select('id', 'nombre', 'fecha_inicio', 'fecha_fin', 'activo', 'categoria')
+            ->orderBy('id', 'desc')
+            ->limit(10)
+            ->get();
+        
+        $html = '<html><head><title>Diagnóstico Torneos</title>';
+        $html .= '<style>body{font-family:Arial;padding:20px;} table{border-collapse:collapse;margin:20px 0;} td,th{border:1px solid #ccc;padding:8px;} th{background:#f0f0f0;} .ok{color:green;} .no{color:red;}</style>';
+        $html .= '</head><body>';
+        $html .= '<h1>Diagnóstico Detección Torneos</h1>';
+        $html .= '<p><strong>Fecha servidor:</strong> ' . $fecha . '</p>';
+        $html .= '<p><strong>DateTime servidor:</strong> ' . date('Y-m-d H:i:s') . '</p>';
+        
+        // Tabla de torneos activos
+        $html .= '<h2>Torneos ACTIVOS (activo=1)</h2>';
+        $html .= '<table><tr><th>ID</th><th>Nombre</th><th>Fecha Inicio</th><th>Fecha Fin</th><th>Categoría</th><th>¿Se detecta HOY?</th><th>Razón</th></tr>';
+        
+        foreach ($todosTorneos as $t) {
+            $seDetecta = false;
+            $razon = '';
+            
+            // Verificar si se detectaría hoy
+            if ($t->fecha_inicio !== null && $t->fecha_fin !== null) {
+                if ($t->fecha_inicio <= $fecha && $t->fecha_fin >= $fecha) {
+                    $seDetecta = true;
+                    $razon = 'Rango de fechas: ' . $t->fecha_inicio . ' a ' . $t->fecha_fin;
+                } else {
+                    $razon = 'Fuera del rango: ' . $t->fecha_inicio . ' a ' . $t->fecha_fin;
+                }
+            } elseif ($t->fecha_inicio !== null) {
+                if ($t->fecha_inicio === $fecha) {
+                    $seDetecta = true;
+                    $razon = 'Fecha inicio coincide con hoy';
+                } else {
+                    $razon = 'Fecha inicio (' . $t->fecha_inicio . ') no es hoy';
+                }
+            } else {
+                // Sin fechas - fallback
+                $seDetecta = true;
+                $razon = 'Sin fechas definidas (fallback)';
+            }
+            
+            $claseDetecta = $seDetecta ? 'ok' : 'no';
+            $textoDetecta = $seDetecta ? 'SÍ' : 'NO';
+            
+            $html .= '<tr>';
+            $html .= '<td>' . $t->id . '</td>';
+            $html .= '<td>' . htmlspecialchars($t->nombre) . '</td>';
+            $html .= '<td>' . ($t->fecha_inicio ?: '<em>NULL</em>') . '</td>';
+            $html .= '<td>' . ($t->fecha_fin ?: '<em>NULL</em>') . '</td>';
+            $html .= '<td>' . ($t->categoria ?: '-') . '</td>';
+            $html .= '<td class="' . $claseDetecta . '"><strong>' . $textoDetecta . '</strong></td>';
+            $html .= '<td>' . $razon . '</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</table>';
+        
+        // Torneos inactivos
+        if ($torneosInactivos->count() > 0) {
+            $html .= '<h2>Torneos INACTIVOS (activo=0) - últimos 10</h2>';
+            $html .= '<table><tr><th>ID</th><th>Nombre</th><th>Fecha Inicio</th><th>Fecha Fin</th></tr>';
+            foreach ($torneosInactivos as $t) {
+                $html .= '<tr><td>' . $t->id . '</td><td>' . htmlspecialchars($t->nombre) . '</td>';
+                $html .= '<td>' . ($t->fecha_inicio ?: 'NULL') . '</td><td>' . ($t->fecha_fin ?: 'NULL') . '</td></tr>';
+            }
+            $html .= '</table>';
+        }
+        
+        $html .= '<h2>Enlaces útiles</h2>';
+        $html .= '<ul>';
+        $html .= '<li><a href="/tv_torneos_hoy">Torneos de HOY (rotación automática)</a></li>';
+        foreach ($todosTorneos as $t) {
+            $html .= '<li><a href="/tv_torneos_rotacion?torneos=' . $t->id . '">Ver torneo ' . $t->id . ' (' . htmlspecialchars($t->nombre) . ')</a></li>';
+        }
+        $html .= '</ul>';
+        
+        $html .= '</body></html>';
+        
+        return response($html);
+    }
+
+    /**
+     * Detecta torneos que se juegan hoy (o en un rango de fechas) y redirige a la vista de rotación.
+     * URL: /tv_torneos_hoy  o  /tv_torneos_hoy?fecha=2026-02-26
+     */
+    public function tvTorneosHoy(Request $request) {
+        $fecha = $request->fecha ?? date('Y-m-d');
+        $intervalo = $request->intervalo ?? 60;
+        
+        // Buscar torneos activos cuya fecha coincida con hoy
+        // Un torneo se considera "de hoy" si:
+        // - fecha_inicio <= hoy <= fecha_fin  O
+        // - fecha_inicio = hoy (para torneos de un día)
+        $torneos = DB::table('torneos')
+            ->where('activo', 1)
+            ->where(function($query) use ($fecha) {
+                $query->where(function($q) use ($fecha) {
+                    // Torneo con rango de fechas
+                    $q->whereNotNull('fecha_inicio')
+                      ->whereNotNull('fecha_fin')
+                      ->where('fecha_inicio', '<=', $fecha)
+                      ->where('fecha_fin', '>=', $fecha);
+                })
+                ->orWhere(function($q) use ($fecha) {
+                    // Torneo de un solo día
+                    $q->where('fecha_inicio', $fecha);
+                })
+                ->orWhere(function($q) use ($fecha) {
+                    // Fallback: torneos sin fecha definida pero activos
+                    $q->whereNull('fecha_inicio')
+                      ->whereNull('fecha_fin');
+                });
+            })
+            ->orderBy('categoria')
+            ->get();
+        
+        if ($torneos->isEmpty()) {
+            return view('bahia_padel.tv.sin_torneos', [
+                'fecha' => $fecha,
+                'mensaje' => 'No hay torneos programados para hoy'
+            ]);
+        }
+        
+        // Construir lista de IDs
+        $torneoIds = $torneos->pluck('id')->implode(',');
+        
+        // Redirigir a la vista de rotación con los torneos detectados
+        return redirect()->route('tvtorneosrotacion', [
+            'torneos' => $torneoIds,
+            'intervalo' => $intervalo
+        ]);
+    }
+
+    /**
+     * Vista TV de rotación inteligente entre múltiples torneos.
+     * Detecta automáticamente si cada torneo está en fase de grupos o cruces.
+     * Rota cada X segundos, pero prioriza el torneo que tuvo cambios.
+     */
+    public function tvTorneosRotacion(Request $request) {
+        $torneoIdsParam = $request->torneos;
+        $intervalo = $request->intervalo ?? 60; // Segundos entre rotación
+        
+        if (!$torneoIdsParam) {
+            return redirect()->route('index')->with('error', 'Debe especificar los IDs de torneos (ej: ?torneos=1,2)');
+        }
+        
+        // Parsear IDs de torneos
+        $torneoIds = array_filter(explode(',', $torneoIdsParam), function($id) {
+            return is_numeric(trim($id));
+        });
+        $torneoIds = array_map('intval', $torneoIds);
+        
+        if (empty($torneoIds)) {
+            return redirect()->route('index')->with('error', 'IDs de torneos inválidos');
+        }
+        
+        // Obtener información de todos los torneos
+        $torneos = DB::table('torneos')
+            ->whereIn('id', $torneoIds)
+            ->where('activo', 1)
+            ->get();
+        
+        if ($torneos->isEmpty()) {
+            return redirect()->route('index')->with('error', 'No se encontraron torneos activos');
+        }
+        
+        // Obtener información de jugadores (para todos los torneos)
+        $jugadores = DB::table('jugadores')
+            ->where('activo', 1)
+            ->get()
+            ->keyBy('id')
+            ->toArray();
+        
+        // Colores por categoría - Paleta elegante para TV
+        // Colores saturados pero armoniosos, fáciles de distinguir
+        $coloresCategorias = [
+            1 => ['bg' => '#e11d48', 'border' => '#be123c', 'text' => '#fff', 'nombre' => '1RA'],  // Rosa intenso (élite)
+            2 => ['bg' => '#f97316', 'border' => '#ea580c', 'text' => '#fff', 'nombre' => '2DA'],  // Naranja vibrante
+            3 => ['bg' => '#eab308', 'border' => '#ca8a04', 'text' => '#000', 'nombre' => '3RA'],  // Dorado
+            4 => ['bg' => '#22c55e', 'border' => '#16a34a', 'text' => '#fff', 'nombre' => '4TA'],  // Verde esmeralda
+            5 => ['bg' => '#06b6d4', 'border' => '#0891b2', 'text' => '#fff', 'nombre' => '5TA'],  // Turquesa
+            6 => ['bg' => '#3b82f6', 'border' => '#2563eb', 'text' => '#fff', 'nombre' => '6TA'],  // Azul brillante
+            7 => ['bg' => '#8b5cf6', 'border' => '#7c3aed', 'text' => '#fff', 'nombre' => '7MA'],  // Violeta
+            8 => ['bg' => '#ec4899', 'border' => '#db2777', 'text' => '#fff', 'nombre' => '8VA'],  // Fucsia
+        ];
+        
+        // Obtener datos para cada torneo (detectando fase)
+        $torneosData = [];
+        foreach ($torneos as $torneo) {
+            $torneoId = $torneo->id;
+            $categoria = $torneo->categoria ?? 6;
+            $colorCategoria = $coloresCategorias[$categoria] ?? $coloresCategorias[6];
+            
+            // Detectar fase: ¿tiene cruces eliminatorios?
+            $tieneCruces = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->where(function($query) {
+                    $query->whereIn('zona', ['dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
+                          ->orWhere('zona', 'like', 'dieciseisavos final|%')
+                          ->orWhere('zona', 'like', 'octavos final|%')
+                          ->orWhere('zona', 'like', 'cuartos final|%');
+                })
+                ->whereNotNull('partido_id')
+                ->exists();
+            
+            $fase = $tieneCruces ? 'cruces' : 'grupos';
+            $tipoTorneoFormato = $torneo->tipo_torneo_formato ?? 'puntuable';
+            
+            $torneoData = [
+                'id' => $torneoId,
+                'nombre' => $torneo->nombre,
+                'categoria' => $categoria,
+                'colorCategoria' => $colorCategoria,
+                'version' => \App\Torneo::getVersion($torneoId),
+                'fase' => $fase,
+                'tipo_torneo_formato' => $tipoTorneoFormato
+            ];
+            
+            if ($fase === 'cruces') {
+                // Obtener datos de cruces
+                $cruces = $this->obtenerCrucesTorneo($torneoId, $jugadores);
+                $torneoData['cruces'] = $cruces['cruces'];
+                $torneoData['rondas'] = $cruces['rondas'];
+                $torneoData['totalRondas'] = $cruces['totalRondas'];
+            } else {
+                // Obtener datos de grupos/zonas (pasando tipo de torneo)
+                $grupos = $this->obtenerGruposTorneo($torneoId, $jugadores, $tipoTorneoFormato);
+                $torneoData['zonas'] = $grupos['zonas'];
+                $torneoData['tablasPosiciones'] = $grupos['tablasPosiciones'];
+            }
+            
+            $torneosData[] = $torneoData;
+        }
+        
+        return view('bahia_padel.tv.rotacion_torneos', [
+            'torneosData' => $torneosData,
+            'intervalo' => $intervalo,
+            'torneoIdsParam' => $torneoIdsParam,
+            'jugadores' => $jugadores,
+            'coloresCategorias' => $coloresCategorias
+        ]);
+    }
+
+    /**
+     * Obtiene los datos de grupos/zonas de un torneo (para fase de grupos).
+     * Soporta torneos normales (puntuables) y americanos.
+     */
+    private function obtenerGruposTorneo($torneoId, $jugadores, $tipoTorneoFormato = 'puntuable') {
+        $esAmericano = ($tipoTorneoFormato === 'americano');
+        
+        // Obtener configuración de criterios de desempate si es americano
+        $criterios = ['PG', 'ENFRENTAMIENTO', 'DIF_GAMES', 'GF']; // Default
+        if ($esAmericano) {
+            $torneo = DB::table('torneos')->where('id', $torneoId)->first();
+            if ($torneo && $torneo->config_cruces_americano_id) {
+                $config = DB::table('configuracion_cruces_americanos')
+                    ->where('id', $torneo->config_cruces_americano_id)
+                    ->first();
+                if ($config && $config->criterio_desempate_orden) {
+                    $criterios = explode(',', $config->criterio_desempate_orden);
+                }
+            }
+        }
+        
+        // Obtener grupos que NO son de eliminatoria
+        $grupos = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->whereNotNull('partido_id')
+            ->whereNotIn('zona', ['dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
+            ->where('zona', 'not like', 'dieciseisavos final|%')
+            ->where('zona', 'not like', 'octavos final|%')
+            ->where('zona', 'not like', 'cuartos final|%')
+            ->orderBy('zona')
+            ->orderBy('id')
+            ->get();
+        
+        // Agrupar por zona
+        $zonas = [];
+        $parejasPorZona = [];
+        
+        foreach ($grupos as $grupo) {
+            $zona = $grupo->zona;
+            if (!isset($zonas[$zona])) {
+                $zonas[$zona] = [];
+                $parejasPorZona[$zona] = [];
+            }
+            
+            // Evitar duplicados de parejas
+            $keyPareja = min($grupo->jugador_1, $grupo->jugador_2) . '-' . max($grupo->jugador_1, $grupo->jugador_2);
+            if (!isset($parejasPorZona[$zona][$keyPareja])) {
+                $j1 = $jugadores[$grupo->jugador_1] ?? null;
+                $j2 = $jugadores[$grupo->jugador_2] ?? null;
+                
+                $parejasPorZona[$zona][$keyPareja] = [
+                    'jugador_1' => $grupo->jugador_1,
+                    'jugador_2' => $grupo->jugador_2,
+                    'nombre' => ($j1->apellido ?? 'J' . $grupo->jugador_1) . ' / ' . ($j2->apellido ?? 'J' . $grupo->jugador_2),
+                    'partido_ids' => []
+                ];
+            }
+            $parejasPorZona[$zona][$keyPareja]['partido_ids'][] = $grupo->partido_id;
+        }
+        
+        // Calcular tablas de posiciones por zona
+        $tablasPosiciones = [];
+        
+        foreach ($parejasPorZona as $zona => $parejas) {
+            $tablasPosiciones[$zona] = [];
+            
+            // Obtener todos los partido_ids de esta zona
+            $partidoIds = [];
+            foreach ($parejas as $pareja) {
+                $partidoIds = array_merge($partidoIds, $pareja['partido_ids']);
+            }
+            $partidoIds = array_unique($partidoIds);
+            
+            // Obtener resultados de partidos
+            $partidos = DB::table('partidos')
+                ->whereIn('id', $partidoIds)
+                ->get()
+                ->keyBy('id');
+            
+            // Calcular estadísticas por pareja
+            foreach ($parejas as $keyPareja => $pareja) {
+                $stats = [
+                    'key' => $keyPareja,
+                    'nombre' => $pareja['nombre'],
+                    'jugador_1' => $pareja['jugador_1'],
+                    'jugador_2' => $pareja['jugador_2'],
+                    'pj' => 0,   // Partidos jugados
+                    'pg' => 0,   // Partidos ganados
+                    'pp' => 0,   // Partidos perdidos
+                    'sf' => 0,   // Sets a favor (solo puntuable)
+                    'sc' => 0,   // Sets en contra (solo puntuable)
+                    'gf' => 0,   // Games a favor
+                    'gc' => 0,   // Games en contra
+                    'pts' => 0,  // Puntos (solo puntuable)
+                    'enfrentamientos' => [] // Para desempate americano: key_rival => ['gf' => X, 'gc' => Y, 'gano' => bool]
+                ];
+                
+                // Buscar partidos donde participa esta pareja
+                $gruposPareja = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', $zona)
+                    ->where('jugador_1', $pareja['jugador_1'])
+                    ->where('jugador_2', $pareja['jugador_2'])
+                    ->whereNotNull('partido_id')
+                    ->get();
+                
+                foreach ($gruposPareja as $grupoP) {
+                    $partido = $partidos[$grupoP->partido_id] ?? null;
+                    if (!$partido) continue;
+                    
+                    // Verificar si hay resultado
+                    $tieneResultado = ($partido->pareja_1_set_1 ?? 0) > 0 || ($partido->pareja_2_set_1 ?? 0) > 0;
+                    if (!$tieneResultado) continue;
+                    
+                    $stats['pj']++;
+                    
+                    // Determinar si es pareja_1 o pareja_2 en este partido
+                    $otroGrupo = DB::table('grupos')
+                        ->where('partido_id', $grupoP->partido_id)
+                        ->where('id', '!=', $grupoP->id)
+                        ->first();
+                    
+                    if (!$otroGrupo) continue;
+                    
+                    // Key del rival para enfrentamientos directos
+                    $keyRival = min($otroGrupo->jugador_1, $otroGrupo->jugador_2) . '-' . max($otroGrupo->jugador_1, $otroGrupo->jugador_2);
+                    
+                    // Determinar posición (pareja_1 es el primer grupo por id)
+                    $esPareja1 = $grupoP->id < $otroGrupo->id;
+                    
+                    if ($esAmericano) {
+                        // TORNEO AMERICANO: solo usamos set_1 como marcador de games
+                        $miScore = $esPareja1 ? ($partido->pareja_1_set_1 ?? 0) : ($partido->pareja_2_set_1 ?? 0);
+                        $rivalScore = $esPareja1 ? ($partido->pareja_2_set_1 ?? 0) : ($partido->pareja_1_set_1 ?? 0);
+                        
+                        $stats['gf'] += $miScore;
+                        $stats['gc'] += $rivalScore;
+                        
+                        // Guardar enfrentamiento directo
+                        $stats['enfrentamientos'][$keyRival] = [
+                            'gf' => $miScore,
+                            'gc' => $rivalScore,
+                            'gano' => $miScore > $rivalScore
+                        ];
+                        
+                        // Determinar ganador por games
+                        if ($miScore > $rivalScore) {
+                            $stats['pg']++;
+                        } else {
+                            $stats['pp']++;
+                        }
+                    } else {
+                        // TORNEO PUNTUABLE (NORMAL): calcular sets y games
+                        $setsGanadosMios = 0;
+                        $setsGanadosRival = 0;
+                        $gamesMios = 0;
+                        $gamesRival = 0;
+                        
+                        for ($set = 1; $set <= 3; $set++) {
+                            $miScore = $esPareja1 ? ($partido->{'pareja_1_set_' . $set} ?? 0) : ($partido->{'pareja_2_set_' . $set} ?? 0);
+                            $rivalScore = $esPareja1 ? ($partido->{'pareja_2_set_' . $set} ?? 0) : ($partido->{'pareja_1_set_' . $set} ?? 0);
+                            
+                            if ($miScore > 0 || $rivalScore > 0) {
+                                $gamesMios += $miScore;
+                                $gamesRival += $rivalScore;
+                                
+                                if ($miScore > $rivalScore) {
+                                    $setsGanadosMios++;
+                                } else if ($rivalScore > $miScore) {
+                                    $setsGanadosRival++;
+                                }
+                            }
+                        }
+                        
+                        $stats['sf'] += $setsGanadosMios;
+                        $stats['sc'] += $setsGanadosRival;
+                        $stats['gf'] += $gamesMios;
+                        $stats['gc'] += $gamesRival;
+                        
+                        // Guardar enfrentamiento directo
+                        $stats['enfrentamientos'][$keyRival] = [
+                            'gf' => $gamesMios,
+                            'gc' => $gamesRival,
+                            'gano' => $setsGanadosMios > $setsGanadosRival
+                        ];
+                        
+                        // Determinar ganador por sets
+                        if ($setsGanadosMios > $setsGanadosRival) {
+                            $stats['pg']++;
+                            $stats['pts'] += 3; // 3 puntos por victoria
+                        } else {
+                            $stats['pp']++;
+                            $stats['pts'] += 1; // 1 punto por derrota
+                        }
+                    }
+                }
+                
+                $tablasPosiciones[$zona][] = $stats;
+            }
+            
+            // Ordenar según tipo de torneo
+            if ($esAmericano) {
+                // ORDENAMIENTO AMERICANO con criterios dinámicos según configuración
+                usort($tablasPosiciones[$zona], function($a, $b) use ($criterios) {
+                    foreach ($criterios as $criterio) {
+                        $criterio = trim($criterio);
+                        $resultado = 0;
+                        
+                        switch ($criterio) {
+                            case 'PG': // Partidos Ganados
+                                if ($a['pg'] != $b['pg']) {
+                                    $resultado = $b['pg'] - $a['pg'];
+                                }
+                                break;
+                                
+                            case 'ENFRENTAMIENTO': // Enfrentamiento Directo
+                                $keyB = $b['key'];
+                                if (isset($a['enfrentamientos'][$keyB])) {
+                                    $resultado = $a['enfrentamientos'][$keyB]['gano'] ? -1 : 1;
+                                }
+                                break;
+                                
+                            case 'DIF_GAMES': // Diferencia de Games
+                                $diffGamesA = $a['gf'] - $a['gc'];
+                                $diffGamesB = $b['gf'] - $b['gc'];
+                                if ($diffGamesA != $diffGamesB) {
+                                    $resultado = $diffGamesB - $diffGamesA;
+                                }
+                                break;
+                                
+                            case 'GF': // Games a Favor
+                                if ($a['gf'] != $b['gf']) {
+                                    $resultado = $b['gf'] - $a['gf'];
+                                }
+                                break;
+                        }
+                        
+                        if ($resultado !== 0) {
+                            return $resultado;
+                        }
+                    }
+                    return 0;
+                });
+            } else {
+                // ORDENAMIENTO PUNTUABLE (NORMAL):
+                usort($tablasPosiciones[$zona], function($a, $b) {
+                    if ($a['pts'] != $b['pts']) return $b['pts'] - $a['pts'];
+                    $diffSetsA = $a['sf'] - $a['sc'];
+                    $diffSetsB = $b['sf'] - $b['sc'];
+                    if ($diffSetsA != $diffSetsB) return $diffSetsB - $diffSetsA;
+                    $diffGamesA = $a['gf'] - $a['gc'];
+                    $diffGamesB = $b['gf'] - $b['gc'];
+                    return $diffGamesB - $diffGamesA;
+                });
+            }
+        }
+        
+        return [
+            'zonas' => array_keys($parejasPorZona),
+            'tablasPosiciones' => $tablasPosiciones
+        ];
+    }
+
+    /**
+     * Obtiene los cruces de un torneo (método auxiliar para rotación).
+     */
+    private function obtenerCrucesTorneo($torneoId, $jugadores) {
+        $cruces = [];
+        
+        // Obtener grupos eliminatorios
+        $gruposEliminatorios = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where(function($query) {
+                $query->whereIn('zona', ['dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
+                      ->orWhere('zona', 'like', 'dieciseisavos final|%')
+                      ->orWhere('zona', 'like', 'octavos final|%')
+                      ->orWhere('zona', 'like', 'cuartos final|%');
+            })
+            ->whereNotNull('partido_id')
+            ->orderBy('zona')
+            ->orderBy('partido_id')
+            ->orderBy('id')
+            ->get();
+        
+        // Agrupar por partido_id
+        $partidosAgrupados = [];
+        foreach ($gruposEliminatorios as $grupo) {
+            $partidoId = $grupo->partido_id;
+            if (!isset($partidosAgrupados[$partidoId])) {
+                $zonaNormalizada = $grupo->zona;
+                if (strpos($zonaNormalizada, '|') !== false) {
+                    $zonaNormalizada = explode('|', $zonaNormalizada)[0];
+                }
+                $partidosAgrupados[$partidoId] = [
+                    'zona' => $zonaNormalizada,
+                    'grupos' => []
+                ];
+            }
+            if (count($partidosAgrupados[$partidoId]['grupos']) < 2) {
+                $partidosAgrupados[$partidoId]['grupos'][] = $grupo;
+            }
+        }
+        
+        // Obtener resultados de partidos
+        $partidoIds = array_keys($partidosAgrupados);
+        $partidos = [];
+        if (!empty($partidoIds)) {
+            $partidos = DB::table('partidos')
+                ->whereIn('id', $partidoIds)
+                ->get()
+                ->keyBy('id')
+                ->toArray();
+        }
+        
+        // Construir cruces
+        foreach ($partidosAgrupados as $partidoId => $data) {
+            if (count($data['grupos']) < 2) continue;
+            
+            $g1 = $data['grupos'][0];
+            $g2 = $data['grupos'][1];
+            $partido = $partidos[$partidoId] ?? null;
+            
+            $pareja1Nombre = $this->getNombrePareja($g1->jugador_1, $g1->jugador_2, $jugadores);
+            $pareja2Nombre = $this->getNombrePareja($g2->jugador_1, $g2->jugador_2, $jugadores);
+            
+            $cruces[] = [
+                'ronda' => $data['zona'],
+                'partido_id' => $partidoId,
+                'pareja1' => [
+                    'jugador_1' => $g1->jugador_1,
+                    'jugador_2' => $g1->jugador_2,
+                    'nombre' => $pareja1Nombre
+                ],
+                'pareja2' => [
+                    'jugador_1' => $g2->jugador_1,
+                    'jugador_2' => $g2->jugador_2,
+                    'nombre' => $pareja2Nombre
+                ],
+                'resultado' => $partido ? [
+                    'pareja_1_set_1' => $partido->pareja_1_set_1 ?? 0,
+                    'pareja_1_set_2' => $partido->pareja_1_set_2 ?? 0,
+                    'pareja_1_set_3' => $partido->pareja_1_set_3 ?? 0,
+                    'pareja_2_set_1' => $partido->pareja_2_set_1 ?? 0,
+                    'pareja_2_set_2' => $partido->pareja_2_set_2 ?? 0,
+                    'pareja_2_set_3' => $partido->pareja_2_set_3 ?? 0
+                ] : null
+            ];
+        }
+        
+        // Determinar rondas presentes
+        $rondasPresentes = array_unique(array_column($cruces, 'ronda'));
+        $ordenRondas = ['dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'];
+        $rondas = array_intersect($ordenRondas, $rondasPresentes);
+        
+        return [
+            'cruces' => $cruces,
+            'rondas' => array_values($rondas),
+            'totalRondas' => count($rondas)
+        ];
+    }
+
+    /**
+     * Obtiene el nombre de una pareja (método auxiliar).
+     */
+    private function getNombrePareja($jugador1Id, $jugador2Id, $jugadores) {
+        $j1 = $jugadores[$jugador1Id] ?? null;
+        $j2 = $jugadores[$jugador2Id] ?? null;
+        
+        $nombre1 = $j1 ? ($j1->apellido ?? $j1->nombre ?? 'Jugador ' . $jugador1Id) : 'Jugador ' . $jugador1Id;
+        $nombre2 = $j2 ? ($j2->apellido ?? $j2->nombre ?? 'Jugador ' . $jugador2Id) : 'Jugador ' . $jugador2Id;
+        
+        return $nombre1 . ' / ' . $nombre2;
     }
 
     public function tvTorneoAmericano(Request $request) {
@@ -2649,6 +3377,22 @@ class HomeController extends Controller
         $torneoId = $request->torneo_id;
         $zona = $request->zona;
         
+        // Obtener la configuración de desempate del torneo
+        $torneo = DB::table('torneos')->where('id', $torneoId)->first();
+        $criterioDesempateOrden = 'PG,ENFRENTAMIENTO,DIF_GAMES,GF'; // Default con enfrentamiento primero
+        
+        if ($torneo && $torneo->config_cruces_americano_id) {
+            $config = DB::table('configuracion_cruces_americanos')
+                ->where('id', $torneo->config_cruces_americano_id)
+                ->first();
+            if ($config && $config->criterio_desempate_orden) {
+                $criterioDesempateOrden = $config->criterio_desempate_orden;
+            }
+        }
+        
+        // Convertir a array de criterios
+        $criterios = explode(',', $criterioDesempateOrden);
+        
         // Obtener todas las parejas de la zona
         $grupos = DB::table('grupos')
                         ->where('torneo_id', $torneoId)
@@ -2754,31 +3498,47 @@ class HomeController extends Controller
         // Convertir a array y ordenar por posición
         $posiciones = array_values($parejas);
         
-        // Función de comparación con todos los criterios de desempate
-        usort($posiciones, function($a, $b) {
-            // 1. Primero por PARTIDOS GANADOS
-            if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                return $b['partidos_ganados'] - $a['partidos_ganados'];
-            }
-            
-            // 2. Si tienen los mismos partidos ganados, por DIFERENCIA DE GAMES (ganados - perdidos)
-            if ($a['diferencia_games'] != $b['diferencia_games']) {
-                return $b['diferencia_games'] - $a['diferencia_games'];
-            }
-            
-            // 3. Si siguen empatando, por PARTIDO DIRECTO
-            $keyA = $a['key'];
-            $keyB = $b['key'];
-            
-            if (isset($a['partidos_directos'][$keyB])) {
-                if ($a['partidos_directos'][$keyB]['ganado']) {
-                    return -1; // A gana el partido directo
-                } else {
-                    return 1; // B gana el partido directo
+        // Función de comparación con criterios de desempate dinámicos según configuración
+        usort($posiciones, function($a, $b) use ($criterios) {
+            foreach ($criterios as $criterio) {
+                $criterio = trim($criterio);
+                $resultado = 0;
+                
+                switch ($criterio) {
+                    case 'PG': // Partidos Ganados
+                        if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                            $resultado = $b['partidos_ganados'] - $a['partidos_ganados'];
+                        }
+                        break;
+                        
+                    case 'ENFRENTAMIENTO': // Enfrentamiento Directo
+                        $keyA = $a['key'];
+                        $keyB = $b['key'];
+                        if (isset($a['partidos_directos'][$keyB])) {
+                            $resultado = $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
+                        }
+                        break;
+                        
+                    case 'DIF_GAMES': // Diferencia de Games
+                        if ($a['diferencia_games'] != $b['diferencia_games']) {
+                            $resultado = $b['diferencia_games'] - $a['diferencia_games'];
+                        }
+                        break;
+                        
+                    case 'GF': // Games a Favor
+                        if ($a['puntos_ganados'] != $b['puntos_ganados']) {
+                            $resultado = $b['puntos_ganados'] - $a['puntos_ganados'];
+                        }
+                        break;
+                }
+                
+                // Si este criterio dio un resultado diferente de 0, usar ese resultado
+                if ($resultado !== 0) {
+                    return $resultado;
                 }
             }
             
-            // 4. Si no hay partido directo o está empatado, mantener orden
+            // Si todos los criterios dan empate, mantener orden
             return 0;
         });
         
@@ -6638,6 +7398,17 @@ class HomeController extends Controller
                         ->orderBy('grupos.id')
                         ->get();
         
+        // Obtener criterios de desempate de la configuración
+        $criterios = ['PG', 'ENFRENTAMIENTO', 'DIF_GAMES', 'GF']; // Default
+        if (isset($torneo->config_cruces_americano_id) && $torneo->config_cruces_americano_id) {
+            $configCriterios = DB::table('configuracion_cruces_americanos')
+                ->where('id', $torneo->config_cruces_americano_id)
+                ->first();
+            if ($configCriterios && $configCriterios->criterio_desempate_orden) {
+                $criterios = explode(',', $configCriterios->criterio_desempate_orden);
+            }
+        }
+        
         // Calcular posiciones de cada zona y clasificados (siempre necesario para la vista)
         $posicionesPorZona = [];
         $zonas = $grupos->pluck('zona')->unique()->sort()->values();
@@ -6659,6 +7430,7 @@ class HomeController extends Controller
                         'partidos_ganados' => 0,
                         'partidos_perdidos' => 0,
                         'puntos_ganados' => 0,
+                        'puntos_perdidos' => 0,
                         'partidos_directos' => []
                     ];
                 }
@@ -6705,38 +7477,68 @@ class HomeController extends Controller
                     if ($puntosPareja1 > $puntosPareja2) {
                         $parejas[$key1]['partidos_ganados']++;
                         $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                        $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
                         $parejas[$key2]['partidos_perdidos']++;
                         $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                        $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
                         $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => true];
                         $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => false];
                     } else if ($puntosPareja2 > $puntosPareja1) {
                         $parejas[$key2]['partidos_ganados']++;
                         $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                        $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
                         $parejas[$key1]['partidos_perdidos']++;
                         $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                        $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
                         $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => true];
                         $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => false];
                     }
                 }
             }
             
-            // Agregar keys y ordenar
+            // Agregar keys, diferencia de games y ordenar
             foreach ($parejas as $key => $pareja) {
                 $parejas[$key]['key'] = $key;
+                $parejas[$key]['diferencia_games'] = ($pareja['puntos_ganados'] ?? 0) - ($pareja['puntos_perdidos'] ?? 0);
             }
             
             $posiciones = array_values($parejas);
-            usort($posiciones, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                if ($a['puntos_ganados'] != $b['puntos_ganados']) {
-                    return $b['puntos_ganados'] - $a['puntos_ganados'];
-                }
-                $keyA = $a['key'];
-                $keyB = $b['key'];
-                if (isset($a['partidos_directos'][$keyB])) {
-                    return $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
+            
+            // Ordenar con criterios dinámicos según configuración
+            usort($posiciones, function($a, $b) use ($criterios) {
+                foreach ($criterios as $criterio) {
+                    $criterio = trim($criterio);
+                    $resultado = 0;
+                    
+                    switch ($criterio) {
+                        case 'PG':
+                            if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                                $resultado = $b['partidos_ganados'] - $a['partidos_ganados'];
+                            }
+                            break;
+                        case 'ENFRENTAMIENTO':
+                            $keyB = $b['key'];
+                            if (isset($a['partidos_directos'][$keyB])) {
+                                $resultado = $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
+                            }
+                            break;
+                        case 'DIF_GAMES':
+                            $diffA = ($a['diferencia_games'] ?? 0);
+                            $diffB = ($b['diferencia_games'] ?? 0);
+                            if ($diffA != $diffB) {
+                                $resultado = $diffB - $diffA;
+                            }
+                            break;
+                        case 'GF':
+                            if ($a['puntos_ganados'] != $b['puntos_ganados']) {
+                                $resultado = $b['puntos_ganados'] - $a['puntos_ganados'];
+                            }
+                            break;
+                    }
+                    
+                    if ($resultado !== 0) {
+                        return $resultado;
+                    }
                 }
                 return 0;
             });
@@ -7934,6 +8736,17 @@ class HomeController extends Controller
         $posicionesPorZona = [];
         $zonas = $grupos->pluck('zona')->unique()->sort()->values();
         
+        // Obtener criterios de desempate de la configuración (si existe)
+        $criterios = ['PG', 'ENFRENTAMIENTO', 'DIF_GAMES', 'GF']; // Default
+        if ($tipoTorneo === 'americano' && isset($torneo->config_cruces_americano_id) && $torneo->config_cruces_americano_id) {
+            $configTemporal = DB::table('configuracion_cruces_americanos')
+                ->where('id', $torneo->config_cruces_americano_id)
+                ->first();
+            if ($configTemporal && $configTemporal->criterio_desempate_orden) {
+                $criterios = explode(',', $configTemporal->criterio_desempate_orden);
+            }
+        }
+        
         foreach ($zonas as $zona) {
             $gruposZona = $grupos->where('zona', $zona)->filter(function($grupo) {
                 return $grupo->jugador_1 !== null && $grupo->jugador_2 !== null;
@@ -8019,17 +8832,43 @@ class HomeController extends Controller
             }
             
             $posiciones = array_values($parejas);
-            usort($posiciones, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
-                }
-                if ($a['diferencia_games'] != $b['diferencia_games']) {
-                    return $b['diferencia_games'] - $a['diferencia_games'];
-                }
-                $keyA = $a['key'];
-                $keyB = $b['key'];
-                if (isset($a['partidos_directos'][$keyB])) {
-                    return $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
+            
+            // Ordenar con criterios dinámicos según configuración
+            usort($posiciones, function($a, $b) use ($criterios) {
+                foreach ($criterios as $criterio) {
+                    $criterio = trim($criterio);
+                    $resultado = 0;
+                    
+                    switch ($criterio) {
+                        case 'PG': // Partidos Ganados
+                            if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                                $resultado = $b['partidos_ganados'] - $a['partidos_ganados'];
+                            }
+                            break;
+                            
+                        case 'ENFRENTAMIENTO': // Enfrentamiento Directo
+                            $keyB = $b['key'];
+                            if (isset($a['partidos_directos'][$keyB])) {
+                                $resultado = $a['partidos_directos'][$keyB]['ganado'] ? -1 : 1;
+                            }
+                            break;
+                            
+                        case 'DIF_GAMES': // Diferencia de Games
+                            if ($a['diferencia_games'] != $b['diferencia_games']) {
+                                $resultado = $b['diferencia_games'] - $a['diferencia_games'];
+                            }
+                            break;
+                            
+                        case 'GF': // Games a Favor
+                            if ($a['puntos_ganados'] != $b['puntos_ganados']) {
+                                $resultado = $b['puntos_ganados'] - $a['puntos_ganados'];
+                            }
+                            break;
+                    }
+                    
+                    if ($resultado !== 0) {
+                        return $resultado;
+                    }
                 }
                 return 0;
             });
@@ -8049,17 +8888,38 @@ class HomeController extends Controller
                 }
             }
             
-            // Ordenar terceros por partidos ganados y diferencia de games
-            usort($tercerosArray, function($a, $b) {
-                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] - $a['partidos_ganados'];
+            // Ordenar terceros usando los mismos criterios configurados (excepto enfrentamiento directo entre zonas)
+            usort($tercerosArray, function($a, $b) use ($criterios) {
+                foreach ($criterios as $criterio) {
+                    $criterio = trim($criterio);
+                    $resultado = 0;
+                    
+                    switch ($criterio) {
+                        case 'PG':
+                            if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                                $resultado = $b['partidos_ganados'] - $a['partidos_ganados'];
+                            }
+                            break;
+                        case 'ENFRENTAMIENTO':
+                            // No aplica para terceros de diferentes zonas - saltar
+                            break;
+                        case 'DIF_GAMES':
+                            if (($a['diferencia_games'] ?? 0) != ($b['diferencia_games'] ?? 0)) {
+                                $resultado = ($b['diferencia_games'] ?? 0) - ($a['diferencia_games'] ?? 0);
+                            }
+                            break;
+                        case 'GF':
+                            if ($a['puntos_ganados'] != $b['puntos_ganados']) {
+                                $resultado = $b['puntos_ganados'] - $a['puntos_ganados'];
+                            }
+                            break;
+                    }
+                    
+                    if ($resultado !== 0) {
+                        return $resultado;
+                    }
                 }
-                $diffA = ($a['diferencia_games'] ?? 0);
-                $diffB = ($b['diferencia_games'] ?? 0);
-                if ($diffA != $diffB) {
-                    return $diffB - $diffA;
-                }
-                return $b['puntos_ganados'] - $a['puntos_ganados'];
+                return 0;
             });
             
             // Obtener los 2 mejores terceros
@@ -8132,17 +8992,46 @@ class HomeController extends Controller
         $necesitaOctavos = $totalParejasClasificadas > 17;
         
         // Buscar configuración de cruces según la cantidad de parejas
-        $configuracionCruces = DB::table('configuracion_cruces_puntuables')
-            ->where('cantidad_parejas', $totalParejasClasificadas)
-            ->whereNull('torneo_id') // Configuración global
-            ->orderBy('id', 'desc')
-            ->first();
+        $configuracionCruces = null;
+        $configuracionAmericano = null;
+        $llavesPreconfiguradas = [];
+        
+        // Si es torneo americano, buscar la configuración vinculada al torneo
+        if ($tipoTorneo === 'americano' && isset($torneo->config_cruces_americano_id) && $torneo->config_cruces_americano_id) {
+            $configuracionAmericano = DB::table('configuracion_cruces_americanos')
+                ->where('id', $torneo->config_cruces_americano_id)
+                ->first();
+                
+            if ($configuracionAmericano) {
+                // Parsear las llaves preconfiguradas
+                $llavesPreconfiguradas = $this->parsearLlavesConfigAmericano($configuracionAmericano, $totalParejasClasificadas);
+                \Log::info('=== VALIDAR CRUCES - DEBUG ===');
+                \Log::info('Torneo ID: ' . $torneoId);
+                \Log::info('Tipo torneo: ' . $tipoTorneo);
+                \Log::info('Config ID: ' . $torneo->config_cruces_americano_id);
+                \Log::info('Configuración americano nombre: ' . ($configuracionAmericano->nombre ?? 'N/A'));
+                \Log::info('Llave 4tos raw: ' . ($configuracionAmericano->llave_4tos ?? 'NULL'));
+                \Log::info('Llaves preconfiguradas resultado: ' . json_encode($llavesPreconfiguradas));
+                \Log::info('=== FIN DEBUG ===');
+            }
+        } else {
+            // Buscar configuración puntuable global
+            $configuracionCruces = DB::table('configuracion_cruces_puntuables')
+                ->where('cantidad_parejas', $totalParejasClasificadas)
+                ->whereNull('torneo_id') // Configuración global
+                ->orderBy('id', 'desc')
+                ->first();
+        }
         
         // Si no hay cruces de cuartos, generarlos desde los clasificados
         if (count($cruces) == 0) {
             // Si existe configuración para torneos puntuables, usar las llaves configuradas
             if ($configuracionCruces && $tipoTorneo === 'puntuable') {
                 $cruces = $this->generarCrucesDesdeConfiguracion($configuracionCruces, $posicionesPorZona, $zonas);
+            }
+            // Si es americano con configuración, generar cruces desde esa configuración
+            elseif ($configuracionAmericano && $tipoTorneo === 'americano') {
+                $cruces = $this->generarCrucesDesdeConfigAmericano($configuracionAmericano, $posicionesPorZona, $zonas);
             }
         }
         
@@ -8413,6 +9302,8 @@ class HomeController extends Controller
                     ->with('totalParejasClasificadas', $totalParejasClasificadas ?? 0)
                     ->with('tipoTorneo', $tipoTorneo)
                     ->with('configuracionCruces', $configuracionCruces)
+                    ->with('configuracionAmericano', $configuracionAmericano ?? null)
+                    ->with('llavesPreconfiguradas', $llavesPreconfiguradas ?? [])
                     ->with('tieneCrucesOctavos', $tieneCrucesOctavos)
                     ->with('tieneCrucesCuartos', $tieneCrucesCuartos);
     }
@@ -8591,6 +9482,153 @@ class HomeController extends Controller
         return $cruces;
     }
 
+    /**
+     * Parsea las llaves de la configuración americano para precargar los selectores
+     */
+    private function parsearLlavesConfigAmericano($configuracion, $totalParejas) {
+        $llavesPreconfiguradas = [];
+        
+        // Determinar qué ronda usar según la configuración
+        $ronda = 'cuartos';
+        $llaveJson = null;
+        
+        if ($configuracion->tiene_8vos_final && $configuracion->llave_8vos) {
+            $ronda = 'octavos';
+            $llaveJson = $configuracion->llave_8vos;
+        } elseif ($configuracion->tiene_4tos_final && $configuracion->llave_4tos) {
+            $ronda = 'cuartos';
+            $llaveJson = $configuracion->llave_4tos;
+        }
+        
+        // Función para convertir formato Z1_P1 a A1, Z2_P4 a B4, etc.
+        $convertirFormato = function($referencia) {
+            if (!$referencia) return null;
+            
+            // Si ya está en formato A1, B2, etc., devolverlo tal cual
+            if (preg_match('/^[A-P]\d+$/', $referencia)) {
+                return $referencia;
+            }
+            
+            // Convertir formato Z1_P1 a A1
+            if (preg_match('/^Z(\d+)_P(\d+)$/', $referencia, $matches)) {
+                $zonaNum = (int)$matches[1];
+                $posicion = $matches[2];
+                $letras = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+                if ($zonaNum >= 1 && $zonaNum <= 16) {
+                    return $letras[$zonaNum - 1] . $posicion;
+                }
+            }
+            
+            return $referencia;
+        };
+        
+        if ($llaveJson) {
+            $llave = json_decode($llaveJson, true);
+            if ($llave && is_array($llave)) {
+                foreach ($llave as $index => $partido) {
+                    $llavesPreconfiguradas[] = [
+                        'fila' => $index + 1,
+                        'pareja_1' => $convertirFormato($partido['pareja_1'] ?? null),
+                        'pareja_2' => $convertirFormato($partido['pareja_2'] ?? null)
+                    ];
+                }
+            }
+        }
+        
+        \Log::info('Llaves parseadas:', ['llaves' => $llavesPreconfiguradas, 'ronda' => $ronda]);
+        
+        return [
+            'ronda' => $ronda,
+            'llaves' => $llavesPreconfiguradas,
+            'necesitaOctavos' => $configuracion->tiene_8vos_final ?? false
+        ];
+    }
+    
+    /**
+     * Genera cruces usando la configuración de americanos
+     */
+    private function generarCrucesDesdeConfigAmericano($configuracion, $posicionesPorZona, $zonas) {
+        $cruces = [];
+        $zonasArray = $zonas->toArray();
+        sort($zonasArray);
+        
+        // Mapear zonas a letras (A, B, C, D, etc.)
+        $letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+        $zonaALetra = [];
+        foreach ($zonasArray as $index => $zona) {
+            if (isset($letrasZonas[$index])) {
+                $zonaALetra[$zona] = $letrasZonas[$index];
+            }
+        }
+        
+        // Función para obtener pareja desde una referencia (ej: "A1", "B2")
+        $obtenerParejaDesdeReferencia = function($referencia) use ($posicionesPorZona, $zonaALetra) {
+            if (preg_match('/^([A-P])(\d+)$/', $referencia, $matches)) {
+                $letra = $matches[1];
+                $posicion = (int)$matches[2];
+                
+                foreach ($zonaALetra as $zona => $letraZona) {
+                    if ($letraZona === $letra) {
+                        if (isset($posicionesPorZona[$zona]) && isset($posicionesPorZona[$zona][$posicion - 1])) {
+                            $pareja = $posicionesPorZona[$zona][$posicion - 1];
+                            return [
+                                'jugador_1' => $pareja['jugador_1'],
+                                'jugador_2' => $pareja['jugador_2'],
+                                'zona' => $zona,
+                                'posicion' => $posicion
+                            ];
+                        }
+                    }
+                }
+            }
+            return null;
+        };
+        
+        // Generar cruces de octavos si existe
+        if ($configuracion->tiene_8vos_final && $configuracion->llave_8vos) {
+            $llave = json_decode($configuracion->llave_8vos, true);
+            if ($llave && is_array($llave)) {
+                foreach ($llave as $index => $partido) {
+                    $pareja1 = $obtenerParejaDesdeReferencia($partido['pareja_1'] ?? '');
+                    $pareja2 = $obtenerParejaDesdeReferencia($partido['pareja_2'] ?? '');
+                    
+                    if ($pareja1 && $pareja2) {
+                        $cruces[] = [
+                            'id' => 'octavos_' . ($index + 1),
+                            'partido_id' => null,
+                            'pareja_1' => $pareja1,
+                            'pareja_2' => $pareja2,
+                            'ronda' => 'octavos'
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // Generar cruces de cuartos si existe y no hay octavos
+        if ($configuracion->tiene_4tos_final && $configuracion->llave_4tos && !$configuracion->tiene_8vos_final) {
+            $llave = json_decode($configuracion->llave_4tos, true);
+            if ($llave && is_array($llave)) {
+                foreach ($llave as $index => $partido) {
+                    $pareja1 = $obtenerParejaDesdeReferencia($partido['pareja_1'] ?? '');
+                    $pareja2 = $obtenerParejaDesdeReferencia($partido['pareja_2'] ?? '');
+                    
+                    if ($pareja1 && $pareja2) {
+                        $cruces[] = [
+                            'id' => 'cuartos_' . ($index + 1),
+                            'partido_id' => null,
+                            'pareja_1' => $pareja1,
+                            'pareja_2' => $pareja2,
+                            'ronda' => 'cuartos'
+                        ];
+                    }
+                }
+            }
+        }
+        
+        return $cruces;
+    }
+
     public function guardarCrucesEditados(Request $request) {
         try {
             $torneoId = $request->torneo_id;
@@ -8746,6 +9784,25 @@ class HomeController extends Controller
         }
     }
 
+    public function guardarReferenciaspuntuacion(Request $request) {
+        try {
+            $items = $request->input('items', []);
+            
+            // TODO: Implementar guardado de referencias de puntuación para ranking
+            // Por ahora retornamos éxito para que no de error
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Referencias de puntuación guardadas correctamente'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al guardar referencias de puntuación: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
 
 

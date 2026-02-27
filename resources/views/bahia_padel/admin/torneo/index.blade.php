@@ -38,6 +38,14 @@
             background-color: #28a745 !important;
             color: white;
         }
+        .btn-info.btn-grande {
+            border-color: #17a2b8;
+            color: #17a2b8;
+        }
+        .btn-info.btn-grande:hover {
+            background-color: #17a2b8 !important;
+            color: white;
+        }
         #seccion_seleccionar_torneo {
             scrollbar-width: thin;
             scrollbar-color: #4e73df #f8f9fc;
@@ -76,6 +84,9 @@
             <button type="button" class="btn btn-success btn-grande" onclick="mostrarSeleccionarTorneo()">
                 Seleccionar Torneo
             </button>
+            <a href="{{ route('tvtorneoshoy') }}" target="_blank" class="btn btn-info btn-grande" style="border-color: #17a2b8; color: #17a2b8;">
+                <i class="fas fa-tv"></i> TV Torneos de Hoy
+            </a>
         </div>
     </div>
 

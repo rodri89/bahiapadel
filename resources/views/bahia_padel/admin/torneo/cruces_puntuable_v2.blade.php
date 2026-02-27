@@ -53,6 +53,9 @@
                         <a href="{{ route('tvtorneoamericanocruces') }}?torneo_id={{ $torneo->id }}" target="_blank" class="btn btn-primary">
                             <i class="fa fa-desktop"></i> TV
                         </a>
+                        <a href="{{ route('tvtorneosrotacion') }}?torneos={{ $torneo->id }}&intervalo=60" target="_blank" class="btn btn-info">
+                            <i class="fa fa-tv"></i> Rotación
+                        </a>
                     </div>
                 </div>
                 <input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">

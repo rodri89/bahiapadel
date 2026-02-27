@@ -29,6 +29,10 @@ Route::post("/tv_torneo_americano_actualizar", "HomeController@tvTorneoAmericano
 Route::post("/tv_torneo_americano_cruces_actualizar", "HomeController@tvTorneoAmericanoCrucesActualizar")->name("tvtorneoamericanocrucesactualizar");
 Route::post("/tv_torneo_americano_sorteo_actualizar", "HomeController@tvTorneoAmericanoSorteoActualizar")->name("tvtorneoamericanosorteoactualizar");
 Route::get("/tv_torneo_version", "HomeController@tvTorneoVersion")->name("tvtorneoversion");
+Route::get("/tv_torneos_rotacion", "HomeController@tvTorneosRotacion")->name("tvtorneosrotacion");
+Route::get("/tv_torneos_versiones", "HomeController@tvTorneosVersiones")->name("tvtorneosversiones");
+Route::get("/tv_torneos_hoy", "HomeController@tvTorneosHoy")->name("tvtorneoshoy");
+Route::get("/tv_torneos_diagnostico", "HomeController@tvTorneosDiagnostico")->name("tvtorneosdiagnostico");
 
 // ################################# estas rutas debo tocar para volver al mantenimiento ################
 /*Route::get('/home_test', function () {	
@@ -76,6 +80,10 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('generar_datos_prueba_torneo','HomeController@generarDatosPruebaTorneo')->name('generardatospruebatorneo');
 	Route::get('admin_config','HomeController@adminConfig')->name('adminconfig');
 	Route::post('admin_config_guardar','HomeController@guardarConfigCruces')->name('adminconfigguardar');
+	Route::get('admin_config_americano','HomeController@adminConfigAmericano')->name('adminconfigamericano');
+	Route::post('admin_config_americano_guardar','HomeController@guardarConfigCrucesAmericano')->name('adminconfigamericanoguardar');
+	Route::post('admin_config_americano_eliminar','HomeController@eliminarConfigCrucesAmericano')->name('adminconfigamericanoeliminar');
+	Route::post('admin_config_americano_get','HomeController@getConfigCrucesAmericano')->name('adminconfigamericanoget');
 	Route::post('/registrar_torneo_admin', 'HomeController@registrarTorneo')->name('registrartorneoadmin');
 	Route::post('/get_torneos', 'HomeController@getTorneos')->name('gettorneos');
 	Route::post('/admin_torneo_selected', 'HomeController@adminTorneoSelected')->name('admintorneoselected');	
@@ -105,11 +113,11 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('/crear_cuartos_desde_octavos', 'HomeController@crearCuartosDesdeOctavos')->name('crearcuartosdesdeoctavos');
 	Route::get('/admin_torneo_puntuable_cruces', 'PuntuableController@adminTorneoPuntuableCruces')->name('admintorneopuntuablecruces');
 	Route::get('/admin_torneo_puntuable_cruces_v2', 'PuntuableController@adminTorneoPuntuableCrucesV2')->name('admintorneopuntuablecrucesv2');
-	Route::get('/obtener_participantes_torneo_puntuable', 'PuntuableController@getParticipantesTorneoPuntuable')->name('obtenerparticipantestorneopuntuable');
-	Route::post('/guardar_puntos_ranking_torneo', 'PuntuableController@guardarPuntosRankingTorneo')->name('guardarpuntosrankingtorneo');
 	Route::post('/guardar_resultado_cruce_puntuable', 'PuntuableController@guardarResultadoCrucePuntuable')->name('guardarresultadocrucepuntuable');
 	Route::post('/guardar_resultado_partido_puntuable', 'PuntuableController@guardarResultadoPartidoPuntuable')->name('guardarresultadopartidopuntuable');
-	Route::post('/crear_cuartos_desde_octavos', 'PuntuableController@crearCuartosDesdeOctavosEndpoint')->name('crearcuartosdesdeoctavos');	
+	Route::post('/crear_cuartos_desde_octavos', 'PuntuableController@crearCuartosDesdeOctavosEndpoint')->name('crearcuartosdesdeoctavos');
+	Route::get('/obtener_participantes_torneo_puntuable', 'PuntuableController@obtenerParticipantesTorneoPuntuable')->name('obtenerparticipantestorneopuntuable');
+	Route::post('/guardar_puntos_ranking_torneo', 'PuntuableController@guardarPuntosRankingTorneo')->name('guardarpuntosrankingtorneo');	
 	
 
 

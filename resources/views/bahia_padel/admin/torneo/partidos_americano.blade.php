@@ -53,6 +53,9 @@
                      <a href="{{ route('tvtorneoamericano') }}?torneo_id={{ $torneo->id }}" target="_blank" class="btn btn-primary">
                         <i class="fa fa-desktop"></i> Abrir Pantalla TV Zonas
                     </a>
+                    <a href="{{ route('tvtorneosrotacion') }}?torneos={{ $torneo->id }}&intervalo=60" target="_blank" class="btn btn-info">
+                        <i class="fa fa-tv"></i> TV Rotación
+                    </a>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center">

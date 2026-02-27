@@ -38,12 +38,33 @@
                         <!-- Las parejas se mostrarán aquí -->
                     </div>
                 </div>
-                <div class="row align-items-end">
+                <div class="row align-items-end mb-3">
                     <div class="col-md-3">
                         <label for="cantidad_grupos" class="form-label">Cantidad de Grupos</label>
                         <input type="number" class="form-control form-control-lg" id="cantidad_grupos" min="1" max="20" value="1">
                     </div>
+                    <div class="col-md-6">
+                        <label for="config_cruces_americano" class="form-label">Configuración de Cruces</label>
+                        <select class="form-control form-control-lg" id="config_cruces_americano" name="config_cruces_americano">
+                            <option value="">-- Seleccionar configuración --</option>
+                            @if(isset($configsCrucesAmericanos) && count($configsCrucesAmericanos) > 0)
+                                @foreach($configsCrucesAmericanos as $config)
+                                    <option value="{{ $config->id }}" 
+                                        data-parejas="{{ $config->cantidad_parejas }}"
+                                        data-zonas="{{ $config->cantidad_zonas }}"
+                                        @if(isset($torneo) && $torneo->config_cruces_americano_id == $config->id) selected @endif>
+                                        {{ $config->nombre ?? $config->cantidad_parejas . ' parejas' }} 
+                                        ({{ $config->cantidad_zonas }} zonas, 
+                                        {{ $config->clasifican_primeros }}° + {{ $config->clasifican_segundos }} 2°
+                                        @if($config->clasifican_terceros > 0) + {{ $config->clasifican_terceros }} mejores 3° @endif)
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <small class="text-muted">Define cómo se arman los cruces al finalizar los grupos. <a href="{{ route('adminconfigamericano') }}" target="_blank">Crear nueva</a></small>
+                    </div>
                     <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
                         <button type="button" class="btn btn-warning btn-lg w-100" id="btn-guardar-borrador-inicial" disabled>
                             <i class="fa fa-save"></i> Guardar como Borrador
                         </button>
@@ -551,7 +572,8 @@
         
         let datos = {
             torneo_id: torneoId,
-            grupos: []
+            grupos: [],
+            config_cruces_americano_id: $('#config_cruces_americano').val() || null
         };
         
         gruposCreados.forEach(function(grupo) {
@@ -756,7 +778,8 @@
         let datos = {
             torneo_id: torneoId,
             grupos: gruposParaGuardar,
-            es_borrador: esBorrador ? 1 : 0
+            es_borrador: esBorrador ? 1 : 0,
+            config_cruces_americano_id: $('#config_cruces_americano').val() || null
         };
         
         $.ajax({
@@ -832,7 +855,8 @@
         // Primero guardar los grupos (siempre, sin preguntar)
         let datos = {
             torneo_id: torneoId,
-            grupos: []
+            grupos: [],
+            config_cruces_americano_id: $('#config_cruces_americano').val() || null
         };
         
         gruposCreados.forEach(function(grupo) {
@@ -889,5 +913,47 @@
             }
         });
     });
+    
+    // Cuando se selecciona una configuración, ajustar automáticamente la cantidad de grupos
+    $('#config_cruces_americano').on('change', function() {
+        let selectedOption = $(this).find('option:selected');
+        let zonas = selectedOption.data('zonas');
+        if (zonas) {
+            $('#cantidad_grupos').val(zonas);
+        }
+    });
+    
+    // Función para sugerir configuración según cantidad de parejas
+    function sugerirConfiguracion() {
+        let cantidadParejas = parejasLista.length;
+        let select = $('#config_cruces_americano');
+        let mejorMatch = null;
+        let mejorDiferencia = Infinity;
+        
+        select.find('option').each(function() {
+            let parejasConfig = $(this).data('parejas');
+            if (parejasConfig) {
+                let diferencia = Math.abs(cantidadParejas - parejasConfig);
+                if (diferencia < mejorDiferencia || (diferencia === mejorDiferencia && parejasConfig >= cantidadParejas)) {
+                    mejorDiferencia = diferencia;
+                    mejorMatch = $(this).val();
+                }
+            }
+        });
+        
+        if (mejorMatch && !select.val()) {
+            select.val(mejorMatch).trigger('change');
+        }
+    }
+    
+    // Al actualizar la lista de parejas, sugerir configuración
+    let originalActualizarListaParejas = actualizarListaParejas;
+    actualizarListaParejas = function() {
+        originalActualizarListaParejas();
+        // Sugerir configuración si hay al menos 4 parejas
+        if (parejasLista.length >= 4) {
+            sugerirConfiguracion();
+        }
+    };
 </script>
 @endsection
