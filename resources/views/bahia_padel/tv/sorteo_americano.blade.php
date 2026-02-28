@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Bahia Padel - Sorteo TV</title>
-    <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
+    <!-- Minimal CSS, evitando conflictos con frameworks externos -->
     <style>
         * { box-sizing: border-box; }
         
@@ -169,8 +169,32 @@
             text-decoration: none;
         }
     </style>
+    <!-- Mensaje para navegadores sin JavaScript -->
+    <noscript>
+        <style>
+            .noscript-warning {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: #1a1a1a;
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 3vh;
+                text-align: center;
+                padding: 5vh;
+            }
+        </style>
+        <div class="noscript-warning">
+            JavaScript está deshabilitado. El navegador de esta TV no soporta la aplicación.<br>
+            Intente usar otro dispositivo o navegador.
+        </div>
+    </noscript>
 </head>
-<body class="dark-mode">
+<body>
     <input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">
     
     <a href="{{ route('tvtorneoamericano') }}?torneo_id={{ $torneo->id ?? 0 }}" class="btn-navegar">></a>
@@ -241,8 +265,14 @@
         @endif
     </div>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Usar jQuery local en vez de CDN (las Smart TVs tienen problemas con CDNs externos) -->
+    <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
     <script>
+        // Verificar que jQuery se cargó correctamente
+        if (typeof jQuery === 'undefined') {
+            document.body.innerHTML = '<div style="color:red;padding:20px;font-size:24px;">Error: No se pudo cargar jQuery. Verifica la conexión.</div>';
+        }
+        
         $(document).ready(function() {
             const torneoId = {{ $torneo->id ?? 0 }};
             let jugadores = @json($jugadores ?? []);

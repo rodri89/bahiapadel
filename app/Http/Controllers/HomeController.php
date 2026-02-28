@@ -1889,6 +1889,9 @@ class HomeController extends Controller
             }
         }
         
+        // Incrementar la versión del torneo para notificar a las pantallas TV
+        \App\Torneo::incrementarVersion($torneoId);
+        
         // Si es borrador, actualizar el estado del torneo (si existe un campo para esto)
         // Por ahora, solo retornamos un mensaje diferente
         $mensaje = $esBorrador 
