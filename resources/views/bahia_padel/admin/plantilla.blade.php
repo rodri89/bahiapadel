@@ -99,6 +99,13 @@
             <span>Config</span></a>
       </li>
 
+      <li class="nav-item">
+          <a class="nav-link" href="{{ route('sponsors.index') }}">
+            <i class="fas fa-fw fa-ad"></i>
+            <span>Sponsors</span></a>
+      </li>
+
+
       <hr class="sidebar-divider my-0"><br>
 
       <!-- Heading -->

@@ -46,6 +46,14 @@
             background-color: #17a2b8 !important;
             color: white;
         }
+        .btn-warning.btn-grande {
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+        .btn-warning.btn-grande:hover {
+            background-color: #f59e0b !important;
+            color: #0b1320;
+        }
         #seccion_seleccionar_torneo {
             scrollbar-width: thin;
             scrollbar-color: #4e73df #f8f9fc;
@@ -86,6 +94,9 @@
             </button>
             <a href="{{ route('tvtorneoshoy') }}" target="_blank" class="btn btn-info btn-grande" style="border-color: #17a2b8; color: #17a2b8;">
                 <i class="fas fa-tv"></i> TV Torneos de Hoy
+            </a>
+            <a href="{{ route('tvtorneospuntuableszonas') }}" target="_blank" class="btn btn-warning btn-grande" style="border-color: #f59e0b; color: #f59e0b;">
+                <i class="fas fa-tv"></i> TV Zonas Puntuables (Hoy)
             </a>
         </div>
     </div>
