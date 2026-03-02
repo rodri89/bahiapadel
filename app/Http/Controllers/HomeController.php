@@ -4183,6 +4183,21 @@ class HomeController extends Controller
                 $this->crearFinalPuntuable($grupo->torneo_id);
             }
         }
+
+        // Torneo puntuable: al guardar resultado de fase de grupos, rellenar cruces (A1, B2, etc.) si alguna zona quedó completa
+        if ($grupo && $grupo->torneo_id) {
+            $torneo = DB::table('torneos')->where('id', $grupo->torneo_id)->first();
+            if ($torneo && ($torneo->tipo_torneo_formato ?? 'puntuable') === 'puntuable') {
+                $zonasEliminatorias = ['cuartos final', 'semifinal', 'final', 'octavos final', '16avos final'];
+                if (!in_array($grupo->zona, $zonasEliminatorias)) {
+                    try {
+                        app(\App\Http\Controllers\PuntuableController::class)->rellenarCrucesDesdeZonasCompletasPorTorneo($grupo->torneo_id);
+                    } catch (\Exception $e) {
+                        \Log::warning('rellenarCrucesDesdeZonasCompletas: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
         
         // Si es una zona de 4 parejas eliminatoria, actualizar partidos de Ganador y Perdedor
         $recargar = false;

@@ -124,6 +124,7 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('/admin_torneo_puntuable_cruces_v2', 'PuntuableController@adminTorneoPuntuableCrucesV2')->name('admintorneopuntuablecrucesv2');
 	Route::post('/guardar_resultado_cruce_puntuable', 'PuntuableController@guardarResultadoCrucePuntuable')->name('guardarresultadocrucepuntuable');
 	Route::post('/guardar_resultado_partido_puntuable', 'PuntuableController@guardarResultadoPartidoPuntuable')->name('guardarresultadopartidopuntuable');
+	Route::post('/comenzar_torneo_puntuable', 'PuntuableController@comenzarTorneoPuntuable')->name('comenzartorneopuntuable');
 	Route::post('/crear_cuartos_desde_octavos', 'PuntuableController@crearCuartosDesdeOctavosEndpoint')->name('crearcuartosdesdeoctavos');
 	Route::get('/obtener_participantes_torneo_puntuable', 'PuntuableController@obtenerParticipantesTorneoPuntuable')->name('obtenerparticipantestorneopuntuable');
 	Route::post('/guardar_puntos_ranking_torneo', 'PuntuableController@guardarPuntosRankingTorneo')->name('guardarpuntosrankingtorneo');	
