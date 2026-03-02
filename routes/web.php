@@ -30,6 +30,7 @@ Route::post("/tv_torneo_americano_cruces_actualizar", "HomeController@tvTorneoAm
 Route::post("/tv_torneo_americano_sorteo_actualizar", "HomeController@tvTorneoAmericanoSorteoActualizar")->name("tvtorneoamericanosorteoactualizar");
 Route::get("/tv_torneo_version", "HomeController@tvTorneoVersion")->name("tvtorneoversion");
 Route::get("/tv_torneos_rotacion", "HomeController@tvTorneosRotacion")->name("tvtorneosrotacion");
+Route::get("/tv_torneos_puntuables_zonas", "HomeController@tvTorneosPuntuablesZonas")->name("tvtorneospuntuableszonas");
 Route::get("/tv_torneos_versiones", "HomeController@tvTorneosVersiones")->name("tvtorneosversiones");
 Route::get("/tv_torneos_hoy", "HomeController@tvTorneosHoy")->name("tvtorneoshoy");
 Route::get("/tv_torneos_diagnostico", "HomeController@tvTorneosDiagnostico")->name("tvtorneosdiagnostico");
@@ -97,6 +98,10 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('/get_torneos', 'HomeController@getTorneos')->name('gettorneos');
 	Route::post('/admin_torneo_selected', 'HomeController@adminTorneoSelected')->name('admintorneoselected');	
 	Route::post('/admin_crear_jugador', 'HomeController@adminCrearJugador')->name('admincrearjugador');
+
+	// Rutas para Sponsors
+	Route::resource('admin_sponsors', 'SponsorController', ['names' => 'sponsors']);
+
 	Route::post('/admin_editar_jugador', 'HomeController@adminEditarJugador')->name('admineditarjugador');
 	Route::get('/get_jugadores_home', 'HomeController@getJugadores')->name('getjugadoreshome');
 	Route::post('/admin_eliminar_jugador', 'HomeController@adminEliminarJugador')->name('admineliminarjugador');	
