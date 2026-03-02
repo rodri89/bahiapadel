@@ -830,6 +830,95 @@ class PuntuableController extends Controller
     }
 
     /**
+     * Marca el torneo puntuable como "en progreso" (estado = 2)
+     * y crea todos los partidos de cruces (16avos/8vos/4tos/semis/final) en base a la configuración.
+     *
+     * Importante: los partidos se crean con jugadores = 0 y se guarda en cada fila de grupo
+     * la referencia de configuración (A1, H2, G1-8vos, G1-4tos, etc.) en el campo referencia_config.
+     * Más adelante, a medida que avancen los cruces, se irán reemplazando estas referencias por jugadores reales.
+     */
+    public function comenzarTorneoPuntuable(Request $request)
+    {
+        $torneoId = $request->get('torneo_id');
+
+        if (!$torneoId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'torneo_id requerido'
+            ], 400);
+        }
+
+        try {
+            // Verificar torneo
+            $torneo = DB::table('torneos')->where('id', $torneoId)->first();
+            if (!$torneo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Torneo no encontrado'
+                ], 404);
+            }
+
+            // Solo aplica a torneos puntuables
+            $tipoTorneoFormato = $torneo->tipo_torneo_formato ?? 'puntuable';
+            if ($tipoTorneoFormato !== 'puntuable') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El torneo no es de tipo puntuable'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Actualizar estado del torneo a "en progreso"
+            DB::table('torneos')
+                ->where('id', $torneoId)
+                ->update(['estado' => 2]);
+
+            // Buscar configuración específica del torneo (última versión)
+            $config = DB::table('configuracion_cruces_puntuables')
+                ->where('torneo_id', $torneoId)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            // Si no hay configuración específica, intentar usar una configuración global por defecto
+            if (!$config) {
+                $config = DB::table('configuracion_cruces_puntuables')
+                    ->whereNull('torneo_id')
+                    ->orderBy('cantidad_parejas', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first();
+            }
+
+            if ($config) {
+                // Intentar crear todos los partidos de 16avos/8vos/4tos/semis/final.
+                // El método interno se encarga de no duplicar si ya existen para ese torneo/zona/referencias.
+                $this->crearPartidosEliminatoriosDesdeConfiguracion($torneoId, $config);
+            }
+
+            // Incrementar versión del torneo para notificar a vistas TV (si el método existe)
+            if (class_exists(\App\Torneo::class) && method_exists(\App\Torneo::class, 'incrementarVersion')) {
+                \App\Torneo::incrementarVersion($torneoId);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Torneo comenzado correctamente'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error en comenzarTorneoPuntuable: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al comenzar el torneo'
+            ], 500);
+        }
+    }
+    
+    /**
      * GET: Participantes del torneo puntuable (jugadores que aparecen en grupos) y referencias de puntos.
      * Calcula automáticamente posición (campeón, sub, 3º/4º, cuartos, octavos, 16avos, no clasificados) según resultados del cuadro
      * y ordena la lista por esa posición.
@@ -2550,6 +2639,272 @@ class PuntuableController extends Controller
     }
 
     /**
+     * Crea todos los partidos eliminatorios (16avos, octavos, cuartos, semifinales, final)
+     * usando directamente la configuración de cruces (sin resolver aún las letras a jugadores reales).
+     *
+     * Para cada partido se crea un registro en la tabla partidos y dos filas en grupos con:
+     *  - jugador_1 = 0, jugador_2 = 0 (placeholder sin asignar)
+     *  - zona = '16avos final' | 'octavos final' | 'cuartos final' | 'semifinal' | 'final'
+     *  - referencia_config = texto de la configuración (A1, H2, G1-8vos, G1-4tos, etc.)
+     */
+    private function crearPartidosEliminatoriosDesdeConfiguracion($torneoId, $config)
+    {
+        // 16avos
+        if (!empty($config->tiene_16avos_final) && !empty($config->llave_16avos)) {
+            $llave = json_decode($config->llave_16avos, true);
+            if (is_array($llave)) {
+                foreach ($llave as $partidoCfg) {
+                    $this->crearPartidoEliminatorioDesdeReferencias($torneoId, '16avos', $partidoCfg);
+                }
+            }
+        }
+
+        // Octavos
+        if (!empty($config->tiene_8vos_final) && !empty($config->llave_8vos)) {
+            $llave = json_decode($config->llave_8vos, true);
+            if (is_array($llave)) {
+                foreach ($llave as $partidoCfg) {
+                    $this->crearPartidoEliminatorioDesdeReferencias($torneoId, 'octavos', $partidoCfg);
+                }
+            }
+        }
+
+        // Cuartos (crear si existe llave_4tos, sin depender del checkbox tiene_4tos_final)
+        if (!empty($config->llave_4tos)) {
+            $llave = json_decode($config->llave_4tos, true);
+            if (is_array($llave)) {
+                foreach ($llave as $partidoCfg) {
+                    $this->crearPartidoEliminatorioDesdeReferencias($torneoId, 'cuartos', $partidoCfg);
+                }
+            }
+        }
+
+        // Semifinales
+        if (!empty($config->llave_semifinal)) {
+            $llave = json_decode($config->llave_semifinal, true);
+            if (is_array($llave)) {
+                foreach ($llave as $partidoCfg) {
+                    $this->crearPartidoEliminatorioDesdeReferencias($torneoId, 'semifinales', $partidoCfg);
+                }
+            }
+        }
+
+        // Final
+        if (!empty($config->llave_final)) {
+            $llave = json_decode($config->llave_final, true);
+            if (is_array($llave)) {
+                foreach ($llave as $partidoCfg) {
+                    $this->crearPartidoEliminatorioDesdeReferencias($torneoId, 'final', $partidoCfg);
+                }
+            }
+        }
+
+        // Una vez creados todos los placeholders, intentar rellenar con las parejas reales
+        // para las referencias directas de zona (A1, B2, etc.) de las zonas que ya estén completas.
+        $this->rellenarGruposEliminatoriosDesdeZonasCompletas($torneoId);
+    }
+
+    /**
+     * Público: rellena los cruces eliminatorios (A1, B2, etc.) cuando alguna zona de grupos quedó completa.
+     * Llamado desde HomeController al guardar un resultado de fase de grupos en torneo puntuable.
+     */
+    public function rellenarCrucesDesdeZonasCompletasPorTorneo($torneoId)
+    {
+        $this->rellenarGruposEliminatoriosDesdeZonasCompletas($torneoId);
+    }
+
+    /**
+     * Para las zonas de grupos que ya estén completas (todos sus partidos con resultado),
+     * calcula la tabla de posiciones y rellena los grupos eliminatorios que tengan
+     * referencias directas del tipo A1, B2, etc. (campo referencia_config).
+     *
+     * Esto permite que, a medida que se completan las zonas, se vayan completando
+     * automáticamente los partidos de 16avos / octavos / cuartos que toman clasificados directos.
+     *
+     * Se llama desde comenzarTorneoPuntuable y desde HomeController al guardar un resultado de fase de grupos.
+     */
+    private function rellenarGruposEliminatoriosDesdeZonasCompletas($torneoId)
+    {
+        // Obtener grupos de fase de zonas (no eliminatorios)
+        $grupos = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->whereNotNull('partido_id')
+            ->whereNotIn('zona', ['dieciseisavos final', '16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
+            ->orderBy('zona')
+            ->orderBy('id')
+            ->get();
+
+        if ($grupos->isEmpty()) {
+            return;
+        }
+
+        $zonas = $grupos->pluck('zona')->unique()->sort()->values();
+
+        // Calcular posiciones por zona SOLO para las zonas completas
+        $posicionesPorZona = [];
+        foreach ($zonas as $zona) {
+            $gruposZona = $grupos->where('zona', $zona);
+            if ($gruposZona->isEmpty()) {
+                continue;
+            }
+
+            // Verificar si todos los partidos de la zona tienen resultado
+            $partidosIds = $gruposZona->pluck('partido_id')->unique()->filter();
+            if ($partidosIds->isEmpty()) {
+                continue;
+            }
+            $partidosZona = DB::table('partidos')
+                ->whereIn('id', $partidosIds)
+                ->get()
+                ->keyBy('id');
+
+            $zonaCompleta = true;
+            foreach ($partidosIds as $pid) {
+                $partido = $partidosZona->get($pid);
+                if (!$partido || !$this->partidoTieneResultado($partido)) {
+                    $zonaCompleta = false;
+                    break;
+                }
+            }
+            if (!$zonaCompleta) {
+                continue;
+            }
+
+            // Zona completa: calcular tabla de posiciones (similar a adminTorneoPuntuableCrucesV2)
+            $gruposZonaConParejas = $gruposZona->filter(function ($grupo) {
+                return $grupo->jugador_1 !== null && $grupo->jugador_2 !== null;
+            });
+
+            $parejas = [];
+            foreach ($gruposZonaConParejas as $grupo) {
+                $key = $grupo->jugador_1 . '_' . $grupo->jugador_2;
+                if (!isset($parejas[$key])) {
+                    $parejas[$key] = [
+                        'jugador_1' => $grupo->jugador_1,
+                        'jugador_2' => $grupo->jugador_2,
+                        'partidos_ganados' => 0,
+                        'partidos_perdidos' => 0,
+                        'puntos_ganados' => 0,
+                        'puntos_perdidos' => 0,
+                    ];
+                }
+            }
+
+            $gruposPorPartido = [];
+            foreach ($gruposZonaConParejas as $grupo) {
+                if ($grupo->partido_id) {
+                    if (!isset($gruposPorPartido[$grupo->partido_id])) {
+                        $gruposPorPartido[$grupo->partido_id] = [];
+                    }
+                    $gruposPorPartido[$grupo->partido_id][] = $grupo;
+                }
+            }
+
+            foreach ($partidosZona as $partido) {
+                if (!isset($gruposPorPartido[$partido->id]) || count($gruposPorPartido[$partido->id]) < 2) {
+                    continue;
+                }
+
+                $gruposPartido = collect($gruposPorPartido[$partido->id])->sortBy('id')->values()->all();
+                $pareja1Grupo = $gruposPartido[0];
+                $pareja2Grupo = $gruposPartido[1];
+
+                $key1 = $pareja1Grupo->jugador_1 . '_' . $pareja1Grupo->jugador_2;
+                $key2 = $pareja2Grupo->jugador_1 . '_' . $pareja2Grupo->jugador_2;
+
+                if (!isset($parejas[$key1]) || !isset($parejas[$key2])) {
+                    continue;
+                }
+
+                $puntosPareja1 = $partido->pareja_1_set_1 ?? 0;
+                $puntosPareja2 = $partido->pareja_2_set_1 ?? 0;
+
+                if ($puntosPareja1 > 0 || $puntosPareja2 > 0) {
+                    if ($puntosPareja1 > $puntosPareja2) {
+                        $parejas[$key1]['partidos_ganados']++;
+                        $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                        $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
+                        $parejas[$key2]['partidos_perdidos']++;
+                        $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                        $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
+                    } elseif ($puntosPareja2 > $puntosPareja1) {
+                        $parejas[$key2]['partidos_ganados']++;
+                        $parejas[$key2]['puntos_ganados'] += $puntosPareja2;
+                        $parejas[$key2]['puntos_perdidos'] += $puntosPareja1;
+                        $parejas[$key1]['partidos_perdidos']++;
+                        $parejas[$key1]['puntos_ganados'] += $puntosPareja1;
+                        $parejas[$key1]['puntos_perdidos'] += $puntosPareja2;
+                    }
+                }
+            }
+
+            foreach ($parejas as $key => $pareja) {
+                $parejas[$key]['diferencia_games'] = ($pareja['puntos_ganados'] ?? 0) - ($pareja['puntos_perdidos'] ?? 0);
+            }
+
+            $posiciones = array_values($parejas);
+            usort($posiciones, function ($a, $b) {
+                if ($a['partidos_ganados'] != $b['partidos_ganados']) {
+                    return $b['partidos_ganados'] - $a['partidos_ganados'];
+                }
+                return $b['diferencia_games'] - $a['diferencia_games'];
+            });
+
+            $posicionesPorZona[$zona] = $posiciones;
+        }
+
+        if (empty($posicionesPorZona)) {
+            return;
+        }
+
+        // Mapear zonas a letras (A, B, C, ...) igual que en la configuración
+        $letrasZonas = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'];
+        $zonaALetra = [];
+        $idx = 0;
+        foreach ($zonas as $zona) {
+            if (isset($letrasZonas[$idx])) {
+                $zonaALetra[$zona] = $letrasZonas[$idx];
+            }
+            $idx++;
+        }
+
+        // Para cada referencia directa tipo A1, B2, etc., rellenar jugador_1 / jugador_2
+        foreach ($posicionesPorZona as $zona => $posiciones) {
+            if (!isset($zonaALetra[$zona])) {
+                continue;
+            }
+            $letra = $zonaALetra[$zona];
+
+            foreach ($posiciones as $i => $pareja) {
+                $posicion = $i + 1;
+                $ref = $letra . $posicion; // Ej: A1, A2, B1, etc.
+
+                // Buscar grupos eliminatorios con esta referencia_config y sin jugadores asignados aún
+                $gruposElim = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->whereIn('zona', ['16avos final', 'octavos final', 'cuartos final'])
+                    ->where('referencia_config', $ref)
+                    ->where(function ($q) {
+                        $q->whereNull('jugador_1')->orWhere('jugador_1', 0);
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('jugador_2')->orWhere('jugador_2', 0);
+                    })
+                    ->get();
+
+                foreach ($gruposElim as $g) {
+                    DB::table('grupos')
+                        ->where('id', $g->id)
+                        ->update([
+                            'jugador_1' => $pareja['jugador_1'] ?? 0,
+                            'jugador_2' => $pareja['jugador_2'] ?? 0,
+                        ]);
+                }
+            }
+        }
+    }
+
+    /**
      * Crea un partido eliminatorio (octavos, 16avos, cuartos, semifinal o final).
      * @return int|null ID del partido creado o null si ya existía
      */
@@ -2653,6 +3008,103 @@ class PuntuableController extends Controller
         $grupo2->save();
         
         \Log::info('crearPartidoEliminatorio: creados partido_id=' . $partido->id . ', zona=' . $zonaRonda . ', grupos id=' . $grupo1->id . ',' . $grupo2->id);
+        return $partido->id;
+    }
+
+    /**
+     * Crea un partido eliminatorio a partir de referencias de configuración (A1, H2, G1-8vos, etc.)
+     * sin asignar todavía los jugadores reales. Guarda las referencias en grupos.referencia_config.
+     *
+     * @param int   $torneoId
+     * @param string $ronda    '16avos' | 'octavos' | 'cuartos' | 'semifinales' | 'final'
+     * @param array  $partidoCfg ['pareja_1' => 'A1', 'pareja_2' => 'H2', 'dia' => ..., 'horario' => ...]
+     * @return int|null ID del partido creado, o null si faltan datos
+     */
+    private function crearPartidoEliminatorioDesdeReferencias($torneoId, $ronda, array $partidoCfg)
+    {
+        $ref1 = $partidoCfg['pareja_1'] ?? null;
+        $ref2 = $partidoCfg['pareja_2'] ?? null;
+        if (!$ref1 || !$ref2) {
+            return null;
+        }
+
+        // Mapear ronda a nombre de zona
+        $zonaRonda = '';
+        if ($ronda === '16avos') {
+            $zonaRonda = '16avos final';
+        } elseif ($ronda === 'octavos') {
+            $zonaRonda = 'octavos final';
+        } elseif ($ronda === 'cuartos') {
+            $zonaRonda = 'cuartos final';
+        } elseif ($ronda === 'semifinales' || $ronda === 'semifinal') {
+            $zonaRonda = 'semifinal';
+        } elseif ($ronda === 'final') {
+            $zonaRonda = 'final';
+        }
+
+        if ($zonaRonda === '') {
+            \Log::warning('crearPartidoEliminatorioDesdeReferencias: ronda no reconocida: ' . $ronda);
+            return null;
+        }
+
+        // Verificar si ya existe un partido para este torneo/zona con estas referencias (en cualquier orden)
+        $partidoExistenteId = DB::table('grupos as g1')
+            ->join('grupos as g2', function ($join) {
+                $join->on('g1.partido_id', '=', 'g2.partido_id')
+                    ->whereRaw('g1.id != g2.id');
+            })
+            ->where('g1.torneo_id', $torneoId)
+            ->where('g2.torneo_id', $torneoId)
+            ->where('g1.zona', $zonaRonda)
+            ->where('g2.zona', $zonaRonda)
+            ->where(function ($q) use ($ref1, $ref2) {
+                $q->where(function ($q2) use ($ref1, $ref2) {
+                    $q2->where('g1.referencia_config', $ref1)
+                       ->where('g2.referencia_config', $ref2);
+                })->orWhere(function ($q2) use ($ref1, $ref2) {
+                    $q2->where('g1.referencia_config', $ref2)
+                       ->where('g2.referencia_config', $ref1);
+                });
+            })
+            ->value('g1.partido_id');
+
+        if ($partidoExistenteId) {
+            \Log::info('crearPartidoEliminatorioDesdeReferencias: partido ya existe (partido_id=' . $partidoExistenteId . ', zona=' . $zonaRonda . ' refs=' . $ref1 . ',' . $ref2 . ')');
+            return $partidoExistenteId;
+        }
+
+        // Crear el partido vacío
+        $partido = $this->crearPartido();
+
+        // Por ahora no usamos el día/horario de config para fecha/horario reales
+        $fechaDefault = '2000-01-01';
+        $horarioDefault = '00:00';
+
+        // Grupo 1 (pareja_1)
+        $grupo1 = new Grupo;
+        $grupo1->torneo_id = $torneoId;
+        $grupo1->zona = $zonaRonda;
+        $grupo1->fecha = $fechaDefault;
+        $grupo1->horario = $horarioDefault;
+        $grupo1->jugador_1 = 0;
+        $grupo1->jugador_2 = 0;
+        $grupo1->partido_id = $partido->id;
+        $grupo1->referencia_config = $ref1;
+        $grupo1->save();
+
+        // Grupo 2 (pareja_2)
+        $grupo2 = new Grupo;
+        $grupo2->torneo_id = $torneoId;
+        $grupo2->zona = $zonaRonda;
+        $grupo2->fecha = $fechaDefault;
+        $grupo2->horario = $horarioDefault;
+        $grupo2->jugador_1 = 0;
+        $grupo2->jugador_2 = 0;
+        $grupo2->partido_id = $partido->id;
+        $grupo2->referencia_config = $ref2;
+        $grupo2->save();
+
+        \Log::info('crearPartidoEliminatorioDesdeReferencias: creado partido_id=' . $partido->id . ', zona=' . $zonaRonda . ' refs=' . $ref1 . ',' . $ref2);
         return $partido->id;
     }
     
@@ -3154,9 +3606,56 @@ class PuntuableController extends Controller
             }
             
             \Log::info('Encontrado cruce de cuartos ' . ($index + 1) . ' que espera ganador de octavos ' . $numeroPartidoOctavos);
-            
-            // Verificar si ya existe este partido de cuartos
-            $cruceId = 'cuartos_' . ($index + 1);
+
+            // Primero intentar actualizar el partido de cuartos ya creado como placeholder (referencia_config = O1, G1-8vos, etc.)
+            $partidoCuartosPlaceholderId = DB::table('grupos as g1')
+                ->join('grupos as g2', function ($join) {
+                    $join->on('g1.partido_id', '=', 'g2.partido_id')
+                        ->whereRaw('g1.id != g2.id');
+                })
+                ->where('g1.torneo_id', $torneoId)
+                ->where('g2.torneo_id', $torneoId)
+                ->where('g1.zona', 'cuartos final')
+                ->where('g2.zona', 'cuartos final')
+                ->where(function ($q) use ($pareja1Ref, $pareja2Ref) {
+                    $q->where(function ($q2) use ($pareja1Ref, $pareja2Ref) {
+                        $q2->where('g1.referencia_config', $pareja1Ref)
+                           ->where('g2.referencia_config', $pareja2Ref);
+                    })->orWhere(function ($q2) use ($pareja1Ref, $pareja2Ref) {
+                        $q2->where('g1.referencia_config', $pareja2Ref)
+                           ->where('g2.referencia_config', $pareja1Ref);
+                    });
+                })
+                ->value('g1.partido_id');
+
+            if ($partidoCuartosPlaceholderId) {
+                \Log::info('Actualizando partido de cuartos placeholder (partido_id=' . $partidoCuartosPlaceholderId . ') con ganador de octavos.');
+
+                $winnerPair = [
+                    'jugador_1' => $ganadorJugador1,
+                    'jugador_2' => $ganadorJugador2,
+                ];
+
+                // Actualizar solo el lado del ganador en el partido de cuartos; la otra pareja se completará cuando esté disponible
+                $gruposCuartos = DB::table('grupos')
+                    ->where('torneo_id', $torneoId)
+                    ->where('zona', 'cuartos final')
+                    ->where('partido_id', $partidoCuartosPlaceholderId)
+                    ->get();
+
+                foreach ($gruposCuartos as $g) {
+                    if ($esPareja1 && $g->referencia_config === $pareja1Ref) {
+                        DB::table('grupos')->where('id', $g->id)->update($winnerPair);
+                    } elseif (!$esPareja1 && $g->referencia_config === $pareja2Ref) {
+                        DB::table('grupos')->where('id', $g->id)->update($winnerPair);
+                    }
+                }
+
+                $partidoIdCreado = $partidoCuartosPlaceholderId;
+                continue;
+            }
+
+            // Fallback legacy: si no hay placeholder, crear partido de cuartos nuevo
             $partidoCuartosExistente = DB::table('grupos')
                 ->where('torneo_id', $torneoId)
                 ->where('zona', 'cuartos final')

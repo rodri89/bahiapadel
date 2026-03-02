@@ -2494,8 +2494,32 @@
             alert('Por favor, seleccione un torneo primero');
             return;
         }
-        // Redirigir a la pantalla de resultados
-        window.location.href = '{{ route("admintorneoresultados") }}?torneo_id=' + torneo_id;
+
+        var btn = $(this);
+        btn.prop('disabled', true).text('Comenzando...');
+
+        $.ajax({
+            type: 'POST',
+            url: '{{ route("comenzartorneopuntuable") }}',
+            data: {
+                torneo_id: torneo_id,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                btn.prop('disabled', false).text('Comenzar Torneo');
+                if (response && response.success) {
+                    // Redirigir a la pantalla de resultados (fase de grupos)
+                    window.location.href = '{{ route("admintorneoresultados") }}?torneo_id=' + torneo_id;
+                } else {
+                    alert((response && response.message) ? response.message : 'Error al comenzar el torneo');
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).text('Comenzar Torneo');
+                console.error('Error al comenzar torneo puntuable:', xhr.responseText || xhr.statusText);
+                alert('Error al comenzar el torneo');
+            }
+        });
     });
 </script>
 @endsection
