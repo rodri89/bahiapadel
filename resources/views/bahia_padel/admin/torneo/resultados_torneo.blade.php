@@ -730,6 +730,7 @@ $(document).ready(function() {
                     setTimeout(function() {
                         btn.removeClass('btn-success').addClass('btn-primary').text('Guardar Resultado');
                     }, 2000);
+                    btn.prop('disabled', false);
                 } else {
                     console.error('=== ERROR AL GUARDAR ===');
                     console.error('Success: false');

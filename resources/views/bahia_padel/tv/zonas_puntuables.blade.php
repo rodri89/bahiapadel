@@ -508,6 +508,7 @@
         </main>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         (function() {
             const slides = Array.from(document.querySelectorAll('.zone-slide'));
@@ -515,6 +516,10 @@
             const countdown = document.getElementById('countdown');
             const intervalMs = {{ (int) ($intervalo ?? 20) }} * 1000;
             const adTracks = Array.from(document.querySelectorAll('[data-ads-track]'));
+
+            // IDs de torneos para polling
+            const torneoIds = @json(collect($slides ?? [])->pluck('torneo_id')->unique()->values()->all());
+            let versionesConocidas = {};
 
             if (!slides.length) {
                 return;
@@ -527,6 +532,44 @@
             let countdownTimer = null;
             let adsTimer = null;
             let adsIndex = 0;
+
+            // Sistema de polling para actualizar cuando cambian los resultados
+            function verificarVersionesYActualizar() {
+                if (!torneoIds.length) return;
+
+                $.get('{{ route("tvtorneosversiones") }}', { torneo_ids: torneoIds.join(',') })
+                    .done(function(response) {
+                        const versiones = response.versiones || {};
+                        let cambio = false;
+
+                        torneoIds.forEach(function(id) {
+                            const idStr = String(id);
+                            const versionActual = Number(versiones[idStr] ?? versiones[id] ?? 0);
+                            const tieneVersion = Object.prototype.hasOwnProperty.call(versionesConocidas, idStr);
+                            const versionConocida = Number(versionesConocidas[idStr] ?? 0);
+
+                            if (tieneVersion && versionActual > versionConocida) {
+                                console.log('Torneo ' + idStr + ' cambió:', versionConocida, '->', versionActual);
+                                cambio = true;
+                            }
+
+                            versionesConocidas[idStr] = versionActual;
+                        });
+
+                        if (cambio) {
+                            window.location.reload();
+                        }
+                    })
+                    .fail(function() {
+                        // Silencioso, reintentar en el próximo intervalo
+                    });
+            }
+
+            // Iniciar polling inmediato y luego cada 2 segundos
+            if (torneoIds.length) {
+                verificarVersionesYActualizar();
+                setInterval(verificarVersionesYActualizar, 2000);
+            }
 
             function setActive(nextIndex) {
                 slides.forEach((slide, i) => {
