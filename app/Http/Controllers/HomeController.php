@@ -281,29 +281,15 @@ class HomeController extends Controller
     }
     
     function adminConfig() {
-        // Listado de todas las configuraciones globales (para la tabla de la vista)
-        $configuraciones = DB::table('configuracion_cruces_puntuables')
-            ->whereNull('torneo_id')
-            ->orderBy('cantidad_parejas', 'asc')
-            ->get();
-
-        // Cargar configuración a editar: por ?editar=id o la última global
+        // Cargar configuración existente si hay
+        $configuracion = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id') // Configuración global
+            ->orderBy('id', 'desc')
+            ->first();
+        
         $config = null;
-        $editarId = request()->get('editar');
-        if ($editarId) {
-            $configuracion = DB::table('configuracion_cruces_puntuables')
-                ->where('id', $editarId)
-                ->first();
-        } else {
-            $configuracion = DB::table('configuracion_cruces_puntuables')
-                ->whereNull('torneo_id')
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-
         if ($configuracion) {
             $config = [
-                'id' => $configuracion->id,
                 'cantidad_parejas' => $configuracion->cantidad_parejas,
                 'tiene_16avos_final' => $configuracion->tiene_16avos_final,
                 'tiene_8vos_final' => $configuracion->tiene_8vos_final,
@@ -315,10 +301,9 @@ class HomeController extends Controller
                 'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
             ];
         }
-
+        
         return View('bahia_padel.admin.config.index')
-            ->with('configuraciones', $configuraciones)
-            ->with('config', $config);
+            ->with('config', $config); 
     }
     
     function guardarConfigCruces(Request $request) {
@@ -2439,6 +2424,247 @@ class HomeController extends Controller
     }
 
     /**
+     * Vista TV para zonas de torneos puntuables.
+     * URL: /tv_torneos_puntuables_zonas?torneos=1,2&intervalo=20
+     */
+    public function tvTorneosPuntuablesZonas(Request $request) {
+        $torneoIdsParam = $request->torneos;
+        $intervalo = (int) ($request->intervalo ?? 20);
+        $fecha = $request->fecha ?? date('Y-m-d');
+
+        $torneoIds = [];
+        if ($torneoIdsParam) {
+            $torneoIds = array_filter(explode(',', $torneoIdsParam), function($id) {
+                return is_numeric(trim($id));
+            });
+            $torneoIds = array_map('intval', $torneoIds);
+        } else {
+            $torneoIds = DB::table('torneos')
+                ->where('activo', 1)
+                ->where(function($query) use ($fecha) {
+                    $query->where(function($q) use ($fecha) {
+                        $q->whereNotNull('fecha_inicio')
+                          ->whereNotNull('fecha_fin')
+                          ->where('fecha_inicio', '<=', $fecha)
+                          ->where('fecha_fin', '>=', $fecha);
+                    })
+                    ->orWhere(function($q) use ($fecha) {
+                        $q->where('fecha_inicio', $fecha);
+                    })
+                    ->orWhere(function($q) use ($fecha) {
+                        $q->whereNull('fecha_inicio')
+                          ->whereNull('fecha_fin');
+                    });
+                })
+                ->where(function($query) {
+                    $query->whereNull('tipo_torneo_formato')
+                          ->orWhere('tipo_torneo_formato', 'puntuable');
+                })
+                ->orderBy('categoria')
+                ->pluck('id')
+                ->toArray();
+        }
+
+        if (empty($torneoIds)) {
+            return view('bahia_padel.tv.sin_torneos', [
+                'fecha' => $fecha,
+                'mensaje' => 'No hay torneos puntuables en juego'
+            ]);
+        }
+
+        $torneos = DB::table('torneos')
+            ->whereIn('id', $torneoIds)
+            ->where('activo', 1)
+            ->orderBy('categoria')
+            ->orderBy('nombre')
+            ->get();
+
+        if ($torneos->isEmpty()) {
+            return view('bahia_padel.tv.sin_torneos', [
+                'fecha' => $fecha,
+                'mensaje' => 'No se encontraron torneos activos'
+            ]);
+        }
+
+        $jugadores = DB::table('jugadores')
+            ->where('activo', 1)
+            ->get()
+            ->keyBy('id');
+
+        $slides = [];
+        $esEliminatoria = ['cuartos final', 'semifinal', 'final', 'octavos final', '16avos final'];
+
+        $parejaCoincideGrupo = function($pareja, $grupo) {
+            return ($grupo->jugador_1 == $pareja['jugador_1'] && $grupo->jugador_2 == $pareja['jugador_2'])
+                || ($grupo->jugador_1 == $pareja['jugador_2'] && $grupo->jugador_2 == $pareja['jugador_1']);
+        };
+
+        foreach ($torneos as $torneo) {
+            $torneoId = $torneo->id;
+
+            $grupos = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->whereNotNull('partido_id')
+                ->where(function($query) use ($esEliminatoria) {
+                    $query->whereNotIn('zona', $esEliminatoria)
+                          ->where('zona', 'not like', 'cuartos final|%')
+                          ->where('zona', 'not like', 'ganador %')
+                          ->where('zona', 'not like', 'perdedor %')
+                          ->where('zona', 'not like', 'octavos final|%')
+                          ->where('zona', 'not like', '16avos final|%');
+                })
+                ->orderBy('zona')
+                ->orderBy('id')
+                ->get();
+
+            if ($grupos->isEmpty()) {
+                continue;
+            }
+
+            $gruposCollection = collect($grupos);
+            $zonas = $gruposCollection->pluck('zona')->unique()->sort()->values();
+
+            foreach ($zonas as $zona) {
+                $gruposZona = $gruposCollection->where('zona', $zona)->values();
+                $parejas = [];
+                $parejasIndex = [];
+
+                foreach ($gruposZona as $grupo) {
+                    if (!$grupo->jugador_1 || !$grupo->jugador_2) {
+                        continue;
+                    }
+
+                    $jugadorA = min($grupo->jugador_1, $grupo->jugador_2);
+                    $jugadorB = max($grupo->jugador_1, $grupo->jugador_2);
+                    $key = $jugadorA . '_' . $jugadorB;
+
+                    if (isset($parejasIndex[$key])) {
+                        continue;
+                    }
+
+                    $j1 = $jugadores[$jugadorA] ?? null;
+                    $j2 = $jugadores[$jugadorB] ?? null;
+
+                    $parejas[] = [
+                        'key' => $key,
+                        'jugador_1' => $jugadorA,
+                        'jugador_2' => $jugadorB,
+                        'apellido_1' => $j1->apellido ?? ($j1->nombre ?? 'Jugador'),
+                        'apellido_2' => $j2->apellido ?? ($j2->nombre ?? 'Jugador'),
+                        'foto_1' => $j1->foto ?? null,
+                        'foto_2' => $j2->foto ?? null,
+                    ];
+                    $parejasIndex[$key] = true;
+                }
+
+                if (count($parejas) < 2) {
+                    continue;
+                }
+
+                $gruposPorPartido = $gruposZona->groupBy('partido_id');
+                $partidosMap = [];
+                $partidosIds = [];
+
+                foreach ($gruposPorPartido as $partidoId => $gruposPartido) {
+                    if (!$partidoId || $gruposPartido->count() < 2) {
+                        continue;
+                    }
+
+                    $g1 = $gruposPartido->values()[0];
+                    $g2 = $gruposPartido->values()[1];
+
+                    $k1 = min($g1->jugador_1, $g1->jugador_2) . '_' . max($g1->jugador_1, $g1->jugador_2);
+                    $k2 = min($g2->jugador_1, $g2->jugador_2) . '_' . max($g2->jugador_1, $g2->jugador_2);
+
+                    $matchKey = ($k1 < $k2) ? ($k1 . '|' . $k2) : ($k2 . '|' . $k1);
+                    $partidosMap[$matchKey] = [
+                        'partido_id' => $partidoId,
+                        'g1_key' => $k1,
+                        'g2_key' => $k2,
+                    ];
+                    $partidosIds[] = $partidoId;
+                }
+
+                $partidosIds = array_values(array_unique($partidosIds));
+                $partidosConResultados = [];
+
+                if (!empty($partidosIds)) {
+                    $partidos = DB::table('partidos')
+                        ->whereIn('id', $partidosIds)
+                        ->get();
+
+                    foreach ($partidos as $partido) {
+                        $partidosConResultados[$partido->id] = $partido;
+                    }
+                }
+
+                $matchesMap = [];
+                $totalParejas = count($parejas);
+                for ($i = 0; $i < $totalParejas; $i++) {
+                    for ($j = $i + 1; $j < $totalParejas; $j++) {
+                        $p1 = $parejas[$i];
+                        $p2 = $parejas[$j];
+                        $matchKey = ($p1['key'] < $p2['key']) ? ($p1['key'] . '|' . $p2['key']) : ($p2['key'] . '|' . $p1['key']);
+
+                        $score1 = '-';
+                        $score2 = '-';
+                        $hasResult = false;
+
+                        $scoreData = null;
+                        if (isset($partidosMap[$matchKey])) {
+                            $partidoId = $partidosMap[$matchKey]['partido_id'];
+                            if (isset($partidosConResultados[$partidoId])) {
+                                $partidoValue = $partidosConResultados[$partidoId];
+                                $hasResult = true;
+
+                                $resSets = [];
+                                for ($s = 1; $s <= 3; $s++) {
+                                    $s1 = (int) ($partidoValue->{"pareja_1_set_$s"} ?? 0);
+                                    $s2 = (int) ($partidoValue->{"pareja_2_set_$s"} ?? 0);
+                                    if ($s1 > 0 || $s2 > 0) {
+                                        $resSets[] = ['p1' => $s1, 'p2' => $s2];
+                                    }
+                                }
+
+                                if (empty($resSets)) {
+                                    $hasResult = false;
+                                }
+
+                                $scoreData = [
+                                    'sets' => $resSets,
+                                    'original_p1_key' => $partidosMap[$matchKey]['g1_key']
+                                ];
+                            }
+                        }
+
+                        $matchesMap[$matchKey] = [
+                            'data' => $scoreData,
+                            'has_result' => $hasResult,
+                        ];
+                    }
+                }
+
+                $slides[] = [
+                    'torneo_id' => $torneoId,
+                    'torneo_nombre' => $torneo->nombre ?? 'Torneo',
+                    'categoria' => $torneo->categoria ?? '-',
+                    'zona' => $zona,
+                    'parejas' => $parejas,
+                    'matches' => $matchesMap,
+                ];
+            }
+        }
+
+        $sponsors = \App\Sponsor::where('active', 1)->orderBy('orden')->get();
+
+        return view('bahia_padel.tv.zonas_puntuables', [
+            'slides' => $slides,
+            'intervalo' => max(8, $intervalo),
+            'sponsors' => $sponsors
+        ]);
+    }
+
+    /**
      * Obtiene los datos de grupos/zonas de un torneo (para fase de grupos).
      * Soporta torneos normales (puntuables) y americanos.
      */
@@ -3746,13 +3972,8 @@ class HomeController extends Controller
                 $esPerdedor = true;
             }
             
-            // Mostrar solo zonas con letra (A, B, C, D...); excluir rondas eliminatorias
-            $rondasEliminatorias = ['octavos final', 'octavos', 'cuartos final', 'cuartos', 'semifinal', 'final', 'dieciseisavos de final', 'dieciseisavos', '16avos', '8vos', '4tos'];
-            if (in_array(strtolower(trim($zonaBase)), array_map('strtolower', $rondasEliminatorias))) {
-                continue;
-            }
-            // Solo zonas de una letra (A, B, C, ...)
-            if (!preg_match('/^[A-Z]$/i', trim($zonaBase))) {
+            // Excluir zonas especiales de eliminatoria
+            if (in_array($zonaBase, ['cuartos final', 'semifinal', 'final'])) {
                 continue;
             }
             
