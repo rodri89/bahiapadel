@@ -215,7 +215,9 @@ class PuntuableController extends Controller
                     $ronda = 'final';
                 }
                 
-                // Crear el cruce
+                // Crear el cruce (incluir día y horario si existen en el grupo)
+                $dia = $g1->fecha ?? $g2->fecha ?? null;
+                $horario = $g1->horario ?? $g2->horario ?? null;
                 $cruce = [
                     'id' => $ronda . '_' . $partidoId,
                     'partido_id' => $partidoId,
@@ -232,7 +234,9 @@ class PuntuableController extends Controller
                         'posicion' => null
                     ],
                     'ronda' => $ronda,
-                    'partido' => $partido // Incluir el objeto partido completo
+                    'partido' => $partido, // Incluir el objeto partido completo
+                    'dia' => $dia,
+                    'horario' => $horario
                 ];
                 
                 // Solo agregar si no existe ya un cruce con este partido_id
@@ -431,6 +435,9 @@ class PuntuableController extends Controller
                     }
                 }
             }
+            
+            // Validar y eliminar grupos/partidos de octavos y 16avos que no estén en la configuración (evitar 10 partidos cuando debe haber 8)
+            $this->limpiarGruposEliminatoriosExcedentes($torneoId, $crucesDesdeConfig);
             
             // Rellenar partido y resultados en cada cruce; para cuartos/semifinal/final rellenar parejas desde BD si existen
             $partidosCuartosBD = DB::table('grupos')
@@ -1007,7 +1014,58 @@ class PuntuableController extends Controller
             return ($a['id'] ?? '') <=> ($b['id'] ?? '');
         });
         return array_values($crucesFiltrados);
-    } 
+    }
+
+    /**
+     * Elimina grupos y partidos de octavos final / 16avos final que no correspondan a la configuración.
+     * La config define exactamente N partidos (ej. 8 en llave_8vos); si en BD hay más (ej. 10), se borran los excedentes.
+     */
+    private function limpiarGruposEliminatoriosExcedentes($torneoId, $crucesDesdeConfig) {
+        $validOctavos = [];
+        $valid16avos = [];
+        foreach ($crucesDesdeConfig as $c) {
+            $pid = $c['partido_id'] ?? null;
+            if (!$pid) continue;
+            $ronda = $c['ronda'] ?? null;
+            if ($ronda === 'octavos') {
+                $validOctavos[] = $pid;
+            } elseif ($ronda === '16avos') {
+                $valid16avos[] = $pid;
+            }
+        }
+        $validOctavos = array_unique(array_filter($validOctavos));
+        $valid16avos = array_unique(array_filter($valid16avos));
+
+        foreach (['octavos final' => $validOctavos, '16avos final' => $valid16avos] as $zona => $validIds) {
+            if (count($validIds) === 0) {
+                continue;
+            }
+            $gruposZona = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->where('zona', $zona)
+                ->whereNotNull('partido_id')
+                ->get();
+            $partidoIdsEnBD = $gruposZona->pluck('partido_id')->unique()->values()->all();
+            $excedentes = array_diff($partidoIdsEnBD, $validIds);
+            if (empty($excedentes)) {
+                continue;
+            }
+            \Log::info('Limpiando ' . $zona . ': partidos válidos según config=' . count($validIds) . ', en BD=' . count($partidoIdsEnBD) . ', eliminando partido_ids=' . implode(',', $excedentes));
+            DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->where('zona', $zona)
+                ->whereIn('partido_id', $excedentes)
+                ->delete();
+            // Borrar partidos que ya no tengan ningún grupo
+            foreach ($excedentes as $pid) {
+                $tieneGrupos = DB::table('grupos')->where('partido_id', $pid)->exists();
+                if (!$tieneGrupos) {
+                    DB::table('partidos')->where('id', $pid)->delete();
+                    \Log::info('Partido eliminado (sin grupos): id=' . $pid);
+                }
+            }
+        }
+    }
 
     /**
      * Guarda el resultado de un partido para torneo puntuable
@@ -2677,7 +2735,9 @@ class PuntuableController extends Controller
                                 'partido_id' => null,
                                 'pareja_1' => $pareja1,
                                 'pareja_2' => $pareja2,
-                                'ronda' => '16avos'
+                                'ronda' => '16avos',
+                                'dia' => $partido['dia'] ?? null,
+                                'horario' => $partido['horario'] ?? null
                             ];
                         }
                     }
@@ -2703,7 +2763,9 @@ class PuntuableController extends Controller
                                 'partido_id' => null,
                                 'pareja_1' => $pareja1,
                                 'pareja_2' => $pareja2,
-                                'ronda' => 'octavos'
+                                'ronda' => 'octavos',
+                                'dia' => $partido['dia'] ?? null,
+                                'horario' => $partido['horario'] ?? null
                             ];
                         }
                     }
@@ -2731,7 +2793,9 @@ class PuntuableController extends Controller
                             'pareja_2' => $pareja2, // Puede ser null
                             'ronda' => 'cuartos',
                             'referencia_1' => $pareja1Ref, // Guardar la referencia original
-                            'referencia_2' => $pareja2Ref  // Guardar la referencia original
+                            'referencia_2' => $pareja2Ref, // Guardar la referencia original
+                            'dia' => $partido['dia'] ?? null,
+                            'horario' => $partido['horario'] ?? null
                         ];
                     }
                 }
@@ -2755,7 +2819,9 @@ class PuntuableController extends Controller
                             'pareja_2' => $pareja2,
                             'ronda' => 'semifinales',
                             'referencia_1' => $pareja1Ref,
-                            'referencia_2' => $pareja2Ref
+                            'referencia_2' => $pareja2Ref,
+                            'dia' => $partido['dia'] ?? null,
+                            'horario' => $partido['horario'] ?? null
                         ];
                     }
                 }
@@ -2779,7 +2845,9 @@ class PuntuableController extends Controller
                             'pareja_2' => $pareja2,
                             'ronda' => 'final',
                             'referencia_1' => $pareja1Ref,
-                            'referencia_2' => $pareja2Ref
+                            'referencia_2' => $pareja2Ref,
+                            'dia' => $partido['dia'] ?? null,
+                            'horario' => $partido['horario'] ?? null
                         ];
                     }
                 }

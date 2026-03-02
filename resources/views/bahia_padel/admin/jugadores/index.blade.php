@@ -154,19 +154,16 @@
 </div>
 
 <script type="text/javascript">
-    let todosJugadores = []; // Almacenar todos los jugadores para el buscador
-    
-    // Cargar lista de jugadores al iniciar
+    let todosJugadores = [];
+
     $(document).ready(function() {
         cargarJugadores();
-        
-        // Buscador en tiempo real
+
         $('#buscador-jugadores').on('keyup', function() {
             const busqueda = $(this).val().toLowerCase();
             filtrarJugadores(busqueda);
         });
-        
-        // Preview de imagen
+
         $('#foto').on('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -177,8 +174,7 @@
                 reader.readAsDataURL(file);
             }
         });
-        
-        // Actualizar label del input file
+
         $('.custom-file-input').on('change', function() {
             let fileName = $(this).val().split('\\').pop();
             $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
@@ -306,14 +302,13 @@
         $('#preview-foto').attr('src', foto);
         $('#modalNuevoJugadorLabel').text('Editar Jugador');
     }
-    
-    // Formulario para crear/editar jugador
+
     $('#formNuevoJugador').on('submit', function(e) {
         e.preventDefault();
-        
+
         const jugadorId = $('#jugador_id').val();
         const esEdicion = jugadorId && jugadorId != '0';
-        
+
         const formData = new FormData();
         if (esEdicion) {
             formData.append('id', jugadorId);
@@ -321,17 +316,16 @@
         formData.append('nombre', $('#nombre').val());
         formData.append('apellido', $('#apellido').val());
         formData.append('telefono', $('#telefono').val() || '0');
-        
+
         const fotoFile = $('#foto')[0].files[0];
         if (fotoFile) {
             formData.append('foto', fotoFile);
         }
-        
         formData.append('_token', '{{ csrf_token() }}');
-        
+
         const url = esEdicion ? '{{ route("admineditarjugador") }}' : '{{ route("admincrearjugador") }}';
         const mensajeExito = esEdicion ? 'Jugador actualizado correctamente' : 'Jugador creado correctamente';
-        
+
         $.ajax({
             type: 'POST',
             url: url,

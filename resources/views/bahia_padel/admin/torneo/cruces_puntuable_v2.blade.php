@@ -90,6 +90,22 @@
                              data-ronda="{{ $cruce['ronda'] }}" 
                              data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
                              style="padding: 15px; margin-bottom: 20px;">
+                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            <div class="small mb-2" style="color: #555;">
+                                @if(!empty($cruce['dia']))
+                                    @php
+                                        $diaLabel = $cruce['dia'];
+                                        if (in_array(strtolower($diaLabel), ['viernes','sabado','domingo'])) {
+                                            $diaLabel = ucfirst($diaLabel);
+                                        }
+                                    @endphp
+                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
+                                @endif
+                                @if(!empty($cruce['horario']))
+                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
+                                @endif
+                            </div>
+                            @endif
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="1"
@@ -290,6 +306,17 @@
                              data-llave-ref1="{{ $ref1 }}"
                              data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
+                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            <div class="small mb-2" style="color: #555;">
+                                @if(!empty($cruce['dia']))
+                                    @php $diaLabel = in_array(strtolower($cruce['dia'] ?? ''), ['viernes','sabado','domingo']) ? ucfirst($cruce['dia']) : ($cruce['dia'] ?? ''); @endphp
+                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
+                                @endif
+                                @if(!empty($cruce['horario']))
+                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
+                                @endif
+                            </div>
+                            @endif
                             <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -505,6 +532,17 @@
                              data-llave-ref1="{{ $ref1 }}"
                              data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
+                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            <div class="small mb-2" style="color: #555;">
+                                @if(!empty($cruce['dia']))
+                                    @php $diaLabel = in_array(strtolower($cruce['dia'] ?? ''), ['viernes','sabado','domingo']) ? ucfirst($cruce['dia']) : ($cruce['dia'] ?? ''); @endphp
+                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
+                                @endif
+                                @if(!empty($cruce['horario']))
+                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
+                                @endif
+                            </div>
+                            @endif
                             <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -642,6 +680,17 @@
                              data-llave-ref1="{{ $ref1 }}"
                              data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
+                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            <div class="small mb-2" style="color: #555;">
+                                @if(!empty($cruce['dia']))
+                                    @php $diaLabel = in_array(strtolower($cruce['dia'] ?? ''), ['viernes','sabado','domingo']) ? ucfirst($cruce['dia']) : ($cruce['dia'] ?? ''); @endphp
+                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
+                                @endif
+                                @if(!empty($cruce['horario']))
+                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
+                                @endif
+                            </div>
+                            @endif
                             <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 

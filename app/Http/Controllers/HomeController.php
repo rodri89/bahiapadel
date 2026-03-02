@@ -281,15 +281,29 @@ class HomeController extends Controller
     }
     
     function adminConfig() {
-        // Cargar configuración existente si hay
-        $configuracion = DB::table('configuracion_cruces_puntuables')
-            ->whereNull('torneo_id') // Configuración global
-            ->orderBy('id', 'desc')
-            ->first();
-        
+        // Listado de todas las configuraciones globales (para la tabla de la vista)
+        $configuraciones = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id')
+            ->orderBy('cantidad_parejas', 'asc')
+            ->get();
+
+        // Cargar configuración a editar: por ?editar=id o la última global
         $config = null;
+        $editarId = request()->get('editar');
+        if ($editarId) {
+            $configuracion = DB::table('configuracion_cruces_puntuables')
+                ->where('id', $editarId)
+                ->first();
+        } else {
+            $configuracion = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
         if ($configuracion) {
             $config = [
+                'id' => $configuracion->id,
                 'cantidad_parejas' => $configuracion->cantidad_parejas,
                 'tiene_16avos_final' => $configuracion->tiene_16avos_final,
                 'tiene_8vos_final' => $configuracion->tiene_8vos_final,
@@ -301,9 +315,10 @@ class HomeController extends Controller
                 'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
             ];
         }
-        
+
         return View('bahia_padel.admin.config.index')
-            ->with('config', $config); 
+            ->with('configuraciones', $configuraciones)
+            ->with('config', $config);
     }
     
     function guardarConfigCruces(Request $request) {
@@ -3731,8 +3746,13 @@ class HomeController extends Controller
                 $esPerdedor = true;
             }
             
-            // Excluir zonas especiales de eliminatoria
-            if (in_array($zonaBase, ['cuartos final', 'semifinal', 'final'])) {
+            // Mostrar solo zonas con letra (A, B, C, D...); excluir rondas eliminatorias
+            $rondasEliminatorias = ['octavos final', 'octavos', 'cuartos final', 'cuartos', 'semifinal', 'final', 'dieciseisavos de final', 'dieciseisavos', '16avos', '8vos', '4tos'];
+            if (in_array(strtolower(trim($zonaBase)), array_map('strtolower', $rondasEliminatorias))) {
+                continue;
+            }
+            // Solo zonas de una letra (A, B, C, ...)
+            if (!preg_match('/^[A-Z]$/i', trim($zonaBase))) {
                 continue;
             }
             
