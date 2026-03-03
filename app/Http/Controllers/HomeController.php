@@ -2528,11 +2528,11 @@ class HomeController extends Controller
             $zonas = $gruposCollection->pluck('zona')->unique()->sort()->values();
 
             foreach ($zonas as $zona) {
-                $gruposZona = $gruposCollection->where('zona', $zona)->values();
+                $gruposZonaBase = $gruposCollection->where('zona', $zona)->values();
                 $parejas = [];
                 $parejasIndex = [];
 
-                foreach ($gruposZona as $grupo) {
+                foreach ($gruposZonaBase as $grupo) {
                     if (!$grupo->jugador_1 || !$grupo->jugador_2) {
                         continue;
                     }
@@ -2564,7 +2564,21 @@ class HomeController extends Controller
                     continue;
                 }
 
-                $gruposPorPartido = $gruposZona->groupBy('partido_id');
+                $gruposZonaForMatches = $gruposZonaBase;
+                if (count($parejas) === 4) {
+                    $gruposFinales = DB::table('grupos')
+                        ->where('torneo_id', $torneoId)
+                        ->whereNotNull('partido_id')
+                        ->whereIn('zona', ["ganador $zona", "perdedor $zona"])
+                        ->orderBy('id')
+                        ->get();
+
+                    if ($gruposFinales->isNotEmpty()) {
+                        $gruposZonaForMatches = $gruposZonaBase->concat($gruposFinales)->values();
+                    }
+                }
+
+                $gruposPorPartido = $gruposZonaForMatches->groupBy('partido_id');
                 $partidosMap = [];
                 $partidosIds = [];
 
@@ -2602,7 +2616,21 @@ class HomeController extends Controller
                 }
 
                 $matchesMap = [];
+                $statsByPair = [];
                 $totalParejas = count($parejas);
+
+                foreach ($parejas as $pareja) {
+                    $statsByPair[$pareja['key']] = [
+                        'pj' => 0,
+                        'pg' => 0,
+                        'pp' => 0,
+                        'sf' => 0,
+                        'sc' => 0,
+                        'gf' => 0,
+                        'gc' => 0,
+                    ];
+                }
+
                 for ($i = 0; $i < $totalParejas; $i++) {
                     for ($j = $i + 1; $j < $totalParejas; $j++) {
                         $p1 = $parejas[$i];
@@ -2640,11 +2668,177 @@ class HomeController extends Controller
                             }
                         }
 
+                        $p1Key = $partidosMap[$matchKey]['g1_key'] ?? null;
+                        $p2Key = $partidosMap[$matchKey]['g2_key'] ?? null;
+
                         $matchesMap[$matchKey] = [
                             'data' => $scoreData,
                             'has_result' => $hasResult,
+                            'p1_key' => $p1Key,
+                            'p2_key' => $p2Key,
                         ];
+
+                        if ($hasResult && $scoreData && $p1Key && $p2Key) {
+                            $sets1 = 0;
+                            $sets2 = 0;
+                            $games1 = 0;
+                            $games2 = 0;
+
+                            foreach ($scoreData['sets'] as $set) {
+                                $s1 = (int) ($set['p1'] ?? 0);
+                                $s2 = (int) ($set['p2'] ?? 0);
+                                $games1 += $s1;
+                                $games2 += $s2;
+
+                                if ($s1 > $s2) {
+                                    $sets1++;
+                                } elseif ($s2 > $s1) {
+                                    $sets2++;
+                                }
+                            }
+
+                            $statsByPair[$p1Key]['pj']++;
+                            $statsByPair[$p2Key]['pj']++;
+
+                            $statsByPair[$p1Key]['sf'] += $sets1;
+                            $statsByPair[$p1Key]['sc'] += $sets2;
+                            $statsByPair[$p1Key]['gf'] += $games1;
+                            $statsByPair[$p1Key]['gc'] += $games2;
+
+                            $statsByPair[$p2Key]['sf'] += $sets2;
+                            $statsByPair[$p2Key]['sc'] += $sets1;
+                            $statsByPair[$p2Key]['gf'] += $games2;
+                            $statsByPair[$p2Key]['gc'] += $games1;
+
+                            if ($sets1 > $sets2) {
+                                $statsByPair[$p1Key]['pg']++;
+                                $statsByPair[$p2Key]['pp']++;
+                            } elseif ($sets2 > $sets1) {
+                                $statsByPair[$p2Key]['pg']++;
+                                $statsByPair[$p1Key]['pp']++;
+                            }
+                        }
                     }
+                }
+
+                $parejasOrdenadas = $parejas;
+
+                // Para zonas de 4 parejas: lógica de bracket (semi → final/3er puesto)
+                // 1º: 2 PG, 2º: perdió contra 1º, 3º: le ganó al 4º, 4º: 0 PG
+                if (count($parejas) === 4) {
+                    // Construir mapa de victorias: quién le ganó a quién
+                    $victories = []; // $victories[$winnerKey][] = $loserKey
+                    foreach ($matchesMap as $matchKey => $match) {
+                        if (!$match['has_result'] || !$match['data']) {
+                            continue;
+                        }
+                        $p1Key = $match['p1_key'] ?? null;
+                        $p2Key = $match['p2_key'] ?? null;
+                        if (!$p1Key || !$p2Key) {
+                            continue;
+                        }
+
+                        $sets1 = 0;
+                        $sets2 = 0;
+                        foreach ($match['data']['sets'] as $set) {
+                            $s1 = (int) ($set['p1'] ?? 0);
+                            $s2 = (int) ($set['p2'] ?? 0);
+                            if ($s1 > $s2) {
+                                $sets1++;
+                            } elseif ($s2 > $s1) {
+                                $sets2++;
+                            }
+                        }
+
+                        if ($sets1 > $sets2) {
+                            $victories[$p1Key][] = $p2Key;
+                        } elseif ($sets2 > $sets1) {
+                            $victories[$p2Key][] = $p1Key;
+                        }
+                    }
+
+                    // Asignar posiciones por lógica de bracket
+                    $positions = [];
+                    foreach ($parejas as $p) {
+                        $key = $p['key'];
+                        $pg = (int) ($statsByPair[$key]['pg'] ?? 0);
+                        if ($pg === 2) {
+                            $positions[$key] = 1; // Campeón
+                        } elseif ($pg === 0) {
+                            $positions[$key] = 4; // Último
+                        } else {
+                            $positions[$key] = 0; // Por determinar (1 PG)
+                        }
+                    }
+
+                    // Para los que tienen 1 PG: determinar 2º y 3º
+                    $firstPlaceKey = array_search(1, $positions);
+                    $fourthPlaceKey = array_search(4, $positions);
+
+                    foreach ($parejas as $p) {
+                        $key = $p['key'];
+                        if ($positions[$key] !== 0) {
+                            continue;
+                        }
+
+                        // Si perdió contra el 1º → es 2º (perdió la final)
+                        // Si le ganó al 4º → es 3º (ganó partido por 3er puesto)
+                        $lostToFirst = false;
+                        $beatFourth = false;
+
+                        if ($firstPlaceKey && isset($victories[$firstPlaceKey])) {
+                            $lostToFirst = in_array($key, $victories[$firstPlaceKey]);
+                        }
+                        if (isset($victories[$key]) && $fourthPlaceKey) {
+                            $beatFourth = in_array($fourthPlaceKey, $victories[$key]);
+                        }
+
+                        if ($lostToFirst) {
+                            $positions[$key] = 2;
+                        } elseif ($beatFourth) {
+                            $positions[$key] = 3;
+                        }
+                    }
+
+                    // Si aún quedan sin posición asignarlas
+                    $remaining = array_keys(array_filter($positions, fn($v) => $v === 0));
+                    $usedPositions = array_values(array_filter($positions, fn($v) => $v > 0));
+                    $available = array_diff([2, 3], $usedPositions);
+                    foreach ($remaining as $i => $key) {
+                        $positions[$key] = array_shift($available) ?? (2 + $i);
+                    }
+
+                    usort($parejasOrdenadas, function($a, $b) use ($positions) {
+                        return ($positions[$a['key']] ?? 99) <=> ($positions[$b['key']] ?? 99);
+                    });
+                } else {
+                    // Para otras zonas: ordenar por PG > DIF SETS > DIF GAMES
+                    usort($parejasOrdenadas, function($a, $b) use ($statsByPair) {
+                        $sa = $statsByPair[$a['key']] ?? ['pg' => 0, 'sf' => 0, 'sc' => 0, 'gf' => 0, 'gc' => 0];
+                        $sb = $statsByPair[$b['key']] ?? ['pg' => 0, 'sf' => 0, 'sc' => 0, 'gf' => 0, 'gc' => 0];
+
+                        $pgA = (int) ($sa['pg'] ?? 0);
+                        $pgB = (int) ($sb['pg'] ?? 0);
+                        if ($pgA !== $pgB) {
+                            return $pgB <=> $pgA;
+                        }
+
+                        $dsA = (int) ($sa['sf'] ?? 0) - (int) ($sa['sc'] ?? 0);
+                        $dsB = (int) ($sb['sf'] ?? 0) - (int) ($sb['sc'] ?? 0);
+                        if ($dsA !== $dsB) {
+                            return $dsB <=> $dsA;
+                        }
+
+                        $dgA = (int) ($sa['gf'] ?? 0) - (int) ($sa['gc'] ?? 0);
+                        $dgB = (int) ($sb['gf'] ?? 0) - (int) ($sb['gc'] ?? 0);
+                        if ($dgA !== $dgB) {
+                            return $dgB <=> $dgA;
+                        }
+
+                        $nameA = ($a['apellido_1'] ?? '') . ' ' . ($a['apellido_2'] ?? '');
+                        $nameB = ($b['apellido_1'] ?? '') . ' ' . ($b['apellido_2'] ?? '');
+                        return strcasecmp($nameA, $nameB);
+                    });
                 }
 
                 $slides[] = [
@@ -2653,7 +2847,9 @@ class HomeController extends Controller
                     'categoria' => $torneo->categoria ?? '-',
                     'zona' => $zona,
                     'parejas' => $parejas,
+                    'parejas_ordenadas' => $parejasOrdenadas,
                     'matches' => $matchesMap,
+                    'stats' => $statsByPair,
                 ];
             }
         }
@@ -2662,7 +2858,7 @@ class HomeController extends Controller
 
         return view('bahia_padel.tv.zonas_puntuables', [
             'slides' => $slides,
-            'intervalo' => max(8, $intervalo),
+            'intervalo' => max(3, $intervalo),
             'sponsors' => $sponsors
         ]);
     }
