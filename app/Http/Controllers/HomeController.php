@@ -301,9 +301,12 @@ class HomeController extends Controller
                 'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
             ];
         }
+
+        $configuraciones = $configuracion ? collect([$configuracion]) : collect();
         
         return View('bahia_padel.admin.config.index')
-            ->with('config', $config); 
+            ->with('config', $config)
+            ->with('configuraciones', $configuraciones); 
     }
     
     function guardarConfigCruces(Request $request) {
@@ -4305,6 +4308,84 @@ class HomeController extends Controller
                     ->with('jugadores', $jugadores)
                     ->with('torneo', $torneo)
                     ->with('partidosPorZona', $partidosPorZona); 
+    }
+
+    /**
+     * GET: Lista los partidos de cruces (16avos, octavos, cuartos, semifinal, final) del torneo
+     * para cargar/editar día y horario. Devuelve partido_id, zona, etiqueta, fecha, horario.
+     */
+    public function obtenerHorariosCruces(Request $request) {
+        $torneoId = $request->get('torneo_id');
+        if (!$torneoId) {
+            return response()->json(['success' => false, 'message' => 'torneo_id requerido'], 400);
+        }
+        $zonasCruces = ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'];
+        $grupos = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->whereIn('zona', $zonasCruces)
+            ->whereNotNull('partido_id')
+            ->orderByRaw("FIELD(zona, '16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final')")
+            ->orderBy('partido_id')
+            ->orderBy('id')
+            ->get();
+        $partidosPorId = [];
+        $ordenZona = ['16avos final' => 1, 'octavos final' => 2, 'cuartos final' => 3, 'semifinal' => 4, 'final' => 5];
+        $nombreZona = [
+            '16avos final' => '16avos',
+            'octavos final' => 'Octavos',
+            'cuartos final' => 'Cuartos',
+            'semifinal' => 'Semifinal',
+            'final' => 'Final'
+        ];
+        $contadorZona = [];
+        foreach ($grupos as $g) {
+            $pid = $g->partido_id;
+            if (!isset($partidosPorId[$pid])) {
+                $z = $g->zona;
+                if (!isset($contadorZona[$z])) $contadorZona[$z] = 0;
+                $contadorZona[$z]++;
+                $partidosPorId[$pid] = [
+                    'partido_id' => (int) $pid,
+                    'zona' => $z,
+                    'etiqueta' => ($nombreZona[$z] ?? $z) . ' ' . $contadorZona[$z],
+                    'fecha' => $g->fecha ?? '',
+                    'horario' => $g->horario ?? ''
+                ];
+            }
+        }
+        $lista = array_values($partidosPorId);
+        usort($lista, function ($a, $b) use ($ordenZona) {
+            $oa = $ordenZona[$a['zona']] ?? 99;
+            $ob = $ordenZona[$b['zona']] ?? 99;
+            if ($oa !== $ob) return $oa - $ob;
+            return $a['partido_id'] - $b['partido_id'];
+        });
+        return response()->json(['success' => true, 'partidos' => $lista]);
+    }
+
+    /**
+     * POST: Guarda día y horario de los partidos de cruces. Body: torneo_id, partidos: [{ partido_id, fecha, horario }]
+     */
+    public function guardarHorariosCruces(Request $request) {
+        $torneoId = $request->input('torneo_id');
+        $partidos = $request->input('partidos', []);
+        if (!$torneoId || !is_array($partidos)) {
+            return response()->json(['success' => false, 'message' => 'torneo_id y partidos requeridos'], 400);
+        }
+        foreach ($partidos as $p) {
+            $partidoId = (int) ($p['partido_id'] ?? 0);
+            $fecha = $p['fecha'] ?? null;
+            $horario = $p['horario'] ?? null;
+            if ($partidoId <= 0) continue;
+            DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->where('partido_id', $partidoId)
+                ->update([
+                    'fecha' => $fecha ?: '2000-01-01',
+                    'horario' => $horario ?: '00:00'
+                ]);
+        }
+        return response()->json(['success' => true, 'message' => 'Horarios guardados']);
     }
 
     public function guardarResultadoPartido(Request $request) {

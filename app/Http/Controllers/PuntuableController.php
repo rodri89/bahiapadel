@@ -807,7 +807,34 @@ class PuntuableController extends Controller
             
             \Log::info('Cruces armados desde configuración: ' . count($cruces));
         }
-                        
+
+        // Enriquecer todos los cruces con dia/horario desde grupos (BD)
+        $partidoIds = array_unique(array_filter(array_column($cruces, 'partido_id')));
+        $horariosPorPartido = [];
+        if (count($partidoIds) > 0) {
+            $gruposHorario = DB::table('grupos')
+                ->where('torneo_id', $torneoId)
+                ->whereIn('partido_id', $partidoIds)
+                ->whereNotNull('partido_id')
+                ->select('partido_id', 'fecha', 'horario')
+                ->orderBy('partido_id')
+                ->orderBy('id')
+                ->get();
+            foreach ($gruposHorario as $g) {
+                if (!isset($horariosPorPartido[$g->partido_id])) {
+                    $horariosPorPartido[$g->partido_id] = ['fecha' => $g->fecha, 'horario' => $g->horario];
+                }
+            }
+        }
+        foreach ($cruces as &$cruce) {
+            $pid = $cruce['partido_id'] ?? null;
+            if ($pid && isset($horariosPorPartido[$pid])) {
+                $cruce['dia'] = $horariosPorPartido[$pid]['fecha'];
+                $cruce['horario'] = $horariosPorPartido[$pid]['horario'];
+            }
+        }
+        unset($cruce);
+
         $crucesOctavos = $this->obtenerCrucesPorZona($cruces, 'octavos final');
         $crucesCuartos = $this->obtenerCrucesPorZona($cruces, 'cuartos final');
         $crucesSemifinales = $this->obtenerCrucesPorZona($cruces, 'semifinal');

@@ -119,6 +119,8 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('/guardar_cruces_editados', 'HomeController@guardarCrucesEditados')->name('guardarcruceseditados');
 	Route::post('/guardar_resultado_cruce_americano', 'HomeController@guardarResultadoCruceAmericano')->name('guardarresultadocruceamericano');
 	Route::get('/admin_torneo_resultados', 'HomeController@adminTorneoResultados')->name('admintorneoresultados');
+	Route::get('/obtener_horarios_cruces', 'HomeController@obtenerHorariosCruces')->name('obtenerhorarioscruces');
+	Route::post('/guardar_horarios_cruces', 'HomeController@guardarHorariosCruces')->name('guardarhorarioscruces');
 	Route::post('/guardar_resultado_partido', 'HomeController@guardarResultadoPartido')->name('guardarresultadopartido');
 	Route::post('/calcular_posiciones_zona', 'HomeController@calcularPosicionesZona')->name('calcularposicioneszona');
 	Route::post('/verificar_partidos_completos', 'HomeController@verificarPartidosCompletos')->name('verificarpartidoscompletos');

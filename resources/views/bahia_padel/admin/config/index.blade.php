@@ -82,7 +82,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        @if(isset($config) && isset($config['id']))
+                        @if(isset($config) && $config !== null)
                             Editar configuración ({{ $config['cantidad_parejas'] }} parejas)
                         @else
                             Nueva configuración de cruces
@@ -144,11 +144,9 @@
                                 @foreach([['A1','H2'],['B1','G2'],['C1','F2'],['D1','E2'],['E1','D2'],['F1','C2'],['G1','B2'],['H1','A2'],['A3','H4'],['B3','G4'],['C3','F4'],['D3','E4'],['E3','D4'],['F3','C4'],['G3','B4'],['H3','A4']] as $i => $par)
                                 <div class="form-group row mb-2 partido-llave" data-ronda="16avos" data-partido="{{ $i+1 }}">
                                     <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (16{{ $i+1 }}):</label>
-                                    <div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_16avos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_16avos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_16avos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2"></div>
-                                    <div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_16avos[{{ $i }}][dia]"><option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option></select></div>
-                                    <div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_16avos[{{ $i }}][horario]" value="" placeholder="Horario"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_16avos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2"></div>
                                 </div>
                                 @endforeach
                             </div>
@@ -162,11 +160,9 @@
                                 @foreach([['A1','H2'],['B1','G2'],['C1','F2'],['D1','E2'],['E1','D2'],['F1','C2'],['G1','B2'],['H1','A2']] as $i => $par)
                                 <div class="form-group row mb-2 partido-llave" data-ronda="8vos" data-partido="{{ $i+1 }}">
                                     <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (O{{ $i+1 }}):</label>
-                                    <div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_8vos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_8vos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_8vos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2"></div>
-                                    <div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_8vos[{{ $i }}][dia]"><option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option></select></div>
-                                    <div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_8vos[{{ $i }}][horario]" value="" placeholder="Horario"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_8vos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2"></div>
                                 </div>
                                 @endforeach
                             </div>
@@ -180,11 +176,9 @@
                                 @foreach([['G1-8vos','G2-8vos'],['G3-8vos','G4-8vos'],['G5-8vos','G6-8vos'],['G7-8vos','G8-8vos']] as $i => $par)
                                 <div class="form-group row mb-2 partido-llave" data-ronda="4tos" data-partido="{{ $i+1 }}">
                                     <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (C{{ $i+1 }}):</label>
-                                    <div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_4tos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: G1-8vos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_4tos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: G1-8vos"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_4tos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: G2-8vos"></div>
-                                    <div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_4tos[{{ $i }}][dia]"><option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option></select></div>
-                                    <div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_4tos[{{ $i }}][horario]" value="" placeholder="Horario"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_4tos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: G2-8vos"></div>
                                 </div>
                                 @endforeach
                             </div>
@@ -197,19 +191,15 @@
                             <div id="llave-semifinal-content">
                                 <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="1">
                                     <label class="col-sm-2 col-form-label">Partido 1 (S1):</label>
-                                    <div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="G1-4tos" placeholder="Ej: G1-4tos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="G1-4tos" placeholder="Ej: G1-4tos"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="G2-4tos" placeholder="Ej: G2-4tos"></div>
-                                    <div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_semifinal[0][dia]"><option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option></select></div>
-                                    <div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_semifinal[0][horario]" value="" placeholder="Horario"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="G2-4tos" placeholder="Ej: G2-4tos"></div>
                                 </div>
                                 <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="2">
                                     <label class="col-sm-2 col-form-label">Partido 2 (S2):</label>
-                                    <div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="G3-4tos" placeholder="Ej: G3-4tos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="G3-4tos" placeholder="Ej: G3-4tos"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="G4-4tos" placeholder="Ej: G4-4tos"></div>
-                                    <div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_semifinal[1][dia]"><option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option></select></div>
-                                    <div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_semifinal[1][horario]" value="" placeholder="Horario"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="G4-4tos" placeholder="Ej: G4-4tos"></div>
                                 </div>
                             </div>
                         </div>
@@ -221,11 +211,9 @@
                             <div id="llave-final-content">
                                 <div class="form-group row mb-2 partido-llave" data-ronda="final" data-partido="1">
                                     <label class="col-sm-2 col-form-label">Partido 1 (F1):</label>
-                                    <div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_final[0][pareja_1]" value="G1-semifinal" placeholder="Ej: G1-semifinal"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_final[0][pareja_1]" value="G1-semifinal" placeholder="Ej: G1-semifinal"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_final[0][pareja_2]" value="G2-semifinal" placeholder="Ej: G2-semifinal"></div>
-                                    <div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_final[0][dia]"><option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option></select></div>
-                                    <div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_final[0][horario]" value="" placeholder="Horario"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_final[0][pareja_2]" value="G2-semifinal" placeholder="Ej: G2-semifinal"></div>
                                 </div>
                             </div>
                         </div>
@@ -256,8 +244,6 @@ $(document).ready(function() {
             if (partidos[index]) {
                 $(this).find('.pareja-1-input').val(partidos[index].pareja_1 || '');
                 $(this).find('.pareja-2-input').val(partidos[index].pareja_2 || '');
-                $(this).find('.dia-input').val(partidos[index].dia || '');
-                $(this).find('.horario-input').val(partidos[index].horario || '');
             }
         });
     }
@@ -305,23 +291,17 @@ $(document).ready(function() {
         container.empty();
         const codigoRonda = obtenerCodigoRonda(ronda);
         const ph = placeholdersRonda[ronda] || ['Ej: A1', 'Ej: B2'];
-        const optsDia = '<option value="">Día</option><option value="viernes">Viernes</option><option value="sabado">Sábado</option><option value="domingo">Domingo</option>';
         partidos.forEach(function(partido, index) {
             const partidoNum = index + 1;
             const codigoPartido = codigoRonda + partidoNum;
             const p1 = (partido && (partido.pareja_1 != null)) ? String(partido.pareja_1).replace(/</g,'&lt;') : '';
             const p2 = (partido && (partido.pareja_2 != null)) ? String(partido.pareja_2).replace(/</g,'&lt;') : '';
-            const dia = (partido && partido.dia) ? String(partido.dia).replace(/</g,'&lt;') : '';
-            const horario = (partido && partido.horario) ? String(partido.horario).replace(/</g,'&lt;') : '';
             const partidoHtml = '<div class="form-group row mb-2 partido-llave" data-ronda="'+ronda+'" data-partido="'+partidoNum+'">'+
                 '<label class="col-sm-2 col-form-label">Partido '+partidoNum+' ('+codigoPartido+'):</label>'+
-                '<div class="col-sm-3"><input type="text" class="form-control pareja-1-input" name="llave_'+ronda+'['+index+'][pareja_1]" value="'+p1+'" placeholder="'+ph[0]+'"></div>'+
+                '<div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_'+ronda+'['+index+'][pareja_1]" value="'+p1+'" placeholder="'+ph[0]+'"></div>'+
                 '<div class="col-sm-1 text-center">VS</div>'+
-                '<div class="col-sm-2"><input type="text" class="form-control pareja-2-input" name="llave_'+ronda+'['+index+'][pareja_2]" value="'+p2+'" placeholder="'+ph[1]+'"></div>'+
-                '<div class="col-sm-2"><select class="form-control form-control-sm dia-input" name="llave_'+ronda+'['+index+'][dia]">'+optsDia+'</select></div>'+
-                '<div class="col-sm-2"><input type="time" class="form-control form-control-sm horario-input" name="llave_'+ronda+'['+index+'][horario]" value="'+horario+'" placeholder="Horario"></div></div>';
+                '<div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_'+ronda+'['+index+'][pareja_2]" value="'+p2+'" placeholder="'+ph[1]+'"></div></div>';
             container.append(partidoHtml);
-            if (dia) $(container.children().last()).find('.dia-input').val(dia);
         });
     }
     
@@ -419,23 +399,12 @@ $(document).ready(function() {
             const partidoHtml = `
                 <div class="form-group row mb-2 partido-llave" data-ronda="${ronda}" data-partido="${partidoNum}">
                     <label class="col-sm-2 col-form-label">Partido ${partidoNum} (${codigoPartido}):</label>
-                    <div class="col-sm-3">
+                    <div class="col-sm-4">
                         <input type="text" class="form-control pareja-1-input" name="llave_${ronda}[${i}][pareja_1]" value="${pareja1}" placeholder="Ej: A1 o G1-8vos">
                     </div>
                     <div class="col-sm-1 text-center">VS</div>
-                    <div class="col-sm-2">
+                    <div class="col-sm-4">
                         <input type="text" class="form-control pareja-2-input" name="llave_${ronda}[${i}][pareja_2]" value="${pareja2}" placeholder="Ej: H2 o G2-8vos">
-                    </div>
-                    <div class="col-sm-2">
-                        <select class="form-control form-control-sm dia-input" name="llave_${ronda}[${i}][dia]">
-                            <option value="">Día</option>
-                            <option value="viernes">Viernes</option>
-                            <option value="sabado">Sábado</option>
-                            <option value="domingo">Domingo</option>
-                        </select>
-                    </div>
-                    <div class="col-sm-2">
-                        <input type="time" class="form-control form-control-sm horario-input" name="llave_${ronda}[${i}][horario]" value="" placeholder="Horario">
                     </div>
                 </div>
             `;
@@ -510,14 +479,10 @@ $(document).ready(function() {
         $(`.partido-llave[data-ronda="${ronda}"]`).each(function() {
             const pareja1 = $(this).find('.pareja-1-input').val();
             const pareja2 = $(this).find('.pareja-2-input').val();
-            const dia = $(this).find('.dia-input').val() || '';
-            const horario = $(this).find('.horario-input').val() || '';
             if (pareja1 && pareja2) {
                 partidos.push({
                     pareja_1: pareja1,
-                    pareja_2: pareja2,
-                    dia: dia,
-                    horario: horario
+                    pareja_2: pareja2
                 });
             }
         });

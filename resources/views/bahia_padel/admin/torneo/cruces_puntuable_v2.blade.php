@@ -90,22 +90,25 @@
                              data-ronda="{{ $cruce['ronda'] }}" 
                              data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
                              style="padding: 15px; margin-bottom: 20px;">
-                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            @php
+                                $diaVal = $cruce['dia'] ?? null;
+                                $horarioVal = $cruce['horario'] ?? null;
+                                $diaStr = is_string($diaVal) ? trim($diaVal) : '';
+                                $horarioStr = is_string($horarioVal) ? trim(preg_replace('/^(\d{2}:\d{2})(:\d{2})?$/', '$1', $horarioVal)) : '';
+                                $esDefault = (strpos($diaStr, '2000-01-01') !== false || $diaStr === '2000-01-01') && (empty($horarioStr) || $horarioStr === '00:00');
+                                if ($esDefault) {
+                                    $diaDisplay = 'N/A';
+                                    $horarioDisplay = 'N/A';
+                                } else {
+                                    $diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+                                    $diaDisplay = $diaStr ? (in_array(strtolower($diaStr), ['viernes','sabado','domingo','lunes','martes','miercoles','jueves']) ? ucfirst($diaStr) : (preg_match('/^\d{4}-\d{2}-\d{2}$/', $diaStr) ? $diasSemana[date('w', strtotime($diaStr))] : $diaStr)) : '—';
+                                    $horarioDisplay = $horarioStr ?: '—';
+                                }
+                            @endphp
                             <div class="small mb-2" style="color: #555;">
-                                @if(!empty($cruce['dia']))
-                                    @php
-                                        $diaLabel = $cruce['dia'];
-                                        if (in_array(strtolower($diaLabel), ['viernes','sabado','domingo'])) {
-                                            $diaLabel = ucfirst($diaLabel);
-                                        }
-                                    @endphp
-                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
-                                @endif
-                                @if(!empty($cruce['horario']))
-                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
-                                @endif
+                                <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaDisplay }}</span>
+                                <span><strong>Horario:</strong> {{ $horarioDisplay }}</span>
                             </div>
-                            @endif
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="1"
@@ -306,17 +309,20 @@
                              data-llave-ref1="{{ $ref1 }}"
                              data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
-                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            @php
+                                $diaVal = $cruce['dia'] ?? null;
+                                $horarioVal = $cruce['horario'] ?? null;
+                                $diaStr = is_string($diaVal) ? trim($diaVal) : '';
+                                $horarioStr = is_string($horarioVal) ? trim(preg_replace('/^(\d{2}:\d{2})(:\d{2})?$/', '$1', $horarioVal ?? '')) : '';
+                                $esDefault = (strpos($diaStr, '2000-01-01') !== false || $diaStr === '2000-01-01') && (empty($horarioStr) || $horarioStr === '00:00');
+                                $diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+                                $diaDisplay = $esDefault ? 'N/A' : ($diaStr ? (in_array(strtolower($diaStr), ['viernes','sabado','domingo','lunes','martes','miercoles','jueves']) ? ucfirst($diaStr) : (strlen($diaStr) === 10 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $diaStr) ? $diasSemana[date('w', strtotime($diaStr))] : $diaStr)) : '—');
+                                $horarioDisplay = $esDefault ? 'N/A' : ($horarioStr ?: '—');
+                            @endphp
                             <div class="small mb-2" style="color: #555;">
-                                @if(!empty($cruce['dia']))
-                                    @php $diaLabel = in_array(strtolower($cruce['dia'] ?? ''), ['viernes','sabado','domingo']) ? ucfirst($cruce['dia']) : ($cruce['dia'] ?? ''); @endphp
-                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
-                                @endif
-                                @if(!empty($cruce['horario']))
-                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
-                                @endif
+                                <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaDisplay }}</span>
+                                <span><strong>Horario:</strong> {{ $horarioDisplay }}</span>
                             </div>
-                            @endif
                             <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -532,17 +538,20 @@
                              data-llave-ref1="{{ $ref1 }}"
                              data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
-                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            @php
+                                $diaVal = $cruce['dia'] ?? null;
+                                $horarioVal = $cruce['horario'] ?? null;
+                                $diaStr = is_string($diaVal) ? trim($diaVal) : '';
+                                $horarioStr = is_string($horarioVal) ? trim(preg_replace('/^(\d{2}:\d{2})(:\d{2})?$/', '$1', $horarioVal ?? '')) : '';
+                                $esDefault = (strpos($diaStr, '2000-01-01') !== false || $diaStr === '2000-01-01') && (empty($horarioStr) || $horarioStr === '00:00');
+                                $diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+                                $diaDisplay = $esDefault ? 'N/A' : ($diaStr ? (in_array(strtolower($diaStr), ['viernes','sabado','domingo','lunes','martes','miercoles','jueves']) ? ucfirst($diaStr) : (strlen($diaStr) === 10 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $diaStr) ? $diasSemana[date('w', strtotime($diaStr))] : $diaStr)) : '—');
+                                $horarioDisplay = $esDefault ? 'N/A' : ($horarioStr ?: '—');
+                            @endphp
                             <div class="small mb-2" style="color: #555;">
-                                @if(!empty($cruce['dia']))
-                                    @php $diaLabel = in_array(strtolower($cruce['dia'] ?? ''), ['viernes','sabado','domingo']) ? ucfirst($cruce['dia']) : ($cruce['dia'] ?? ''); @endphp
-                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
-                                @endif
-                                @if(!empty($cruce['horario']))
-                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
-                                @endif
+                                <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaDisplay }}</span>
+                                <span><strong>Horario:</strong> {{ $horarioDisplay }}</span>
                             </div>
-                            @endif
                             <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
@@ -680,17 +689,20 @@
                              data-llave-ref1="{{ $ref1 }}"
                              data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
-                            @if(!empty($cruce['dia']) || !empty($cruce['horario']))
+                            @php
+                                $diaVal = $cruce['dia'] ?? null;
+                                $horarioVal = $cruce['horario'] ?? null;
+                                $diaStr = is_string($diaVal) ? trim($diaVal) : '';
+                                $horarioStr = is_string($horarioVal) ? trim(preg_replace('/^(\d{2}:\d{2})(:\d{2})?$/', '$1', $horarioVal ?? '')) : '';
+                                $esDefault = (strpos($diaStr, '2000-01-01') !== false || $diaStr === '2000-01-01') && (empty($horarioStr) || $horarioStr === '00:00');
+                                $diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+                                $diaDisplay = $esDefault ? 'N/A' : ($diaStr ? (in_array(strtolower($diaStr), ['viernes','sabado','domingo','lunes','martes','miercoles','jueves']) ? ucfirst($diaStr) : (strlen($diaStr) === 10 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $diaStr) ? $diasSemana[date('w', strtotime($diaStr))] : $diaStr)) : '—');
+                                $horarioDisplay = $esDefault ? 'N/A' : ($horarioStr ?: '—');
+                            @endphp
                             <div class="small mb-2" style="color: #555;">
-                                @if(!empty($cruce['dia']))
-                                    @php $diaLabel = in_array(strtolower($cruce['dia'] ?? ''), ['viernes','sabado','domingo']) ? ucfirst($cruce['dia']) : ($cruce['dia'] ?? ''); @endphp
-                                    <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaLabel }}</span>
-                                @endif
-                                @if(!empty($cruce['horario']))
-                                    <span><strong>Horario:</strong> {{ $cruce['horario'] }}</span>
-                                @endif
+                                <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaDisplay }}</span>
+                                <span><strong>Horario:</strong> {{ $horarioDisplay }}</span>
                             </div>
-                            @endif
                             <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 

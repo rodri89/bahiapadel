@@ -108,6 +108,18 @@
         margin-left: 0.5rem !important;
         margin-right: 0.5rem !important;
     }
+    #modalHorarioCruces .modal-content,
+    #modalHorarioCruces .modal-header,
+    #modalHorarioCruces .modal-body,
+    #modalHorarioCruces .modal-footer,
+    #modalHorarioCruces .modal-title,
+    #modalHorarioCruces label,
+    #modalHorarioCruces p {
+        color: #000 !important;
+    }
+    #modalHorarioCruces .form-control {
+        color: #000;
+    }
 </style>
 
 <div class="container body_admin">
@@ -512,12 +524,48 @@
 
     <div class="row justify-content-center mt-4 mb-4">
         <div class="col-md-8 text-center">
+            <button type="button" class="btn btn-info btn-lg mr-3" id="btn-horario-cruces">
+                Horario cruces
+            </button>
             <button type="button" class="btn btn-success btn-lg mr-3" id="btn-validar-cruces" style="display: none;">
                 Validar Cruces
             </button>
             <a href="/admin_torneos" class="btn btn-secondary btn-lg">
                 Volver a Torneos
             </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Horario cruces -->
+<div class="modal fade" id="modalHorarioCruces" tabindex="-1" role="dialog" aria-labelledby="modalHorarioCrucesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="color: #000;">
+            <div class="modal-header" style="color: #000;">
+                <h5 class="modal-title" id="modalHorarioCrucesLabel" style="color: #000;">Día y horario de los partidos de cruces</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="color: #000;">
+                <div id="horario-cruces-loading" class="text-center py-4" style="color: #000;">
+                    <span class="spinner-border text-primary" role="status"></span>
+                    <p class="mt-2" style="color: #000;">Cargando partidos...</p>
+                </div>
+                <div id="horario-cruces-content" style="display: none;">
+                    <p class="small mb-3" style="color: #333;">Asigná día y horario a cada partido de la fase eliminatoria.</p>
+                    <div id="horario-cruces-lista"></div>
+                </div>
+                <div id="horario-cruces-empty" class="text-center py-4" style="display: none; color: #333;">
+                    No hay partidos de cruces cargados para este torneo.
+                </div>
+            </div>
+            <div class="modal-footer" style="color: #000;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btn-guardar-horarios-cruces" style="display: none;">
+                    Guardar horarios
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -617,6 +665,74 @@ $(document).ready(function() {
         var torneoId = $('#torneo_id').val();
         var url = '{{ url("/admin_torneo_validar_cruces") }}?torneo_id=' + torneoId;
         window.location.href = url;
+    });
+
+    // Horario cruces: abrir modal y cargar partidos
+    $('#btn-horario-cruces').on('click', function() {
+        var torneoId = $('#torneo_id').val();
+        $('#modalHorarioCruces').modal('show');
+        $('#horario-cruces-loading').show();
+        $('#horario-cruces-content').hide();
+        $('#horario-cruces-empty').hide();
+        $('#btn-guardar-horarios-cruces').hide();
+        $.get('{{ route("obtenerhorarioscruces") }}', { torneo_id: torneoId }, function(res) {
+            $('#horario-cruces-loading').hide();
+            if (res.success && res.partidos && res.partidos.length > 0) {
+                var html = '';
+                res.partidos.forEach(function(p) {
+                    var fecha = (p.fecha && p.fecha !== '2000-01-01') ? p.fecha : '';
+                    var horario = (p.horario && p.horario !== '00:00') ? p.horario : '';
+                    html += '<div class="form-group row align-items-center mb-2">' +
+                        '<label class="col-md-4 col-form-label">' + (p.etiqueta || 'Partido') + '</label>' +
+                        '<div class="col-md-4"><input type="date" class="form-control horario-cruce-fecha" data-partido-id="' + p.partido_id + '" value="' + fecha + '" placeholder="Día"></div>' +
+                        '<div class="col-md-4"><input type="time" class="form-control horario-cruce-horario" data-partido-id="' + p.partido_id + '" value="' + horario + '" placeholder="Horario"></div>' +
+                        '</div>';
+                });
+                $('#horario-cruces-lista').html(html);
+                $('#horario-cruces-content').show();
+                $('#btn-guardar-horarios-cruces').show();
+            } else {
+                $('#horario-cruces-empty').show();
+            }
+        }).fail(function() {
+            $('#horario-cruces-loading').hide();
+            $('#horario-cruces-empty').show().html('Error al cargar los partidos.');
+        });
+    });
+
+    $('#btn-guardar-horarios-cruces').on('click', function() {
+        var torneoId = $('#torneo_id').val();
+        var partidos = [];
+        $('.horario-cruce-fecha').each(function() {
+            var partidoId = $(this).data('partido-id');
+            var fecha = $(this).val() || '';
+            var horario = $('.horario-cruce-horario[data-partido-id="' + partidoId + '"]').val() || '';
+            partidos.push({ partido_id: partidoId, fecha: fecha, horario: horario });
+        });
+        var btn = $(this);
+        btn.prop('disabled', true).text('Guardando...');
+        $.ajax({
+            type: 'POST',
+            url: '{{ route("guardarhorarioscruces") }}',
+            data: {
+                torneo_id: torneoId,
+                partidos: partidos,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(res) {
+                btn.prop('disabled', false).text('Guardar horarios');
+                if (res.success) {
+                    $('#modalHorarioCruces').modal('hide');
+                    alert('Horarios guardados correctamente.');
+                } else {
+                    alert(res.message || 'Error al guardar');
+                }
+            },
+            error: function() {
+                btn.prop('disabled', false).text('Guardar horarios');
+                alert('Error al guardar los horarios.');
+            }
+        });
     });
     
     // Guardar resultado cuando se hace clic en el botón
