@@ -307,6 +307,22 @@ class HomeFreeController extends Controller
                 $j2a = $jugadoresInfo[(int) $g2->jugador_1] ?? null;
                 $j2b = $jugadoresInfo[(int) $g2->jugador_2] ?? null;
 
+                $diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                $fecha = $g1->fecha ?? $g2->fecha ?? null;
+                $horario = $g1->horario ?? $g2->horario ?? null;
+                $diaDisplay = null;
+                $horarioDisplay = null;
+                $fechaStr = $fecha ? (is_object($fecha) ? $fecha->format('Y-m-d') : trim((string) $fecha)) : '';
+                $horarioStr = $horario !== null && $horario !== '' ? (is_object($horario) ? $horario->format('H:i') : preg_replace('/^(\d{2}:\d{2})(:\d{2})?$/', '$1', trim((string) $horario))) : '';
+                $fechaEsDefault = $fechaStr !== '' && strpos($fechaStr, '2000-01-01') !== false;
+                $horarioEsDefault = $horarioStr === '' || $horarioStr === '00:00';
+                if ($fechaStr !== '' && !$fechaEsDefault) {
+                    $diaDisplay = in_array(strtolower($fechaStr), ['viernes', 'sabado', 'domingo']) ? ucfirst($fechaStr) : (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaStr) ? $diasSemana[(int) date('w', strtotime($fechaStr))] : $fechaStr);
+                }
+                if ($horarioStr !== '' && !$horarioEsDefault) {
+                    $horarioDisplay = $horarioStr;
+                }
+
                 $partidosOut[] = [
                     'partido_numero' => $partidoNro++,
                     'pareja_1' => [
@@ -319,6 +335,8 @@ class HomeFreeController extends Controller
                         'jugador_1' => $j2a,
                         'jugador_2' => $j2b,
                     ],
+                    'dia' => $diaDisplay,
+                    'horario' => $horarioDisplay,
                     'resultado' => [
                         'p1_set1' => (int) ($p->pareja_1_set_1 ?? 0),
                         'p2_set1' => (int) ($p->pareja_2_set_1 ?? 0),
@@ -442,7 +460,7 @@ class HomeFreeController extends Controller
             ->where('torneo_id', $torneoId)
             ->whereNotNull('partido_id')
             ->where(function ($query) {
-                $query->whereIn('zona', ['octavos final', 'cuartos final', 'semifinal', 'final'])
+                $query->whereIn('zona', ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])
                       ->orWhere('zona', 'like', 'octavos final%')
                       ->orWhere('zona', 'like', 'cuartos final%');
             })
@@ -498,12 +516,15 @@ class HomeFreeController extends Controller
         }
 
         $rondasMap = [
+            '16avos' => ['label' => '16AVOS', 'partidos' => []],
             'octavos' => ['label' => 'OCTAVOS', 'partidos' => []],
             'cuartos' => ['label' => 'CUARTOS', 'partidos' => []],
             'semifinal' => ['label' => 'SEMIFINAL', 'partidos' => []],
             'final' => ['label' => 'FINAL', 'partidos' => []],
         ];
-        $contadorPorRonda = ['octavos' => 1, 'cuartos' => 1, 'semifinal' => 1, 'final' => 1];
+        $contadorPorRonda = ['16avos' => 1, 'octavos' => 1, 'cuartos' => 1, 'semifinal' => 1, 'final' => 1];
+
+        $diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
         foreach ($partidosIds as $pid) {
             $pid = (int) $pid;
@@ -512,7 +533,8 @@ class HomeFreeController extends Controller
             if (!$p) continue;
             $zona = strtolower($zonaPorPartido[$pid] ?? '');
             $ronda = null;
-            if (strpos($zona, 'octavos') !== false) $ronda = 'octavos';
+            if (strpos($zona, '16avos') !== false) $ronda = '16avos';
+            elseif (strpos($zona, 'octavos') !== false) $ronda = 'octavos';
             elseif (strpos($zona, 'cuartos') !== false) $ronda = 'cuartos';
             elseif (strpos($zona, 'semifinal') !== false) $ronda = 'semifinal';
             elseif (trim($zona) === 'final') $ronda = 'final';
@@ -526,18 +548,45 @@ class HomeFreeController extends Controller
             $j2a = $jugadoresInfo[(int) $g2->jugador_1] ?? null;
             $j2b = $jugadoresInfo[(int) $g2->jugador_2] ?? null;
 
+            $label1 = trim(($j1a['nombre'] ?? '') . ' ' . ($j1a['apellido'] ?? '') . ' / ' . ($j1b['nombre'] ?? '') . ' ' . ($j1b['apellido'] ?? ''));
+            $label2 = trim(($j2a['nombre'] ?? '') . ' ' . ($j2a['apellido'] ?? '') . ' / ' . ($j2b['nombre'] ?? '') . ' ' . ($j2b['apellido'] ?? ''));
+            $ref1 = trim($g1->referencia_config ?? '');
+            $ref2 = trim($g2->referencia_config ?? '');
+            $labelVacio = function ($s) { return $s === '' || preg_match('/^[\s\/]+$/', $s) || strlen(trim(str_replace('/', '', $s))) === 0; };
+            if ($labelVacio($label1) && $ref1 !== '') $label1 = $ref1;
+            if ($labelVacio($label2) && $ref2 !== '') $label2 = $ref2;
+
+            $fecha = $g1->fecha ?? $g2->fecha ?? null;
+            $horario = $g1->horario ?? $g2->horario ?? null;
+            $diaDisplay = null;
+            $horarioDisplay = null;
+            $fechaStr = $fecha ? (is_object($fecha) ? $fecha->format('Y-m-d') : trim((string) $fecha)) : '';
+            $horarioStr = $horario !== null && $horario !== '' ? (is_object($horario) ? $horario->format('H:i') : preg_replace('/^(\d{2}:\d{2})(:\d{2})?$/', '$1', trim((string) $horario))) : '';
+            $fechaEsDefault = $fechaStr !== '' && strpos($fechaStr, '2000-01-01') !== false;
+            $horarioEsDefault = $horarioStr === '' || $horarioStr === '00:00';
+            if ($fechaStr !== '' && !$fechaEsDefault) {
+                $diaDisplay = in_array(strtolower($fechaStr), ['viernes', 'sabado', 'domingo']) ? ucfirst($fechaStr) : (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaStr) ? $diasSemana[(int) date('w', strtotime($fechaStr))] : $fechaStr);
+            }
+            if ($horarioStr !== '' && !$horarioEsDefault) {
+                $horarioDisplay = $horarioStr;
+            }
+
             $rondasMap[$ronda]['partidos'][] = [
                 'partido_numero' => $contadorPorRonda[$ronda]++,
                 'pareja_1' => [
-                    'label' => trim(($j1a['nombre'] ?? '') . ' ' . ($j1a['apellido'] ?? '') . ' / ' . ($j1b['nombre'] ?? '') . ' ' . ($j1b['apellido'] ?? '')),
+                    'label' => $label1 ?: 'Pareja 1',
+                    'referencia' => $ref1,
                     'jugador_1' => $j1a,
                     'jugador_2' => $j1b,
                 ],
                 'pareja_2' => [
-                    'label' => trim(($j2a['nombre'] ?? '') . ' ' . ($j2a['apellido'] ?? '') . ' / ' . ($j2b['nombre'] ?? '') . ' ' . ($j2b['apellido'] ?? '')),
+                    'label' => $label2 ?: 'Pareja 2',
+                    'referencia' => $ref2,
                     'jugador_1' => $j2a,
                     'jugador_2' => $j2b,
                 ],
+                'dia' => $diaDisplay,
+                'horario' => $horarioDisplay,
                 'resultado' => [
                     'p1_set1' => (int) ($p->pareja_1_set_1 ?? 0),
                     'p2_set1' => (int) ($p->pareja_2_set_1 ?? 0),
@@ -550,7 +599,7 @@ class HomeFreeController extends Controller
         }
 
         $rondasOut = [];
-        foreach (['octavos', 'cuartos', 'semifinal', 'final'] as $key) {
+        foreach (['16avos', 'octavos', 'cuartos', 'semifinal', 'final'] as $key) {
             if (!empty($rondasMap[$key]['partidos'])) {
                 $rondasOut[] = [
                     'ronda' => $key,

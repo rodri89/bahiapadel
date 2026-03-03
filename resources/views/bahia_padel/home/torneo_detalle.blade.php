@@ -74,6 +74,26 @@
         var cuerpo = document.createElement('div');
         cuerpo.className = 'torneo-zona-partido-body';
 
+        if (p.dia || p.horario) {
+            var lineaHorario = document.createElement('div');
+            lineaHorario.className = 'torneo-zona-partido-horario mb-2';
+            lineaHorario.style.fontSize = '0.9rem';
+            lineaHorario.style.color = '#555';
+            var texto = [];
+            if (p.dia) texto.push('Día: ' + String(p.dia).trim());
+            if (p.horario) texto.push('Horario: ' + String(p.horario).trim());
+            lineaHorario.textContent = texto.join(' · ');
+            cuerpo.appendChild(lineaHorario);
+        }
+
+        function labelPareja(pareja, fallback) {
+            var l = pareja && pareja.label ? String(pareja.label).trim() : '';
+            if (!l || /^[\s\/]+$/.test(l)) l = (pareja && pareja.referencia) ? String(pareja.referencia).trim() : fallback;
+            return l || fallback;
+        }
+        var label1 = labelPareja(p.pareja_1, 'Pareja 1');
+        var label2 = labelPareja(p.pareja_2, 'Pareja 2');
+
         var fila1 = document.createElement('div');
         fila1.className = 'torneo-zona-partido-linea';
         fila1.innerHTML =
@@ -82,7 +102,7 @@
                     (p.pareja_1 && p.pareja_1.jugador_1 ? '<img class="torneo-zona-player-img" src=\"' + p.pareja_1.jugador_1.foto + '\" alt=\"\">' : '') +
                     (p.pareja_1 && p.pareja_1.jugador_2 ? '<img class="torneo-zona-player-img" src=\"' + p.pareja_1.jugador_2.foto + '\" alt=\"\">' : '') +
                 '</div>' +
-                '<span class="torneo-zona-pareja-label">' + (p.pareja_1 && p.pareja_1.label ? p.pareja_1.label : 'Pareja 1') + '</span>' +
+                '<span class="torneo-zona-pareja-label">' + label1 + '</span>' +
             '</div>' +
             '<span class="torneo-zona-resultado">' +
                 (p.resultado ? (p.resultado.p1_set1 + ' - ' + p.resultado.p1_set2 + ' - ' + p.resultado.p1_set3) : '') +
@@ -96,7 +116,7 @@
                     (p.pareja_2 && p.pareja_2.jugador_1 ? '<img class="torneo-zona-player-img" src=\"' + p.pareja_2.jugador_1.foto + '\" alt=\"\">' : '') +
                     (p.pareja_2 && p.pareja_2.jugador_2 ? '<img class="torneo-zona-player-img" src=\"' + p.pareja_2.jugador_2.foto + '\" alt=\"\">' : '') +
                 '</div>' +
-                '<span class="torneo-zona-pareja-label">' + (p.pareja_2 && p.pareja_2.label ? p.pareja_2.label : 'Pareja 2') + '</span>' +
+                '<span class="torneo-zona-pareja-label">' + label2 + '</span>' +
             '</div>' +
             '<span class="torneo-zona-resultado">' +
                 (p.resultado ? (p.resultado.p2_set1 + ' - ' + p.resultado.p2_set2 + ' - ' + p.resultado.p2_set3) : '') +
