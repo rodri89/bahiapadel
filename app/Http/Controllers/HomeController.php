@@ -3975,8 +3975,8 @@ class HomeController extends Controller
                 $esPerdedor = true;
             }
             
-            // Excluir zonas especiales de eliminatoria
-            if (in_array($zonaBase, ['cuartos final', 'semifinal', 'final'])) {
+            // Excluir zonas especiales de eliminatoria (se manejan en pantalla de cruces)
+            if (in_array($zonaBase, ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])) {
                 continue;
             }
             
