@@ -65,7 +65,7 @@
         }
 
         .tv-topbar .brand {
-            font-size: 2.4vh;
+            font-size: 3.1vh;
             font-weight: 600;
             letter-spacing: 0.2em;
             text-transform: uppercase;
@@ -73,14 +73,14 @@
         }
 
         .tv-topbar .title {
-            font-size: 3vh;
+            font-size: 3.9vh;
             font-weight: 600;
             letter-spacing: 0.1em;
             text-transform: uppercase;
         }
 
         .tv-topbar .meta {
-            font-size: 1.6vh;
+            font-size: 2.1vh;
             color: var(--muted);
             text-transform: uppercase;
             letter-spacing: 0.15em;
@@ -137,19 +137,19 @@
             font-weight: 700;
             padding: 0.6vh 1.4vw;
             border-radius: 999px;
-            font-size: 2.4vh;
+            font-size: 3.1vh;
             letter-spacing: 0.2em;
             text-transform: uppercase;
         }
 
         .zone-name {
-            font-size: 4.4vh;
+            font-size: 5.7vh;
             font-weight: 700;
             text-transform: uppercase;
         }
 
         .tournament-name {
-            font-size: 2vh;
+            font-size: 2.6vh;
             color: var(--muted);
             text-transform: uppercase;
             letter-spacing: 0.2em;
@@ -165,7 +165,7 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 0.6vh 1.2vw;
             border-radius: 999px;
-            font-size: 1.6vh;
+            font-size: 2.1vh;
             text-transform: uppercase;
             letter-spacing: 0.2em;
             color: var(--muted);
@@ -190,6 +190,106 @@
             min-height: 0;
         }
 
+        .tournament-slide .zone-body {
+            gap: 2vh;
+        }
+
+        .tournament-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.8vw;
+            height: 100%;
+        }
+
+        .tournament-pages {
+            position: relative;
+            height: 100%;
+        }
+
+        .tournament-page {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .tournament-page.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .tournament-card {
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 1.6vh 1.4vw;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .tournament-card.compact {
+            padding: 1.2vh 1vw;
+        }
+
+        .tournament-card.compact .tournament-card-title {
+            font-size: 2.1vh;
+            margin-bottom: 0.8vh;
+        }
+
+        .tournament-card.compact .tournament-table {
+            font-size: 2vh;
+        }
+
+        .tournament-card.compact .tournament-table th,
+        .tournament-card.compact .tournament-table td {
+            padding: 0.6vh 0.2vw;
+        }
+
+        .tournament-card.compact .pair-names.small {
+            font-size: 1.8vh;
+        }
+
+        .tournament-card-title {
+            font-size: 2.4vh;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--muted);
+            margin-bottom: 1.2vh;
+        }
+
+        .tournament-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 2.2vh;
+        }
+
+        .tournament-table th,
+        .tournament-table td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 0.8vh 0.3vw;
+            text-align: center;
+        }
+
+        .tournament-table thead th {
+            font-size: 1.9vh;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .tournament-cell {
+            text-align: left;
+            width: 42%;
+        }
+
+        .pair-names.small {
+            font-size: 2.1vh;
+            letter-spacing: 0.06em;
+        }
+
         .matrix {
             width: 100%;
             height: 100%;
@@ -208,13 +308,13 @@
 
         .matrix thead th {
             background: rgba(255, 255, 255, 0.04);
-            font-size: 1.4vh;
+            font-size: 1.8vh;
             text-transform: uppercase;
             color: var(--muted);
         }
 
         .corner {
-            font-size: 1.4vh;
+            font-size: 1.8vh;
             color: var(--muted);
             letter-spacing: 0.2em;
         }
@@ -248,7 +348,7 @@
             display: flex;
             flex-direction: column;
             gap: 0.2vh;
-            font-size: 2.2vh;
+            font-size: 2.9vh;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             white-space: nowrap;
@@ -259,7 +359,7 @@
         }
 
         .score-cell {
-            font-size: 2.4vh;
+            font-size: 3.1vh;
             font-weight: 600;
             color: var(--muted);
             transition: all 0.3s ease;
@@ -324,7 +424,7 @@
             justify-content: center;
             text-transform: uppercase;
             letter-spacing: 0.2em;
-            font-size: 1.4vh;
+            font-size: 1.8vh;
             color: var(--muted);
             min-height: 6vh;
             position: relative;
@@ -357,11 +457,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3vh;
+            font-size: 3.9vh;
             color: var(--muted);
         }
 
         @media (max-width: 1200px) {
+            .tournament-grid {
+                grid-template-columns: 1fr;
+            }
+
             .ads-track {
                 width: 300%;
             }
@@ -385,6 +489,9 @@
             @if(empty($slides))
                 <div class="empty-state">No hay zonas para mostrar</div>
             @else
+                @php
+                    $slidesByTorneo = collect($slides ?? [])->groupBy('torneo_id');
+                @endphp
                 @foreach($slides as $index => $slide)
                     <section class="zone-slide {{ $loop->first ? 'active' : '' }}" data-index="{{ $index }}">
                         <div class="zone-header">
@@ -504,6 +611,88 @@
                         </div>
                     </section>
                 @endforeach
+                @foreach($slidesByTorneo as $torneoId => $torneoSlides)
+                    @php
+                        $torneoInfo = $torneoSlides->first();
+                    @endphp
+                    <section class="zone-slide tournament-slide" data-index="torneo-{{ $torneoId }}">
+                        <div class="zone-header">
+                            <div class="zone-title">
+                                <div class="cat-badge">{{ $torneoInfo['categoria'] ?? '-' }}a</div>
+                                <div>
+                                    <div class="zone-name">Estadisticas del torneo</div>
+                                    <div class="tournament-name">{{ $torneoInfo['torneo_nombre'] ?? 'Torneo' }}</div>
+                                </div>
+                            </div>
+                            <div class="zone-info">
+                                <div class="info-pill">Todas las zonas</div>
+                                <div class="info-pill">Orden PG / DIF SETS / DIF GAMES</div>
+                            </div>
+                        </div>
+                        @php
+                            $zoneCount = $torneoSlides->count();
+                            $gridCols = $zoneCount <= 2 ? max(1, $zoneCount) : ($zoneCount <= 4 ? 2 : ($zoneCount <= 6 ? 3 : 4));
+                        @endphp
+                        @php
+                            $pages = $torneoSlides->values()->chunk(4);
+                        @endphp
+                        <div class="zone-body">
+                            <div class="tournament-pages" data-tournament-pages>
+                                @foreach($pages as $pageIndex => $pageSlides)
+                                    @php
+                                        $pageCount = $pageSlides->count();
+                                        $gridCols = $pageCount <= 2 ? max(1, $pageCount) : ($pageCount <= 4 ? 2 : ($pageCount <= 6 ? 3 : 4));
+                                    @endphp
+                                    <div class="tournament-page {{ $pageIndex === 0 ? 'active' : '' }}" data-page-index="{{ $pageIndex }}">
+                                        <div class="tournament-grid" style="grid-template-columns: repeat({{ $gridCols }}, minmax(0, 1fr));">
+                                            @foreach($pageSlides as $slide)
+                                                <div class="tournament-card {{ (count($slide['parejas'] ?? []) >= 4) ? 'compact' : '' }}">
+                                                    <div class="tournament-card-title">Zona {{ $slide['zona'] }}</div>
+                                                    <table class="tournament-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="tournament-cell">Pareja</th>
+                                                                <th>PJ</th>
+                                                                <th>PG</th>
+                                                                <th>PP</th>
+                                                                <th>SF</th>
+                                                                <th>SC</th>
+                                                                <th>GF</th>
+                                                                <th>GC</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach(($slide['parejas_ordenadas'] ?? $slide['parejas']) as $p)
+                                                                @php
+                                                                    $stat = $slide['stats'][$p['key']] ?? ['pj' => 0, 'pg' => 0, 'pp' => 0, 'sf' => 0, 'sc' => 0, 'gf' => 0, 'gc' => 0];
+                                                                @endphp
+                                                                <tr>
+                                                                    <td class="tournament-cell">
+                                                                        <div class="pair-names small">
+                                                                            <span>{{ $p['apellido_1'] }}</span>
+                                                                            <span>{{ $p['apellido_2'] }}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>{{ $stat['pj'] }}</td>
+                                                                    <td>{{ $stat['pg'] }}</td>
+                                                                    <td>{{ $stat['pp'] }}</td>
+                                                                    <td>{{ $stat['sf'] }}</td>
+                                                                    <td>{{ $stat['sc'] }}</td>
+                                                                    <td>{{ $stat['gf'] }}</td>
+                                                                    <td>{{ $stat['gc'] }}</td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </section>
+                @endforeach
             @endif
         </main>
     </div>
@@ -614,6 +803,23 @@
 
             setActive(0);
             startRotation();
+
+            const pageIntervalMs = Math.max(5000, Math.floor(intervalMs * 0.7));
+            const tournamentSlides = Array.from(document.querySelectorAll('.tournament-slide'));
+
+            tournamentSlides.forEach(slide => {
+                const pages = Array.from(slide.querySelectorAll('.tournament-page'));
+                if (pages.length <= 1) {
+                    return;
+                }
+
+                let pageIndex = 0;
+                setInterval(() => {
+                    pages[pageIndex].classList.remove('active');
+                    pageIndex = (pageIndex + 1) % pages.length;
+                    pages[pageIndex].classList.add('active');
+                }, pageIntervalMs);
+            });
 
             if (adTracks.length) {
                 const totalOriginalAds = {{ count($sponsors ?? []) }};
