@@ -92,7 +92,7 @@
                 <div class="card-body">
                     <form id="form-config-cruces">
                         @csrf
-                        @if(isset($config) && !empty($config['id']))
+                        @if(isset($config) && $config !== null && !empty($config['id']))
                             <input type="hidden" name="config_id" id="config_id" value="{{ $config['id'] }}">
                         @else
                             <input type="hidden" name="config_id" id="config_id" value="">
@@ -102,7 +102,7 @@
                         <div class="form-group row">
                             <label for="cantidad_parejas" class="col-sm-3 col-form-label">Cantidad de Parejas:</label>
                             <div class="col-sm-9">
-                                <input type="number" class="form-control" id="cantidad_parejas" name="cantidad_parejas" min="1" value="{{ $config['cantidad_parejas'] ?? 16 }}" required>
+                                <input type="number" class="form-control" id="cantidad_parejas" name="cantidad_parejas" min="1" value="{{ (isset($config) && $config !== null) ? ($config['cantidad_parejas'] ?? 16) : 16 }}" required>
                             </div>
                         </div>
                         
@@ -111,19 +111,19 @@
                             <label class="col-sm-3 col-form-label">Rondas Eliminatorias:</label>
                             <div class="col-sm-9">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="tiene_16avos" name="tiene_16avos_final" value="1" {{ isset($config) && $config['tiene_16avos_final'] ? 'checked' : '' }}>
+                                    <input class="form-check-input" type="checkbox" id="tiene_16avos" name="tiene_16avos_final" value="1" {{ (isset($config) && $config !== null && $config['tiene_16avos_final']) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="tiene_16avos">
                                         Tiene 16avos de Final
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="tiene_8vos" name="tiene_8vos_final" value="1" {{ isset($config) && $config['tiene_8vos_final'] ? 'checked' : (!isset($config) ? 'checked' : '') }}>
+                                    <input class="form-check-input" type="checkbox" id="tiene_8vos" name="tiene_8vos_final" value="1" {{ (isset($config) && $config !== null) ? ($config['tiene_8vos_final'] ? 'checked' : '') : 'checked' }}>
                                     <label class="form-check-label" for="tiene_8vos">
                                         Tiene 8vos de Final
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="tiene_4tos" name="tiene_4tos_final" value="1" {{ isset($config) && $config['tiene_4tos_final'] ? 'checked' : (!isset($config) ? 'checked' : '') }}>
+                                    <input class="form-check-input" type="checkbox" id="tiene_4tos" name="tiene_4tos_final" value="1" {{ (isset($config) && $config !== null) ? ($config['tiene_4tos_final'] ? 'checked' : '') : 'checked' }}>
                                     <label class="form-check-label" for="tiene_4tos">
                                         Tiene 4tos de Final
                                     </label>
@@ -143,7 +143,7 @@
                             <div id="llave-16avos-content">
                                 @foreach([['A1','H2'],['B1','G2'],['C1','F2'],['D1','E2'],['E1','D2'],['F1','C2'],['G1','B2'],['H1','A2'],['A3','H4'],['B3','G4'],['C3','F4'],['D3','E4'],['E3','D4'],['F3','C4'],['G3','B4'],['H3','A4']] as $i => $par)
                                 <div class="form-group row mb-2 partido-llave" data-ronda="16avos" data-partido="{{ $i+1 }}">
-                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (16{{ $i+1 }}):</label>
+                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (DA{{ $i+1 }}):</label>
                                     <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_16avos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: A1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
                                     <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_16avos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: H2"></div>
@@ -171,14 +171,14 @@
                         <!-- Llave 4tos -->
                         <div id="llave-4tos-container" class="mb-4">
                             <h6>4tos de Final</h6>
-                            <p class="text-muted small mb-2">Use G1-8vos, G2-8vos, … = ganadores de los partidos de 8vos.</p>
+<p class="text-muted small mb-2">O1 vs O2 = ganador partido 1 octavos vs ganador partido 2 octavos. Use O1, O2, … O8.</p>
                             <div id="llave-4tos-content">
-                                @foreach([['G1-8vos','G2-8vos'],['G3-8vos','G4-8vos'],['G5-8vos','G6-8vos'],['G7-8vos','G8-8vos']] as $i => $par)
-                                <div class="form-group row mb-2 partido-llave" data-ronda="4tos" data-partido="{{ $i+1 }}">
+                                @foreach([['O1','O2'],['O3','O4'],['O5','O6'],['O7','O8']] as $i => $par)
+                                    <div class="form-group row mb-2 partido-llave" data-ronda="4tos" data-partido="{{ $i+1 }}">
                                     <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (C{{ $i+1 }}):</label>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_4tos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: G1-8vos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_4tos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: O1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_4tos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: G2-8vos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_4tos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: O2"></div>
                                 </div>
                                 @endforeach
                             </div>
@@ -187,19 +187,19 @@
                         <!-- Llave Semifinal (inputs fijos para que siempre se vean) -->
                         <div id="llave-semifinal-container" class="mb-4">
                             <h6>Semifinal</h6>
-                            <p class="text-muted small mb-2">Use <strong>G1-4tos</strong>, <strong>G2-4tos</strong>, <strong>G3-4tos</strong>, <strong>G4-4tos</strong> = ganadores de Cuartos 1, 2, 3 y 4 (no confundir con zonas A,B,C,D).</p>
+                            <p class="text-muted small mb-2">C1 vs C2 = ganador cuartos 1 vs ganador cuartos 2. Use C1, C2, C3, C4.</p>
                             <div id="llave-semifinal-content">
                                 <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="1">
                                     <label class="col-sm-2 col-form-label">Partido 1 (S1):</label>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="G1-4tos" placeholder="Ej: G1-4tos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="C1" placeholder="Ej: C1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="G2-4tos" placeholder="Ej: G2-4tos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="C2" placeholder="Ej: C2"></div>
                                 </div>
                                 <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="2">
                                     <label class="col-sm-2 col-form-label">Partido 2 (S2):</label>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="G3-4tos" placeholder="Ej: G3-4tos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="C3" placeholder="Ej: C3"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="G4-4tos" placeholder="Ej: G4-4tos"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="C4" placeholder="Ej: C4"></div>
                                 </div>
                             </div>
                         </div>
@@ -207,13 +207,13 @@
                         <!-- Llave Final (input fijo para que siempre se vea) -->
                         <div id="llave-final-container" class="mb-4">
                             <h6>Final</h6>
-                            <p class="text-muted small mb-2">Use G1-semifinal, G2-semifinal = ganadores de las dos semifinales.</p>
+                            <p class="text-muted small mb-2">S1 vs S2 = ganador semifinal 1 vs ganador semifinal 2.</p>
                             <div id="llave-final-content">
                                 <div class="form-group row mb-2 partido-llave" data-ronda="final" data-partido="1">
                                     <label class="col-sm-2 col-form-label">Partido 1 (F1):</label>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_final[0][pareja_1]" value="G1-semifinal" placeholder="Ej: G1-semifinal"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_final[0][pareja_1]" value="S1" placeholder="Ej: S1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_final[0][pareja_2]" value="G2-semifinal" placeholder="Ej: G2-semifinal"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_final[0][pareja_2]" value="S2" placeholder="Ej: S2"></div>
                                 </div>
                             </div>
                         </div>
@@ -277,9 +277,9 @@ $(document).ready(function() {
     const placeholdersRonda = {
         '16avos': ['Ej: A1', 'Ej: H2'],
         '8vos': ['Ej: A1 o G1-8vos', 'Ej: H2 o G2-8vos'],
-        '4tos': ['Ej: G1-8vos', 'Ej: G2-8vos'],
-        'semifinal': ['Ej: G1-4tos (ganador Cuartos 1)', 'Ej: G2-4tos (ganador Cuartos 2)'],
-        'final': ['Ej: G1-semifinal', 'Ej: G2-semifinal']
+        '4tos': ['Ej: O1', 'Ej: O2'],
+        'semifinal': ['Ej: C1', 'Ej: C2'],
+        'final': ['Ej: S1', 'Ej: S2']
     };
     
     function cargarLlave(ronda, partidos) {
@@ -335,10 +335,10 @@ $(document).ready(function() {
         generarLlave('final', 1, letrasDisponibles);
     }
     
-    // Función para obtener el código de ronda
+    // Función para obtener el código de ronda (DA = Dieciseis Avos)
     function obtenerCodigoRonda(ronda) {
         const codigos = {
-            '16avos': '16',
+            '16avos': 'DA',
             '8vos': 'O',
             '4tos': 'C',
             'semifinal': 'S',
@@ -383,17 +383,17 @@ $(document).ready(function() {
                 pareja1 = letra1 + '1';
                 pareja2 = letra2 + '2';
             } else if (ronda === '4tos') {
-                // Para 4tos: usar referencias a ganadores de octavos (G1-8vos, G2-8vos, etc.)
-                pareja1 = 'G' + (i * 2 + 1) + '-8vos';
-                pareja2 = 'G' + (i * 2 + 2) + '-8vos';
+                // Cuartos: O1 vs O2, O3 vs O4, O5 vs O6, O7 vs O8
+                pareja1 = 'O' + (i * 2 + 1);
+                pareja2 = 'O' + (i * 2 + 2);
             } else if (ronda === 'semifinal') {
-                // Para semifinal: usar referencias a ganadores de cuartos (G1-4tos, G2-4tos, etc.)
-                pareja1 = 'G' + (i * 2 + 1) + '-4tos';
-                pareja2 = 'G' + (i * 2 + 2) + '-4tos';
+                // Semifinal: C1 vs C2, C3 vs C4
+                pareja1 = 'C' + (i * 2 + 1);
+                pareja2 = 'C' + (i * 2 + 2);
             } else if (ronda === 'final') {
-                // Para final: usar referencias a ganadores de semifinal (G1-semifinal, G2-semifinal)
-                pareja1 = 'G1-semifinal';
-                pareja2 = 'G2-semifinal';
+                // Final: S1 vs S2
+                pareja1 = 'S1';
+                pareja2 = 'S2';
             }
             
             const partidoHtml = `

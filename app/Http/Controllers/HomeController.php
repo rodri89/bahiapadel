@@ -282,32 +282,41 @@ class HomeController extends Controller
     }
     
     function adminConfig() {
-        // Cargar configuración existente si hay
-        $configuracion = DB::table('configuracion_cruces_puntuables')
-            ->whereNull('torneo_id') // Configuración global
+        // Listar todas las configuraciones globales
+        $configuraciones = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id')
             ->orderBy('id', 'desc')
-            ->first();
-        
+            ->get();
+
         $config = null;
-        if ($configuracion) {
-            $config = [
-                'cantidad_parejas' => $configuracion->cantidad_parejas,
-                'tiene_16avos_final' => $configuracion->tiene_16avos_final,
-                'tiene_8vos_final' => $configuracion->tiene_8vos_final,
-                'tiene_4tos_final' => $configuracion->tiene_4tos_final,
-                'llave_16avos' => $configuracion->llave_16avos ? json_decode($configuracion->llave_16avos, true) : null,
-                'llave_8vos' => $configuracion->llave_8vos ? json_decode($configuracion->llave_8vos, true) : null,
-                'llave_4tos' => $configuracion->llave_4tos ? json_decode($configuracion->llave_4tos, true) : null,
-                'llave_semifinal' => $configuracion->llave_semifinal ? json_decode($configuracion->llave_semifinal, true) : null,
-                'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
-            ];
+        if (request()->get('nueva') == '1') {
+            // Formulario vacío para nueva configuración
+            $config = null;
+        } elseif ($editarId = request()->get('editar')) {
+            // Cargar la configuración a editar
+            $configuracion = DB::table('configuracion_cruces_puntuables')
+                ->whereNull('torneo_id')
+                ->where('id', $editarId)
+                ->first();
+            if ($configuracion) {
+                $config = [
+                    'id' => $configuracion->id,
+                    'cantidad_parejas' => $configuracion->cantidad_parejas,
+                    'tiene_16avos_final' => $configuracion->tiene_16avos_final,
+                    'tiene_8vos_final' => $configuracion->tiene_8vos_final,
+                    'tiene_4tos_final' => $configuracion->tiene_4tos_final,
+                    'llave_16avos' => $configuracion->llave_16avos ? json_decode($configuracion->llave_16avos, true) : null,
+                    'llave_8vos' => $configuracion->llave_8vos ? json_decode($configuracion->llave_8vos, true) : null,
+                    'llave_4tos' => $configuracion->llave_4tos ? json_decode($configuracion->llave_4tos, true) : null,
+                    'llave_semifinal' => $configuracion->llave_semifinal ? json_decode($configuracion->llave_semifinal, true) : null,
+                    'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
+                ];
+            }
         }
 
-        $configuraciones = $configuracion ? collect([$configuracion]) : collect();
-        
         return View('bahia_padel.admin.config.index')
             ->with('config', $config)
-            ->with('configuraciones', $configuraciones); 
+            ->with('configuraciones', $configuraciones);
     }
     
     function guardarConfigCruces(Request $request) {
@@ -326,18 +335,25 @@ class HomeController extends Controller
                 'updated_at' => now()
             ];
             
-            // Verificar si ya existe una configuración global
-            $existente = DB::table('configuracion_cruces_puntuables')
-                ->whereNull('torneo_id')
-                ->first();
-            
-            if ($existente) {
-                // Actualizar
-                DB::table('configuracion_cruces_puntuables')
-                    ->where('id', $existente->id)
-                    ->update($data);
+            $configId = $request->input('config_id');
+            $configId = $configId !== null && $configId !== '' ? (int) $configId : null;
+
+            if ($configId) {
+                // Actualizar la configuración con ese id (si existe y es global)
+                $existente = DB::table('configuracion_cruces_puntuables')
+                    ->whereNull('torneo_id')
+                    ->where('id', $configId)
+                    ->first();
+                if ($existente) {
+                    DB::table('configuracion_cruces_puntuables')
+                        ->where('id', $configId)
+                        ->update($data);
+                } else {
+                    $data['created_at'] = now();
+                    DB::table('configuracion_cruces_puntuables')->insert($data);
+                }
             } else {
-                // Crear nueva
+                // Crear nueva configuración
                 $data['created_at'] = now();
                 DB::table('configuracion_cruces_puntuables')->insert($data);
             }
@@ -1269,11 +1285,11 @@ class HomeController extends Controller
             $grupoSF2_P4->partido_id = $partidoSF2->id;
             $grupoSF2_P4->save();
             
-            // Final: Ganador SF1 vs Ganador SF2 (se crea pero sin jugadores asignados aún)
+            // Final: Ganador SF1 vs Ganador SF2 (zona "ganador X" para que al guardar resultados de las semis se rellenen las parejas)
             $partidoFinal = $this->crearPartido();
             $grupoFinal = new Grupo;
             $grupoFinal->torneo_id = $torneoId;
-            $grupoFinal->zona = $zona;
+            $grupoFinal->zona = 'ganador ' . $zona;
             $grupoFinal->fecha = $getFecha($request->input('final_dia'));
             $grupoFinal->horario = $getHorario($request->input('final_horario'));
             $grupoFinal->jugador_1 = 0; // Se asignará después según resultados
@@ -1281,11 +1297,11 @@ class HomeController extends Controller
             $grupoFinal->partido_id = $partidoFinal->id;
             $grupoFinal->save();
             
-            // Consolación: Perdedor SF1 vs Perdedor SF2
+            // Consolación / Tercer puesto: Perdedor SF1 vs Perdedor SF2 (zona "perdedor X" para que se rellenen al guardar resultados)
             $partidoConsolacion = $this->crearPartido();
             $grupoConsolacion = new Grupo;
             $grupoConsolacion->torneo_id = $torneoId;
-            $grupoConsolacion->zona = $zona;
+            $grupoConsolacion->zona = 'perdedor ' . $zona;
             $grupoConsolacion->fecha = $getFecha($request->input('consolacion_dia'));
             $grupoConsolacion->horario = $getHorario($request->input('consolacion_horario'));
             $grupoConsolacion->jugador_1 = 0; // Se asignará después según resultados

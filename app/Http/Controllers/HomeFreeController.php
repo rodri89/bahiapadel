@@ -615,8 +615,62 @@ class HomeFreeController extends Controller
         ]);
     }
 
-    public function ranking(){
-        return view('bahia_padel.home.ranking');
+    /**
+     * Ranking público: filtros por tipo (masculino/femenino/mixto), categoría y temporada/año.
+     */
+    public function ranking(Request $request)
+    {
+        $tipos = [
+            'masculino' => 'Masculino',
+            'femenino' => 'Femenino',
+            'mixto' => 'Mixto',
+        ];
+        $tipoSeleccionado = $request->get('tipo');
+        if (!array_key_exists($tipoSeleccionado ?? '', $tipos)) {
+            $tipoSeleccionado = 'masculino';
+        }
+        $categorias = DB::table('ranking_totales')
+            ->where('tipo', $tipoSeleccionado)
+            ->select('categoria')
+            ->distinct()
+            ->orderBy('categoria')
+            ->pluck('categoria');
+        $temporadas = DB::table('ranking_totales')
+            ->where('tipo', $tipoSeleccionado)
+            ->select('temporada')
+            ->distinct()
+            ->orderByDesc('temporada')
+            ->pluck('temporada');
+        $categoriaSeleccionada = (int) ($request->get('categoria') ?? $categorias->first() ?? 6);
+        $temporadaSeleccionada = (int) ($request->get('temporada') ?? $temporadas->first() ?? date('Y'));
+        $ranking = collect();
+        if (!$categorias->isEmpty() && !$temporadas->isEmpty()) {
+            $ranking = DB::table('ranking_totales')
+                ->join('jugadores', 'jugadores.id', '=', 'ranking_totales.jugador_id')
+                ->where('ranking_totales.tipo', $tipoSeleccionado)
+                ->where('ranking_totales.categoria', $categoriaSeleccionada)
+                ->where('ranking_totales.temporada', $temporadaSeleccionada)
+                ->where('jugadores.activo', 1)
+                ->orderByDesc('ranking_totales.puntos_totales')
+                ->orderBy('jugadores.apellido')
+                ->orderBy('jugadores.nombre')
+                ->get([
+                    'ranking_totales.jugador_id',
+                    'ranking_totales.puntos_totales',
+                    'jugadores.nombre',
+                    'jugadores.apellido',
+                    'jugadores.foto',
+                ]);
+        }
+        return view('bahia_padel.home.ranking', [
+            'tipos' => $tipos,
+            'tipo_seleccionado' => $tipoSeleccionado,
+            'categorias' => $categorias,
+            'categoria_seleccionada' => $categoriaSeleccionada,
+            'temporadas' => $temporadas,
+            'temporada_seleccionada' => $temporadaSeleccionada,
+            'ranking' => $ranking,
+        ]);
     }
 
     public function calendario(){
