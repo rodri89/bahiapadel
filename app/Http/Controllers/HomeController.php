@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Torneo;
 use App\Jugadore;
 use App\Partido;
@@ -736,24 +737,16 @@ class HomeController extends Controller
             $jugador->posicion = 0;
             $jugador->foto = 'images/jugador_img.png';
             
-            // Manejar subida de foto
+            // Manejar subida de foto (guardar en storage para que persista en producción)
             if ($request->hasFile('foto')) {
                 try {
                     $image = $request->file('foto');
-                    $name = time() . '_' . $image->getClientOriginalName();
-                    $path = 'images/jugadores/' . $name;
-                    
-                    // Crear directorio si no existe
-                    $directory = public_path('images/jugadores');
-                    if (!file_exists($directory)) {
-                        mkdir($directory, 0755, true);
-                    }
-                    
-                    // Usar Image para procesar y guardar la imagen
-                    Image::make($image->getRealPath())->save(public_path($path));
-                    $jugador->foto = $path;
+                    $name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $image->getClientOriginalName());
+                    Storage::disk('public')->makeDirectory('images/jugadores');
+                    $fullPath = Storage::disk('public')->path('images/jugadores/' . $name);
+                    Image::make($image->getRealPath())->save($fullPath);
+                    $jugador->foto = 'storage/images/jugadores/' . $name;
                 } catch (\Exception $e) {
-                    // Si falla la imagen, usar la imagen por defecto
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
                     $jugador->foto = 'images/jugador_img.png';
                 }
@@ -837,46 +830,21 @@ class HomeController extends Controller
                         return redirect()->route('subir.foto.jugador')->with('error', 'El archivo enviado no es válido');
                     }
                     
-                    // Sanitizar nombre del archivo
+                    // Sanitizar nombre del archivo y guardar en storage (persiste en producción)
                     $originalName = $image->getClientOriginalName();
                     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
                     $extension = $image->getClientOriginalExtension();
                     $name = time() . '_' . $safeName . '.' . $extension;
-                    $path = 'images/jugadores/' . $name;
+                    $path = 'storage/images/jugadores/' . $name;
+                    $pathRel = 'images/jugadores/' . $name;
+                    Storage::disk('public')->makeDirectory('images/jugadores');
+                    $directory = Storage::disk('public')->path('images/jugadores');
+                    $imgPath = Storage::disk('public')->path($pathRel);
                     
-                    // Obtener rutas usando public_path para asegurar la ubicación correcta
-                    $directory = public_path('images/jugadores');
-                    $imgPath = public_path($path);
-                    
-                    // Logging para diagnóstico
-                    \Log::info('=== INICIO SUBIDA FOTO ===');
-                    \Log::info('Nombre archivo original: ' . $originalName);
-                    \Log::info('Nombre archivo seguro: ' . $safeName);
-                    \Log::info('Ruta relativa: ' . $path);
-                    \Log::info('Directorio destino: ' . $directory);
-                    \Log::info('Ruta completa archivo: ' . $imgPath);
-                    \Log::info('base_path(): ' . base_path());
-                    \Log::info('public_path(): ' . public_path());
-                    
-                    // Crear directorio si no existe
-                    if (!file_exists($directory)) {
-                        \Log::info('Directorio no existe, intentando crear...');
-                        if (!mkdir($directory, 0755, true)) {
-                            \Log::error('ERROR: No se pudo crear el directorio: ' . $directory);
-                            throw new \Exception('No se pudo crear el directorio de imágenes: ' . $directory);
-                        }
-                        \Log::info('Directorio creado exitosamente');
-                    } else {
-                        \Log::info('Directorio ya existe');
-                    }
-                    
-                    // Verificar permisos de escritura
-                    if (!is_writable($directory)) {
-                        \Log::error('ERROR: El directorio no tiene permisos de escritura: ' . $directory);
-                        \Log::error('Permisos actuales: ' . substr(sprintf('%o', fileperms($directory)), -4));
-                        throw new \Exception('El directorio no tiene permisos de escritura: ' . $directory);
-                    }
-                    \Log::info('Directorio tiene permisos de escritura');
+                    \Log::info('=== INICIO SUBIDA FOTO (storage) ===');
+                    \Log::info('Nombre archivo: ' . $name);
+                    \Log::info('Ruta para BD: ' . $path);
+                    \Log::info('Ruta completa: ' . $imgPath);
                     
                     // Cargar imagen con Intervention Image
                     try {
@@ -905,21 +873,13 @@ class HomeController extends Controller
                     
                     do {
                         try {
-                            // Asegurar que la ruta sea absoluta y correcta
-                            $rutaCompleta = public_path($path);
+                            $rutaCompleta = $imgPath;
                             \Log::info('Intentando guardar en: ' . $rutaCompleta);
-                            \Log::info('Directorio padre existe: ' . (file_exists(dirname($rutaCompleta)) ? 'SÍ' : 'NO'));
-                            \Log::info('Directorio padre es escribible: ' . (is_writable(dirname($rutaCompleta)) ? 'SÍ' : 'NO'));
-                            
-                            // Guardar usando la ruta relativa desde public_path
                             $img->save($rutaCompleta, $quality);
-                            
-                            // Verificar que el archivo se guardó
                             if (!file_exists($rutaCompleta)) {
                                 \Log::error('ERROR: Archivo no existe después de save() en: ' . $rutaCompleta);
                                 throw new \Exception('No se pudo guardar el archivo en: ' . $rutaCompleta);
                             }
-                            
                             \Log::info('Archivo guardado exitosamente en: ' . $rutaCompleta);
                             $fileSize = filesize($rutaCompleta);
                             
@@ -941,9 +901,8 @@ class HomeController extends Controller
                                 $img->resize($newWidth, $newHeight, function ($constraint) {
                                     $constraint->aspectRatio();
                                 });
-                                $quality = 75; // Resetear calidad después de redimensionar
-                                // Actualizar ruta completa después de redimensionar
-                                $rutaCompleta = public_path($path);
+                                $quality = 75;
+                                $rutaCompleta = $imgPath;
                             }
                             
                         } catch (\Exception $saveError) {
@@ -956,49 +915,16 @@ class HomeController extends Controller
                         
                     } while ($fileSize > $maxSize && $quality >= 40 && $attempt < $maxAttempts);
                     
-                    // Verificar que el archivo se guardó correctamente usando la ruta completa
-                    $rutaFinal = public_path($path);
+                    $rutaFinal = $imgPath;
                     if (!file_exists($rutaFinal)) {
                         \Log::error('ERROR: El archivo no existe después de guardar: ' . $rutaFinal);
-                        \Log::error('Ruta relativa: ' . $path);
-                        \Log::error('public_path(): ' . public_path());
-                        throw new \Exception('El archivo no se guardó correctamente en: ' . $rutaFinal);
+                        throw new \Exception('El archivo no se guardó correctamente.');
                     }
-                    
-                    \Log::info('Archivo guardado exitosamente en: ' . $rutaFinal);
-                    \Log::info('Tamaño del archivo: ' . filesize($rutaFinal) . ' bytes');
-                    
-                    // Asegurar que la ruta sea relativa y no contenga rutas absolutas
+                    \Log::info('Archivo guardado en storage: ' . $rutaFinal);
                     $rutaFinalBD = $path;
-                    // Eliminar cualquier barra inicial
-                    $rutaFinalBD = ltrim($rutaFinalBD, '/');
-                    // Asegurar que no tenga rutas absolutas
-                    if (strpos($rutaFinalBD, public_path()) !== false) {
-                        // Si contiene la ruta absoluta, extraer solo la parte relativa
-                        $rutaFinalBD = str_replace(public_path() . '/', '', $rutaFinalBD);
-                        $rutaFinalBD = ltrim($rutaFinalBD, '/');
-                    }
-                    
-                    // Verificar que el archivo existe antes de guardar en BD
-                    $rutaVerificacionBD = public_path($rutaFinalBD);
-                    if (!file_exists($rutaVerificacionBD)) {
-                        \Log::error('ERROR: Archivo no existe antes de guardar en BD: ' . $rutaVerificacionBD);
-                        throw new \Exception('El archivo no existe antes de guardar en BD: ' . $rutaVerificacionBD);
-                    }
-                    
-                    // Verificar que el archivo es accesible vía HTTP
-                    $urlPublica = asset($rutaFinalBD);
-                    \Log::info('URL pública generada: ' . $urlPublica);
-                    \Log::info('APP_URL desde env: ' . env('APP_URL'));
-                    
-                    // Guardar la ruta relativa en BD
                     $jugador->foto = $rutaFinalBD;
-                    \Log::info('Ruta guardada en BD (relativa): ' . $jugador->foto);
-                    \Log::info('Ruta completa verificada: ' . public_path($jugador->foto));
-                    \Log::info('Archivo existe en ruta BD: ' . (file_exists(public_path($jugador->foto)) ? 'SÍ' : 'NO'));
-                    
-                    // Verificar archivo después de guardar en BD
-                    $filePathVerificacion = public_path($jugador->foto);
+                    \Log::info('Ruta guardada en BD: ' . $jugador->foto);
+                    $filePathVerificacion = file_exists($rutaFinal) ? $rutaFinal : public_path($jugador->foto);
                     \Log::info('Verificación post-BD - Ruta guardada en BD: ' . $jugador->foto);
                     \Log::info('Verificación post-BD - Ruta completa: ' . $filePathVerificacion);
                     \Log::info('Verificación post-BD - Existe: ' . (file_exists($filePathVerificacion) ? 'SÍ' : 'NO'));
@@ -1115,24 +1041,16 @@ class HomeController extends Controller
             $jugador->apellido = $request->apellido;
             $jugador->telefono = $request->telefono ?? 0;
             
-            // Manejar subida de foto solo si se envía una nueva
+            // Manejar subida de foto solo si se envía una nueva (storage para persistir en prod)
             if ($request->hasFile('foto')) {
                 try {
                     $image = $request->file('foto');
-                    $name = time() . '_' . $image->getClientOriginalName();
-                    $path = 'images/jugadores/' . $name;
-                    
-                    // Crear directorio si no existe
-                    $directory = public_path('images/jugadores');
-                    if (!file_exists($directory)) {
-                        mkdir($directory, 0755, true);
-                    }
-                    
-                    // Usar Image para procesar y guardar la imagen
-                    Image::make($image->getRealPath())->save(public_path($path));
-                    $jugador->foto = $path;
+                    $name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $image->getClientOriginalName());
+                    Storage::disk('public')->makeDirectory('images/jugadores');
+                    $fullPath = Storage::disk('public')->path('images/jugadores/' . $name);
+                    Image::make($image->getRealPath())->save($fullPath);
+                    $jugador->foto = 'storage/images/jugadores/' . $name;
                 } catch (\Exception $e) {
-                    // Si falla la imagen, mantener la actual
                     \Log::error('Error al procesar imagen: ' . $e->getMessage());
                 }
             }

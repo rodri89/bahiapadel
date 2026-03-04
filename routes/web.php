@@ -22,6 +22,11 @@ Route::get('/migrate', function() {
    // return what you want
 });
 
+Route::get('/storage-link', function() {
+   Artisan::call('storage:link');
+   return response()->json(['ok' => true, 'message' => 'Enlace storage creado (public/storage → storage/app/public). Las fotos de jugadores ya se servirán correctamente.']);
+})->name('storage.link');
+
 Route::get("/tv_torneo_americano", "HomeController@tvTorneoAmericano")->name("tvtorneoamericano");
 Route::get("/tv_torneo_americano_cruces", "HomeController@tvTorneoAmericanoCruces")->name("tvtorneoamericanocruces");
 Route::get("/tv_torneo_americano_sorteo", "HomeController@tvTorneoAmericanoSorteo")->name("tvtorneoamericanosorteo");

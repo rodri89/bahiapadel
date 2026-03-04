@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Jugadore;
 use App\Torneo;
 use App\Fecha;
@@ -210,21 +211,15 @@ class AdminController extends Controller
                     $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalName, PATHINFO_FILENAME));
                     $extension = $image->getClientOriginalExtension();
                     $name = time() . '_' . $safeName . '.' . $extension;
-                    // Siempre guardar en public (no en storage)
-                    $path = 'images/jugadores/' . $name;
-                    $directory = public_path('images/jugadores');
-                    if (!file_exists($directory)) {
-                        mkdir($directory, 0755, true);
-                    }
-                    Image::make($image->getRealPath())->save(public_path($path));
-                    
-                    \Log::info('Foto guardada: ' . $path);
-                    \Log::info('Ruta completa: ' . public_path($path));
-                    \Log::info('Archivo existe: ' . (file_exists(public_path($path)) ? 'SÍ' : 'NO'));
+                    Storage::disk('public')->makeDirectory('images/jugadores');
+                    $fullPath = Storage::disk('public')->path('images/jugadores/' . $name);
+                    Image::make($image->getRealPath())->save($fullPath);
+                    $path = 'storage/images/jugadores/' . $name;
+                    \Log::info('Foto guardada en storage: ' . $path);
                 } catch (\Exception $e) {
                     \Log::error('Error al procesar imagen en cargarImagenJugador: ' . $e->getMessage());
                     $path = 'images/jugador_img.png';
-                }                     
+                }
             } else {
                 $path = 'images/jugador_img.png';
             }
