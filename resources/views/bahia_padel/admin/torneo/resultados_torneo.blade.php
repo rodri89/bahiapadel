@@ -284,7 +284,7 @@
                                                         <span style="font-size:0.7rem; color:#666;">?</span>
                                                     </div>
                                                     <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
-                                                        Por determinar
+                                                        Esperando ganador
                                                     </div>
                                                 </div>
                                                 @endif
@@ -303,7 +303,7 @@
                                                         <span style="font-size:0.7rem; color:#666;">?</span>
                                                     </div>
                                                     <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
-                                                        Por determinar
+                                                        Esperando ganador
                                                     </div>
                                                 </div>
                                                 @endif
@@ -331,7 +331,7 @@
                                                         <span style="font-size:0.7rem; color:#666;">?</span>
                                                     </div>
                                                     <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
-                                                        Por determinar
+                                                        Esperando ganador
                                                     </div>
                                                 </div>
                                                 @endif
@@ -350,7 +350,7 @@
                                                         <span style="font-size:0.7rem; color:#666;">?</span>
                                                     </div>
                                                     <div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">
-                                                        Por determinar
+                                                        Esperando ganador
                                                     </div>
                                                 </div>
                                                 @endif
@@ -1009,7 +1009,7 @@ $(document).ready(function() {
         // Función helper para crear HTML de pareja
         function crearHTMLPareja(pareja, esPareja1) {
             if (!pareja || !pareja.jugador_1 || pareja.jugador_1 == 0) {
-                return '<div class="mb-2"><div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;"><span style="font-size:0.7rem; color:#666;">?</span></div><div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">Por determinar</div></div>';
+                return '<div class="mb-2"><div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;"><span style="font-size:0.7rem; color:#666;">?</span></div><div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">Esperando ganador</div></div>';
             }
             
             var jugador1 = obtenerJugadorPorId(pareja.jugador_1);
@@ -1017,7 +1017,7 @@ $(document).ready(function() {
             var colorBorde = esPareja1 ? '#4e73df' : '#1a8917';
             
             if (!jugador1 || !jugador2) {
-                return '<div class="mb-2"><div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;"><span style="font-size:0.7rem; color:#666;">?</span></div><div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">Por determinar</div></div>';
+                return '<div class="mb-2"><div style="width:70px; height:70px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; margin:0 auto; border: 2px solid #ccc;"><span style="font-size:0.7rem; color:#666;">?</span></div><div style="font-size:0.75rem; font-weight:600; margin-top:5px; color:#999;">Esperando ganador</div></div>';
             }
             
             return '<div class="mb-2">' +

@@ -323,10 +323,10 @@ $(document).ready(function() {
         
         // Generar llaves según las rondas activas
         if (tiene16avos) {
-            generarLlave('16avos', 16, letrasDisponibles); // 16 partidos para 16avos
+            generarLlave('16avos', 16, letrasDisponibles);
         }
         if (tiene8vos) {
-            generarLlave('8vos', 8, letrasDisponibles);
+            generarLlave('8vos', 8, letrasDisponibles, tiene16avos); // Con 16avos: DA1 vs A1, etc.
         }
         if (tiene4tos) {
             generarLlave('4tos', 4, letrasDisponibles);
@@ -348,7 +348,9 @@ $(document).ready(function() {
     }
     
     // Función para generar una llave específica
-    function generarLlave(ronda, cantidadPartidos, letrasDisponibles) {
+    // tiene16avos: cuando true y ronda 8vos, genera DA1 vs A1, DA2 vs B1, etc. (ganador 16avos vs cabeza de zona)
+    function generarLlave(ronda, cantidadPartidos, letrasDisponibles, tiene16avos) {
+        tiene16avos = tiene16avos || $('#tiene_16avos').is(':checked');
         const container = $('#llave-' + ronda + '-content');
         container.empty();
         const codigoRonda = obtenerCodigoRonda(ronda);
@@ -377,11 +379,17 @@ $(document).ready(function() {
                     pareja2 = letra2 + (posicion + 1);
                 }
             } else if (ronda === '8vos') {
-                // Para 8vos: A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2
-                const letra1 = letrasDisponibles[i];
-                const letra2 = letrasDisponibles[letrasDisponibles.length - 1 - i];
-                pareja1 = letra1 + '1';
-                pareja2 = letra2 + '2';
+                if (tiene16avos) {
+                    // Con 16avos: ganador de 16avos N vs primero de zona (DA1 vs A1, DA2 vs B1, ...)
+                    pareja1 = 'DA' + (i + 1);
+                    pareja2 = (letrasDisponibles[i] || 'A') + '1';
+                } else {
+                    // Sin 16avos: A1 vs H2, B1 vs G2, C1 vs F2, D1 vs E2
+                    const letra1 = letrasDisponibles[i];
+                    const letra2 = letrasDisponibles[letrasDisponibles.length - 1 - i];
+                    pareja1 = letra1 + '1';
+                    pareja2 = letra2 + '2';
+                }
             } else if (ronda === '4tos') {
                 // Cuartos: O1 vs O2, O3 vs O4, O5 vs O6, O7 vs O8
                 pareja1 = 'O' + (i * 2 + 1);

@@ -247,30 +247,84 @@ class HomeController extends Controller
         $horaInicio = 8;
         $slot = 0;
         $offsetParejas = 0;
+        $tipoTorneoFormato = $torneo->tipo_torneo_formato ?? 'puntuable';
         for ($z = 0; $z < $numZonas; $z++) {
             $zonaNombre = chr(65 + $z);
             $tamZona = $zoneSizes[$z];
             $paresZona = array_slice($parejas, $offsetParejas, $tamZona);
             $offsetParejas += $tamZona;
             $k = count($paresZona);
-            for ($i = 0; $i < $k; $i++) {
-                for ($j = $i + 1; $j < $k; $j++) {
-                    $partidoId = DB::table('partidos')->insertGetId($partidoDefaults);
-                    $hora = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
-                    $slot++;
-                    $gruposInsert = [
-                        [
-                            'torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $hora,
-                            'jugador_1' => $paresZona[$i][0], 'jugador_2' => $paresZona[$i][1], 'partido_id' => $partidoId,
-                            'created_at' => $now, 'updated_at' => $now
-                        ],
-                        [
-                            'torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $hora,
-                            'jugador_1' => $paresZona[$j][0], 'jugador_2' => $paresZona[$j][1], 'partido_id' => $partidoId,
-                            'created_at' => $now, 'updated_at' => $now
-                        ]
-                    ];
-                    DB::table('grupos')->insert($gruposInsert);
+            // Para torneo puntuable con zona de 4 parejas: crear estructura eliminatoria (4 partidos) en vez de todos contra todos (6)
+            if ($tamZona == 4 && $tipoTorneoFormato === 'puntuable') {
+                // Partido A: Pareja 1 vs Pareja 2
+                $partidoA = DB::table('partidos')->insertGetId($partidoDefaults);
+                $horaA = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
+                $slot++;
+                DB::table('grupos')->insert([
+                    ['torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaA,
+                     'jugador_1' => $paresZona[0][0], 'jugador_2' => $paresZona[0][1], 'partido_id' => $partidoA,
+                     'created_at' => $now, 'updated_at' => $now],
+                    ['torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaA,
+                     'jugador_1' => $paresZona[1][0], 'jugador_2' => $paresZona[1][1], 'partido_id' => $partidoA,
+                     'created_at' => $now, 'updated_at' => $now]
+                ]);
+                // Partido B: Pareja 3 vs Pareja 4
+                $partidoB = DB::table('partidos')->insertGetId($partidoDefaults);
+                $horaB = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
+                $slot++;
+                DB::table('grupos')->insert([
+                    ['torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaB,
+                     'jugador_1' => $paresZona[2][0], 'jugador_2' => $paresZona[2][1], 'partido_id' => $partidoB,
+                     'created_at' => $now, 'updated_at' => $now],
+                    ['torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaB,
+                     'jugador_1' => $paresZona[3][0], 'jugador_2' => $paresZona[3][1], 'partido_id' => $partidoB,
+                     'created_at' => $now, 'updated_at' => $now]
+                ]);
+                // Partido Ganador: placeholder (ganador A vs ganador B)
+                $partidoGanador = DB::table('partidos')->insertGetId($partidoDefaults);
+                $horaG = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
+                $slot++;
+                DB::table('grupos')->insert([
+                    ['torneo_id' => $torneoId, 'zona' => 'ganador ' . $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaG,
+                     'jugador_1' => 0, 'jugador_2' => 0, 'partido_id' => $partidoGanador, 'referencia_config' => 'GANADOR_' . $zonaNombre . '1',
+                     'created_at' => $now, 'updated_at' => $now],
+                    ['torneo_id' => $torneoId, 'zona' => 'ganador ' . $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaG,
+                     'jugador_1' => 0, 'jugador_2' => 0, 'partido_id' => $partidoGanador, 'referencia_config' => 'GANADOR_' . $zonaNombre . '2',
+                     'created_at' => $now, 'updated_at' => $now]
+                ]);
+                // Partido Perdedor: placeholder (perdedor A vs perdedor B)
+                $partidoPerdedor = DB::table('partidos')->insertGetId($partidoDefaults);
+                $horaP = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
+                $slot++;
+                DB::table('grupos')->insert([
+                    ['torneo_id' => $torneoId, 'zona' => 'perdedor ' . $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaP,
+                     'jugador_1' => 0, 'jugador_2' => 0, 'partido_id' => $partidoPerdedor, 'referencia_config' => 'PERDEDOR_' . $zonaNombre . '1',
+                     'created_at' => $now, 'updated_at' => $now],
+                    ['torneo_id' => $torneoId, 'zona' => 'perdedor ' . $zonaNombre, 'fecha' => $fechaBase, 'horario' => $horaP,
+                     'jugador_1' => 0, 'jugador_2' => 0, 'partido_id' => $partidoPerdedor, 'referencia_config' => 'PERDEDOR_' . $zonaNombre . '2',
+                     'created_at' => $now, 'updated_at' => $now]
+                ]);
+            } else {
+                // Todos contra todos (todos los tipos de torneo excepto puntuable 4 parejas, o zonas de 3/2 parejas)
+                for ($i = 0; $i < $k; $i++) {
+                    for ($j = $i + 1; $j < $k; $j++) {
+                        $partidoId = DB::table('partidos')->insertGetId($partidoDefaults);
+                        $hora = sprintf('%02d:%02d', $horaInicio + (int)($slot / 2), ($slot % 2) * 30);
+                        $slot++;
+                        $gruposInsert = [
+                            [
+                                'torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $hora,
+                                'jugador_1' => $paresZona[$i][0], 'jugador_2' => $paresZona[$i][1], 'partido_id' => $partidoId,
+                                'created_at' => $now, 'updated_at' => $now
+                            ],
+                            [
+                                'torneo_id' => $torneoId, 'zona' => $zonaNombre, 'fecha' => $fechaBase, 'horario' => $hora,
+                                'jugador_1' => $paresZona[$j][0], 'jugador_2' => $paresZona[$j][1], 'partido_id' => $partidoId,
+                                'created_at' => $now, 'updated_at' => $now
+                            ]
+                        ];
+                        DB::table('grupos')->insert($gruposInsert);
+                    }
                 }
             }
         }
@@ -1179,10 +1233,6 @@ class HomeController extends Controller
             // Ganador: Ganador Partido A vs Ganador Partido B (jugadores aún no se conocen)
             // En el formato eliminatoria, la pareja 4 tiene "ganador" en celda 10 (partido 1)
             $partidoGanador = $this->crearPartido();
-            $grupoGanador = new Grupo;
-            $grupoGanador->torneo_id = $torneoId;
-            $grupoGanador->zona = 'ganador ' . $zona; // Identificar como partido de ganadores
-            // Buscar la fecha/horario de "ganador" - puede venir de varias celdas sincronizadas
             $fechaGanador = $getFecha($request->input('pareja_4_partido_1_dia')); // Celda 10 (ganador pareja 4)
             if (empty($fechaGanador) || $fechaGanador === '2000-01-01') {
                 $fechaGanador = $getFecha($request->input('pareja_2_partido_2_dia')); // Celda 6 (ganador pareja 2)
@@ -1190,7 +1240,6 @@ class HomeController extends Controller
             if (empty($fechaGanador) || $fechaGanador === '2000-01-01') {
                 $fechaGanador = $getFecha($request->input('pareja_1_partido_2_dia')); // Celda 10 (ganador pareja 1)
             }
-            $grupoGanador->fecha = $fechaGanador;
             $horarioGanador = $getHorario($request->input('pareja_4_partido_1_horario'));
             if (empty($horarioGanador) || $horarioGanador === '00:00') {
                 $horarioGanador = $getHorario($request->input('pareja_2_partido_2_horario'));
@@ -1198,19 +1247,31 @@ class HomeController extends Controller
             if (empty($horarioGanador) || $horarioGanador === '00:00') {
                 $horarioGanador = $getHorario($request->input('pareja_1_partido_2_horario'));
             }
-            $grupoGanador->horario = $horarioGanador;
-            $grupoGanador->jugador_1 = 0; // Se asignará después según resultados
-            $grupoGanador->jugador_2 = 0;
-            $grupoGanador->partido_id = $partidoGanador->id;
-            $grupoGanador->save();
+            // Crear 2 grupos para el partido Ganador (cada partido necesita 2 parejas)
+            $grupoGanador1 = new Grupo;
+            $grupoGanador1->torneo_id = $torneoId;
+            $grupoGanador1->zona = 'ganador ' . $zona;
+            $grupoGanador1->fecha = $fechaGanador;
+            $grupoGanador1->horario = $horarioGanador;
+            $grupoGanador1->jugador_1 = 0;
+            $grupoGanador1->jugador_2 = 0;
+            $grupoGanador1->partido_id = $partidoGanador->id;
+            $grupoGanador1->referencia_config = 'GANADOR_' . $zona . '1'; // Ganador Partido A
+            $grupoGanador1->save();
+            $grupoGanador2 = new Grupo;
+            $grupoGanador2->torneo_id = $torneoId;
+            $grupoGanador2->zona = 'ganador ' . $zona;
+            $grupoGanador2->fecha = $fechaGanador;
+            $grupoGanador2->horario = $horarioGanador;
+            $grupoGanador2->jugador_1 = 0;
+            $grupoGanador2->jugador_2 = 0;
+            $grupoGanador2->partido_id = $partidoGanador->id;
+            $grupoGanador2->referencia_config = 'GANADOR_' . $zona . '2'; // Ganador Partido B
+            $grupoGanador2->save();
             
             // Perdedor: Perdedor Partido A vs Perdedor Partido B (jugadores aún no se conocen)
             // En el formato eliminatoria, la pareja 3 tiene "perdedor" en celda 7 (partido 1)
             $partidoPerdedor = $this->crearPartido();
-            $grupoPerdedor = new Grupo;
-            $grupoPerdedor->torneo_id = $torneoId;
-            $grupoPerdedor->zona = 'perdedor ' . $zona; // Identificar como partido de perdedores
-            // Buscar la fecha/horario de "perdedor" - puede venir de varias celdas sincronizadas
             $fechaPerdedor = $getFecha($request->input('pareja_3_partido_1_dia')); // Celda 7 (perdedor pareja 3)
             if (empty($fechaPerdedor) || $fechaPerdedor === '2000-01-01') {
                 $fechaPerdedor = $getFecha($request->input('pareja_1_partido_2_dia')); // Celda 3 (perdedor pareja 1)
@@ -1221,7 +1282,6 @@ class HomeController extends Controller
             if (empty($fechaPerdedor) || $fechaPerdedor === '2000-01-01') {
                 $fechaPerdedor = $getFecha($request->input('pareja_4_partido_2_dia')); // Celda 11 (perdedor pareja 4)
             }
-            $grupoPerdedor->fecha = $fechaPerdedor;
             $horarioPerdedor = $getHorario($request->input('pareja_3_partido_1_horario'));
             if (empty($horarioPerdedor) || $horarioPerdedor === '00:00') {
                 $horarioPerdedor = $getHorario($request->input('pareja_1_partido_2_horario'));
@@ -1232,11 +1292,27 @@ class HomeController extends Controller
             if (empty($horarioPerdedor) || $horarioPerdedor === '00:00') {
                 $horarioPerdedor = $getHorario($request->input('pareja_4_partido_2_horario'));
             }
-            $grupoPerdedor->horario = $horarioPerdedor;
-            $grupoPerdedor->jugador_1 = 0; // Se asignará después según resultados
-            $grupoPerdedor->jugador_2 = 0;
-            $grupoPerdedor->partido_id = $partidoPerdedor->id;
-            $grupoPerdedor->save();
+            // Crear 2 grupos para el partido Perdedor (cada partido necesita 2 parejas)
+            $grupoPerdedor1 = new Grupo;
+            $grupoPerdedor1->torneo_id = $torneoId;
+            $grupoPerdedor1->zona = 'perdedor ' . $zona;
+            $grupoPerdedor1->fecha = $fechaPerdedor;
+            $grupoPerdedor1->horario = $horarioPerdedor;
+            $grupoPerdedor1->jugador_1 = 0;
+            $grupoPerdedor1->jugador_2 = 0;
+            $grupoPerdedor1->partido_id = $partidoPerdedor->id;
+            $grupoPerdedor1->referencia_config = 'PERDEDOR_' . $zona . '1'; // Perdedor Partido A
+            $grupoPerdedor1->save();
+            $grupoPerdedor2 = new Grupo;
+            $grupoPerdedor2->torneo_id = $torneoId;
+            $grupoPerdedor2->zona = 'perdedor ' . $zona;
+            $grupoPerdedor2->fecha = $fechaPerdedor;
+            $grupoPerdedor2->horario = $horarioPerdedor;
+            $grupoPerdedor2->jugador_1 = 0;
+            $grupoPerdedor2->jugador_2 = 0;
+            $grupoPerdedor2->partido_id = $partidoPerdedor->id;
+            $grupoPerdedor2->referencia_config = 'PERDEDOR_' . $zona . '2'; // Perdedor Partido B
+            $grupoPerdedor2->save();
             
             return response()->json(['success' => true, 'partidos' => [$partidoA->id, $partidoB->id, $partidoGanador->id, $partidoPerdedor->id]]);
         } else if ($tieneCuatroParejas && $request->pareja_4_idJugadorArriba && $request->pareja_4_idJugadorAbajo) {
@@ -1917,7 +1993,12 @@ class HomeController extends Controller
         }
         
         // Crear todos los partidos posibles (todos contra todos) para cada zona
+        $tipoTorneoFormato = $torneo->tipo_torneo_formato ?? 'puntuable';
         foreach ($parejasPorZona as $zona => $parejas) {
+            // Para torneo puntuable con zona de 4 parejas: omitir (los partidos se crean por guardarFechaAdminTorneo con estructura eliminatoria)
+            if (count($parejas) == 4 && $tipoTorneoFormato === 'puntuable') {
+                continue;
+            }
             // Generar todas las combinaciones "todos contra todos"
             $combinaciones = [];
             for ($i = 0; $i < count($parejas); $i++) {
@@ -4349,6 +4430,14 @@ class HomeController extends Controller
                 }
             }
             
+            // Para zonas especiales de 4 parejas eliminatorias (tienen partido de ganador y de perdedor),
+            // mostrar solo los 2 partidos "normales" (Partido A y B) + ganador + perdedor.
+            // Si por alguna razón hay más partidos normales, limitarlos a los 2 primeros.
+            if ($partidoGanador && $partidoPerdedor && count($partidosNormales) > 2) {
+                ksort($partidosNormales);
+                $partidosNormales = array_slice($partidosNormales, 0, 2, true);
+            }
+
             // Reconstruir el array: normales primero, luego ganador, luego perdedor
             // IMPORTANTE: Crear un nuevo array para evitar problemas de referencias
             $partidosFinales = [];

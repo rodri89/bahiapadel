@@ -33,6 +33,24 @@
         margin-bottom: 0.25rem !important;
         font-size: 0.75rem;
     }
+    /* Scroll horizontal para las columnas de cruces */
+    .bracket-columns-scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px;
+    }
+    .bracket-columns-scroll .bracket-columns-row {
+        display: flex;
+        flex-wrap: nowrap;
+        min-width: max-content;
+        gap: 40px;
+    }
+    .bracket-columns-scroll .bracket-column {
+        flex: 0 0 auto;
+        min-width: 320px;
+        max-width: 320px;
+    }
 </style>
 
 <div class="bracket-container">
@@ -62,18 +80,48 @@
             </div>
         </div>
         
-        <div class="row">
-            <!-- Ejemplo de Card de Partido -->
-            <div class="col-md-3">
+        <div class="bracket-columns-scroll">
+            <div class="bracket-columns-row">
+            <!-- 16avos de Final -->
+            @if(count($cruces16avos ?? []) > 0)
+            <div class="bracket-column">
+                <div class="bracket-round">
+                    <div class="bracket-round-title">16avos de Final</div>
+                    @foreach($cruces16avos as $cruce)
+                        @php
+                            $esPlaceholder1 = ((int)($cruce['pareja_1']['jugador_1'] ?? 0) === 0 && (int)($cruce['pareja_1']['jugador_2'] ?? 0) === 0);
+                            $esPlaceholder2 = ((int)($cruce['pareja_2']['jugador_1'] ?? 0) === 0 && (int)($cruce['pareja_2']['jugador_2'] ?? 0) === 0);
+                            $jugador1_1 = $esPlaceholder1 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
+                            $jugador1_2 = $esPlaceholder1 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
+                            $jugador2_1 = $esPlaceholder2 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
+                            $jugador2_2 = $esPlaceholder2 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
+                            $partido = $cruce['partido'] ?? null;
+                            $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
+                            $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
+                            $pareja1_set3 = $partido ? ($partido->pareja_1_set_3 ?? 0) : 0;
+                            $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
+                            $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
+                            $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                        @endphp
+                        @include('bahia_padel.admin.torneo.partials.cruce_card_octavos', ['cruce' => $cruce, 'jugadores' => $jugadores, 'esPlaceholder1' => $esPlaceholder1, 'esPlaceholder2' => $esPlaceholder2, 'jugador1_1' => $jugador1_1, 'jugador1_2' => $jugador1_2, 'jugador2_1' => $jugador2_1, 'jugador2_2' => $jugador2_2, 'pareja1_set1' => $pareja1_set1, 'pareja1_set2' => $pareja1_set2, 'pareja1_set3' => $pareja1_set3, 'pareja2_set1' => $pareja2_set1, 'pareja2_set2' => $pareja2_set2, 'pareja2_set3' => $pareja2_set3])
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            <!-- Octavos de Final -->
+            <div class="bracket-column">
                 <div class="bracket-round">
                     <div class="bracket-round-title">Octavos Final</div>
                     @foreach($crucesOctavos as $cruce)
                         @php
-                            // Obtener datos de los jugadores
-                            $jugador1_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
-                            $jugador1_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
-                            $jugador2_1 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
-                            $jugador2_2 = collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
+                            // Obtener datos de los jugadores (pueden ser null si jugador=0 placeholder)
+                            $esPlaceholder1 = ((int)($cruce['pareja_1']['jugador_1'] ?? 0) === 0 && (int)($cruce['pareja_1']['jugador_2'] ?? 0) === 0);
+                            $esPlaceholder2 = ((int)($cruce['pareja_2']['jugador_1'] ?? 0) === 0 && (int)($cruce['pareja_2']['jugador_2'] ?? 0) === 0);
+                            $jugador1_1 = $esPlaceholder1 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_1']);
+                            $jugador1_2 = $esPlaceholder1 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_1']['jugador_2']);
+                            $jugador2_1 = $esPlaceholder2 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
+                            $jugador2_2 = $esPlaceholder2 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
                             
                             // Obtener resultados del partido si existen
                             $partido = $cruce['partido'] ?? null;
@@ -84,11 +132,17 @@
                             $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
                             $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
                         @endphp
+                        @php
+                            $ref1 = $cruce['referencia_1'] ?? '';
+                            $ref2 = $cruce['referencia_2'] ?? '';
+                        @endphp
                         <!-- CARD DE PARTIDO -->
                         <div class="match-card" 
                              data-cruce-id="{{ $cruce['id'] }}" 
                              data-ronda="{{ $cruce['ronda'] }}" 
                              data-partido-id="{{ $cruce['partido_id'] ?? '' }}" 
+                             data-llave-ref1="{{ $ref1 }}"
+                             data-llave-ref2="{{ $ref2 }}"
                              style="padding: 15px; margin-bottom: 20px;">
                             @php
                                 $diaVal = $cruce['dia'] ?? null;
@@ -114,6 +168,11 @@
                                  data-pareja="1"
                                  data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] }}"
                                  data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] }}">
+                                @if($esPlaceholder1)
+                                <div class="d-flex align-items-center" style="min-height: 60px;">
+                                    <span class="text-muted font-italic" style="font-size: 0.9rem;">Esperando ganador (de 16avos)</span>
+                                </div>
+                                @else
                                 <!-- Imágenes -->
                                 <div class="d-flex mr-3">
                                     <img src="{{ asset($jugador1_1->foto ?? 'images/jugador_img.png') }}" 
@@ -136,6 +195,7 @@
                                         {{ $jugador1_2->nombre ?? '' }} {{ $jugador1_2->apellido ?? '' }}
                                     </div>
                                 </div>
+                                @endif
                             </div>
                             
                             <!-- Inputs Sets Pareja 1 -->
@@ -233,6 +293,11 @@
                                  data-pareja="2"
                                  data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] }}"
                                  data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] }}">
+                                @if($esPlaceholder2)
+                                <div class="d-flex align-items-center" style="min-height: 60px;">
+                                    <span class="text-muted font-italic" style="font-size: 0.9rem;">Esperando ganador (de 16avos)</span>
+                                </div>
+                                @else
                                 <!-- Imágenes -->
                                 <div class="d-flex mr-3">
                                     <img src="{{ asset($jugador2_1->foto ?? 'images/jugador_img.png') }}" 
@@ -255,6 +320,7 @@
                                         {{ $jugador2_2->nombre ?? '' }} {{ $jugador2_2->apellido ?? '' }}
                                     </div>
                                 </div>
+                                @endif
                             </div>
                             
                             <!-- Botón guardar -->
@@ -274,7 +340,7 @@
             
             <!-- Cuartos de Final -->
             @if(count($crucesCuartos) > 0)
-            <div class="col-md-3">
+            <div class="bracket-column">
                 <div class="bracket-round">
                     <div class="bracket-round-title">Cuartos Final</div>
                     @foreach($crucesCuartos as $cruce)
@@ -507,7 +573,7 @@
             
             <!-- Semifinales -->
             @if(count($crucesSemifinales) > 0)
-            <div class="col-md-3">
+            <div class="bracket-column">
                 <div class="bracket-round">
                     <div class="bracket-round-title">Semifinales</div>
                     @foreach($crucesSemifinales as $cruce)
@@ -658,7 +724,7 @@
             
             <!-- Final -->
             @if(count($crucesFinales) > 0)
-            <div class="col-md-3">
+            <div class="bracket-column">
                 <div class="bracket-round">
                     <div class="bracket-round-title">Final</div>
                     @foreach($crucesFinales as $cruce)
@@ -982,6 +1048,7 @@
     function actualizarLlaveSiguienteConGanador(ganadorLlave) {
         if (!ganadorLlave || !ganadorLlave.refs || !ganadorLlave.ronda_siguiente) return;
         var titulosRonda = {
+            'octavos': 'Octavos Final',
             'cuartos': 'Cuartos Final',
             'semifinales': 'Semifinales',
             'final': 'Final'
@@ -1004,13 +1071,14 @@
             var ref1 = ($card.attr('data-llave-ref1') || '').trim();
             var ref2 = ($card.attr('data-llave-ref2') || '').trim();
             var slotActualizar = null;
-            if (refs.indexOf(ref1) !== -1) slotActualizar = 1;
-            else if (refs.indexOf(ref2) !== -1) slotActualizar = 2;
+            var matchRef = function(r) { return refs.some(function(ref) { return String(ref).toUpperCase() === String(r).toUpperCase(); }); };
+            if (matchRef(ref1)) slotActualizar = 1;
+            else if (matchRef(ref2)) slotActualizar = 2;
             if (!slotActualizar) return;
-            var $slot = $card.find('[data-pareja="' + slotActualizar + '"]').filter(function() { return $(this).attr('data-jugador-1') !== undefined; }).first();
-            if ($slot.length === 0) $slot = $card.find('[data-pareja="' + slotActualizar + '"]').first();
+            // Slot es el div con data-pareja y data-jugador-1 (no los inputs de sets)
+            var $slot = $card.find('div[data-pareja="' + slotActualizar + '"][data-jugador-1]').first();
             if ($slot.length === 0) return;
-            if ($slot.find('.d-flex.mr-3').length > 0) return; // ya tiene pareja asignada
+            if ($slot.find('.d-flex.mr-3 img.rounded-circle').length >= 2) return; // ya tiene pareja asignada (2 fotos)
             $slot.attr('data-jugador-1', ganadorLlave.jugador_1 || '').attr('data-jugador-2', ganadorLlave.jugador_2 || '');
             $slot.empty().append(htmlGanador);
             $card.find('input.resultado-cruce[data-pareja="2"]').prop('disabled', false);
@@ -1121,9 +1189,10 @@
             console.log('Iniciando llamada AJAX a guardarresultadopartidopuntuable...');
             console.log('URL:', '{{ route("guardarresultadopartidopuntuable") }}');
             
+            let partidoId = matchCard.data('partido-id');
             let datosEnvio = {
                 torneo_id: torneoId,
-                partido_id: matchCard.data('partido-id'),
+                partido_id: partidoId,
                 ronda: ronda,
                 cruce_id: cruceId,
                 pareja_1_jugador_1: pareja1Jugador1,
@@ -1139,12 +1208,18 @@
                 _token: '{{ csrf_token() }}'
             };
             
+            // Si no hay partido_id, usar endpoint que busca/crea partido por jugadores (octavos, cuartos, semifinales, final)
+            let urlGuardar = (partidoId && partidoId !== '' && partidoId !== '0') 
+                ? '{{ route("guardarresultadopartidopuntuable") }}' 
+                : '{{ route("guardarresultadocrucepuntuable") }}';
+            
             console.log('Datos a enviar:', datosEnvio);
+            console.log('URL:', urlGuardar);
             
             $.ajax({
                 type: 'POST',
                 dataType: 'JSON',
-                url: '{{ route("guardarresultadopartidopuntuable") }}',
+                url: urlGuardar,
                 data: datosEnvio,
             success: function(response) {
                 console.log('=== RESPUESTA GUARDAR RESULTADO ===');
@@ -1157,18 +1232,9 @@
                 
                 if (response.success) {
                     mostrarSnackbar('Resultado guardado correctamente');
-                    console.log('Resultado guardado exitosamente:', response);
-                    
-                    // Si el backend devolvió el ganador para la llave siguiente, actualizar esa llave sin recargar
-                    if (response.ganador_llave) {
-                        actualizarLlaveSiguienteConGanador(response.ganador_llave);
-                    }
-                    // Recargar solo si no se actualizó la llave (para sincronizar cualquier otro cambio)
-                    if (!response.ganador_llave) {
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 1000);
-                    }
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 500);
                 } else {
                     console.error('Error al guardar resultado:', response);
                     mostrarSnackbar(response.message || 'Error al guardar el resultado');
