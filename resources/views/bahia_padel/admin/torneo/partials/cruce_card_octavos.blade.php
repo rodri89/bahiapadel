@@ -20,7 +20,7 @@
     <div class="d-flex align-items-center mb-3" data-pareja="1" data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] ?? '' }}" data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] ?? '' }}">
         @if($esPlaceholder1 ?? false)
         <div class="d-flex align-items-center" style="min-height: 60px;">
-            <span class="text-muted font-italic" style="font-size: 0.9rem;">Esperando ganador (de 16avos)</span>
+            <span class="text-muted font-italic" style="font-size: 0.9rem;">{{ ($tiene16avos ?? false) ? 'Esperando ganador (de 16avos)' : 'Esperando clasificación' }}</span>
         </div>
         @else
         <div class="d-flex mr-3">
@@ -69,7 +69,7 @@
     <div class="d-flex align-items-center mb-3" data-pareja="2" data-jugador-1="{{ $cruce['pareja_2']['jugador_1'] ?? '' }}" data-jugador-2="{{ $cruce['pareja_2']['jugador_2'] ?? '' }}">
         @if($esPlaceholder2 ?? false)
         <div class="d-flex align-items-center" style="min-height: 60px;">
-            <span class="text-muted font-italic" style="font-size: 0.9rem;">Esperando ganador (de 16avos)</span>
+            <span class="text-muted font-italic" style="font-size: 0.9rem;">{{ ($tiene16avos ?? false) ? 'Esperando ganador (de 16avos)' : 'Esperando clasificación' }}</span>
         </div>
         @else
         <div class="d-flex mr-3">

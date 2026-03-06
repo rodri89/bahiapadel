@@ -728,7 +728,13 @@ $(document).ready(function() {
         }
     }
     
-    $('#tiene_16avos, #tiene_8vos, #tiene_4tos').on('change', actualizarVisibilidadLlaves);
+    $('#tiene_16avos, #tiene_8vos, #tiene_4tos').on('change', function() {
+        actualizarVisibilidadLlaves();
+        // Al desactivar 16avos, regenerar llaves para eliminar refs DA*/G*-16avos
+        if ($(this).attr('id') === 'tiene_16avos' && !$(this).is(':checked')) {
+            generarLlavesAutomaticamente();
+        }
+    });
     actualizarVisibilidadLlaves();
     
     // Drag and drop para criterios de desempate
@@ -963,6 +969,24 @@ $(document).ready(function() {
         };
         return codigos[ronda] || '';
     }
+
+    function esReferencia16avos(ref) {
+        if (!ref) return false;
+        const raw = String(ref).trim().toUpperCase().replace(/\s+/g, '');
+        return /^DA\d+$/.test(raw) || /^GANADOR_DA\d+$/.test(raw) || /^G\d+-16AVOS$/.test(raw);
+    }
+
+    function llaveContieneRefs16avos(llave) {
+        if (!llave) return false;
+        let data = llave;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) { return false; }
+        }
+        if (!Array.isArray(data)) return false;
+        return data.some(function(partido) {
+            return esReferencia16avos(partido && partido.pareja_1) || esReferencia16avos(partido && partido.pareja_2);
+        });
+    }
     
     // Cargar ejemplo
     $('.btn-cargar-ejemplo').on('click', function() {
@@ -993,6 +1017,17 @@ $(document).ready(function() {
     // Guardar configuración
     $('#form-config-cruces').on('submit', function(e) {
         e.preventDefault();
+
+        const tiene16avos = $('#tiene_16avos').is(':checked');
+        const tiene8vos = $('#tiene_8vos').is(':checked');
+
+        // Defensa para configs heredadas: no permitir refs a 16avos cuando la ronda está desactivada.
+        if (!tiene16avos && tiene8vos) {
+            const llave8Actual = obtenerLlave('8vos');
+            if (llaveContieneRefs16avos(llave8Actual)) {
+                generarLlavesAutomaticamente();
+            }
+        }
         
         const formData = {
             config_id: $('#config_id').val() || '',
@@ -1004,15 +1039,15 @@ $(document).ready(function() {
             clasifican_segundos: $('#clasifican_segundos').val(),
             clasifican_terceros: $('#clasifican_terceros').val(),
             clasifican_cuartos: $('#clasifican_cuartos').val(),
-            tiene_16avos_final: $('#tiene_16avos').is(':checked') ? 1 : 0,
-            tiene_8vos_final: $('#tiene_8vos').is(':checked') ? 1 : 0,
+            tiene_16avos_final: tiene16avos ? 1 : 0,
+            tiene_8vos_final: tiene8vos ? 1 : 0,
             tiene_4tos_final: $('#tiene_4tos').is(':checked') ? 1 : 0,
             criterio_desempate_orden: $('#criterio_desempate_orden').val(),
             games_fase_grupos: $('#games_fase_grupos').val(),
             games_cruces: $('#games_cruces').val(),
             games_semifinal: $('#games_semifinal').val(),
             games_final: $('#games_final').val(),
-            llave_16avos: obtenerLlave('16avos'),
+            llave_16avos: tiene16avos ? obtenerLlave('16avos') : null,
             llave_8vos: obtenerLlave('8vos'),
             llave_4tos: obtenerLlave('4tos'),
             llave_semifinal: obtenerLlave('semifinal'),

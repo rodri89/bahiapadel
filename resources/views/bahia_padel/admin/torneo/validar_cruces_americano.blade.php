@@ -178,6 +178,27 @@
                     </div>
                 </div>
                 <input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">
+                
+                {{-- Selector de configuración de cruces para torneos puntuables --}}
+                @if($tipoTorneo === 'puntuable' && isset($configsCrucesPuntuables) && count($configsCrucesPuntuables) > 0)
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="config_cruces_puntuable"><strong>Configuración de Cruces:</strong></label>
+                        <select class="form-control" id="config_cruces_puntuable" name="config_cruces_puntuable">
+                            <option value="">-- Seleccionar configuración --</option>
+                            @foreach($configsCrucesPuntuables as $config)
+                                <option value="{{ $config->id }}" 
+                                    data-tiene16avos="{{ $config->tiene_16avos_final }}"
+                                    @if(($torneo->config_cruces_puntuable_id ?? null) == $config->id) selected @endif>
+                                    {{ $config->cantidad_parejas }} parejas {{ $config->tiene_16avos_final ? '(con 16avos)' : '(sin 16avos)' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Selecciona la configuración que define si hay 16avos o no.</small>
+                    </div>
+                </div>
+                @endif
+                
                 <div class="alert alert-info">
                     <i class="fa fa-info-circle"></i> 
                     @if($necesitaOctavos ?? false)
@@ -1007,6 +1028,7 @@ $(document).ready(function() {
             data: {
                 torneo_id: torneoId,
                 cruces: crucesParaEnviar,
+                config_cruces_puntuable_id: $('#config_cruces_puntuable').val() || null,
                 _token: '{{ csrf_token() }}'
             },
             success: function(response) {

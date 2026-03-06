@@ -155,7 +155,7 @@
                         <!-- Llave 8vos -->
                         <div id="llave-8vos-container" class="mb-4">
                             <h6>8vos de Final</h6>
-                            <p class="text-muted small mb-2">Ej: A1, H2 o referencias como G1-8vos (ganador partido 1 de 8vos).</p>
+                            <p class="text-muted small mb-2">Ej: A1, H2, O1, G1-8vos. Si no se juegan todos los octavos, deja solo los partidos reales.</p>
                             <div id="llave-8vos-content">
                                 @foreach([['A1','H2'],['B1','G2'],['C1','F2'],['D1','E2'],['E1','D2'],['F1','C2'],['G1','B2'],['H1','A2']] as $i => $par)
                                 <div class="form-group row mb-2 partido-llave" data-ronda="8vos" data-partido="{{ $i+1 }}">
@@ -171,7 +171,7 @@
                         <!-- Llave 4tos -->
                         <div id="llave-4tos-container" class="mb-4">
                             <h6>4tos de Final</h6>
-<p class="text-muted small mb-2">O1 vs O2 = ganador partido 1 octavos vs ganador partido 2 octavos. Use O1, O2, … O8.</p>
+<p class="text-muted small mb-2">O1 vs O2 = ganador partido 1 octavos vs ganador partido 2 octavos. Puedes usar A1/B1/etc. para pase directo (bye).</p>
                             <div id="llave-4tos-content">
                                 @foreach([['O1','O2'],['O3','O4'],['O5','O6'],['O7','O8']] as $i => $par)
                                     <div class="form-group row mb-2 partido-llave" data-ronda="4tos" data-partido="{{ $i+1 }}">
@@ -248,6 +248,15 @@ $(document).ready(function() {
         });
     }
     
+    // Placeholders por ronda
+    const placeholdersRonda = {
+        '16avos': ['Ej: A1', 'Ej: H2'],
+        '8vos': ['Ej: A1 o G1-8vos', 'Ej: H2 o G2-8vos'],
+        '4tos': ['Ej: O1', 'Ej: O2'],
+        'semifinal': ['Ej: C1', 'Ej: C2'],
+        'final': ['Ej: S1', 'Ej: S2']
+    };
+
     // Cargar configuración existente: solo rellenar valores, no reemplazar DOM (así no se pierden los inputs de octavos)
     @if(isset($config) && $config !== null)
         const configExistente = @json($config);
@@ -271,16 +280,30 @@ $(document).ready(function() {
         if (config.tiene_4tos_final && config.llave_4tos) rellenarValoresLlave('4tos', config.llave_4tos);
         if (config.llave_semifinal) rellenarValoresLlave('semifinal', config.llave_semifinal);
         if (config.llave_final) rellenarValoresLlave('final', config.llave_final);
+
+        // Si la config no usa 16avos pero trae refs heredadas (DA*/G*-16avos), regenerar 8vos sin depender de 16avos.
+        if (!config.tiene_16avos_final && config.tiene_8vos_final && llaveContieneRefs16avos(config.llave_8vos)) {
+            generarLlave('8vos', 8, letrasDisponibles, false);
+        }
     }
-    
-    // Placeholders por ronda
-    const placeholdersRonda = {
-        '16avos': ['Ej: A1', 'Ej: H2'],
-        '8vos': ['Ej: A1 o G1-8vos', 'Ej: H2 o G2-8vos'],
-        '4tos': ['Ej: O1', 'Ej: O2'],
-        'semifinal': ['Ej: C1', 'Ej: C2'],
-        'final': ['Ej: S1', 'Ej: S2']
-    };
+
+    function esReferencia16avos(ref) {
+        if (!ref) return false;
+        var raw = String(ref).trim().toUpperCase().replace(/\s+/g, '');
+        return /^DA\d+$/.test(raw) || /^GANADOR_DA\d+$/.test(raw) || /^G\d+-16AVOS$/.test(raw);
+    }
+
+    function llaveContieneRefs16avos(llave) {
+        if (!llave) return false;
+        var data = llave;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) { return false; }
+        }
+        if (!Array.isArray(data)) return false;
+        return data.some(function(partido) {
+            return esReferencia16avos(partido && partido.pareja_1) || esReferencia16avos(partido && partido.pareja_2);
+        });
+    }
     
     function cargarLlave(ronda, partidos) {
         if (typeof partidos === 'string') {
@@ -433,6 +456,14 @@ $(document).ready(function() {
             }
         } else {
             $('#llave-16avos-container').hide();
+
+            // Al desactivar 16avos, evitar refs DA*/G*-16avos en octavos.
+            if ($('#tiene_8vos').is(':checked')) {
+                const cantidadParejas = parseInt($('#cantidad_parejas').val()) || 16;
+                const zonas = Math.ceil(cantidadParejas / 4);
+                const letrasDisponibles = letrasZonas.slice(0, zonas);
+                generarLlave('8vos', 8, letrasDisponibles, false);
+            }
         }
     });
     
@@ -447,14 +478,28 @@ $(document).ready(function() {
     // Guardar configuración
     $('#form-config-cruces').on('submit', function(e) {
         e.preventDefault();
+
+        const tiene16avos = $('#tiene_16avos').is(':checked');
+        const tiene8vos = $('#tiene_8vos').is(':checked');
+
+        // Defensa extra: si 16avos está apagado pero 8vos quedó con refs a 16avos, regenerar antes de guardar.
+        if (!tiene16avos && tiene8vos) {
+            const llave8Actual = obtenerLlave('8vos');
+            if (llaveContieneRefs16avos(llave8Actual)) {
+                const cantidadParejas = parseInt($('#cantidad_parejas').val()) || 16;
+                const zonas = Math.ceil(cantidadParejas / 4);
+                const letrasDisponibles = letrasZonas.slice(0, zonas);
+                generarLlave('8vos', 8, letrasDisponibles, false);
+            }
+        }
         
         const formData = {
             config_id: $('#config_id').val() || '',
             cantidad_parejas: $('#cantidad_parejas').val(),
-            tiene_16avos_final: $('#tiene_16avos').is(':checked') ? 1 : 0,
-            tiene_8vos_final: $('#tiene_8vos').is(':checked') ? 1 : 0,
+            tiene_16avos_final: tiene16avos ? 1 : 0,
+            tiene_8vos_final: tiene8vos ? 1 : 0,
             tiene_4tos_final: $('#tiene_4tos').is(':checked') ? 1 : 0,
-            llave_16avos: obtenerLlave('16avos'),
+            llave_16avos: tiene16avos ? obtenerLlave('16avos') : null,
             llave_8vos: obtenerLlave('8vos'),
             llave_4tos: obtenerLlave('4tos'),
             llave_semifinal: obtenerLlave('semifinal'),
@@ -482,12 +527,52 @@ $(document).ready(function() {
     });
     
     // Función para obtener los datos de una llave
+    function normalizarReferenciaCruce(ref) {
+        if (!ref) return '';
+        ref = String(ref).trim().toUpperCase().replace(/\s+/g, '');
+
+        // 1B -> B1
+        let m = ref.match(/^(\d+)([A-P])$/);
+        if (m) return m[2] + String(parseInt(m[1], 10));
+
+        // A01 -> A1
+        m = ref.match(/^([A-P])0*(\d+)$/);
+        if (m) return m[1] + String(parseInt(m[2], 10));
+
+        // O01/C01/S01/F01/DA01
+        m = ref.match(/^(DA|O|C|S|F)0*(\d+)$/);
+        if (m) return m[1] + String(parseInt(m[2], 10));
+
+        // G01-8VOS / G1-OCTAVOS / G2-CUARTOS / G1-SEMIFINALES
+        m = ref.match(/^G0*(\d+)-(16AVOS|8VOS|OCTAVOS|4TOS|CUARTOS|SEMIFINAL|SEMIFINALES)$/);
+        if (m) {
+            let ronda = m[2];
+            if (ronda === 'OCTAVOS') ronda = '8VOS';
+            if (ronda === 'CUARTOS') ronda = '4TOS';
+            if (ronda === 'SEMIFINALES') ronda = 'SEMIFINAL';
+            return 'G' + String(parseInt(m[1], 10)) + '-' + ronda;
+        }
+
+        return ref;
+    }
+
     function obtenerLlave(ronda) {
         const partidos = [];
+        const seen = new Set();
         $(`.partido-llave[data-ronda="${ronda}"]`).each(function() {
-            const pareja1 = $(this).find('.pareja-1-input').val();
-            const pareja2 = $(this).find('.pareja-2-input').val();
+            const pareja1 = normalizarReferenciaCruce($(this).find('.pareja-1-input').val());
+            const pareja2 = normalizarReferenciaCruce($(this).find('.pareja-2-input').val());
+
+            $(this).find('.pareja-1-input').val(pareja1);
+            $(this).find('.pareja-2-input').val(pareja2);
+
             if (pareja1 && pareja2) {
+                const key = [pareja1, pareja2].sort().join('|');
+                if (seen.has(key)) {
+                    return;
+                }
+                seen.add(key);
+
                 partidos.push({
                     pareja_1: pareja1,
                     pareja_2: pareja2

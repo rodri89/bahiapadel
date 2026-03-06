@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class Torneo extends Model
 {
-    protected $fillable = ['nombre', 'tipo', 'es_torneo_individual', 'fecha_inicio', 'fecha_fin', 'categoria', 'premio_1', 'premio_2', 'descripcion', 'imagen', 'activo', 'estado', 'tipo_torneo_formato', 'version'];
+    protected $fillable = ['nombre', 'tipo', 'es_torneo_individual', 'fecha_inicio', 'fecha_fin', 'categoria', 'premio_1', 'premio_2', 'descripcion', 'imagen', 'activo', 'estado', 'tipo_torneo_formato', 'version', 'config_cruces_puntuable_id'];
     
     /**
      * Incrementa la versión del torneo para notificar a las vistas TV

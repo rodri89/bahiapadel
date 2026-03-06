@@ -6,7 +6,7 @@
     <title>Bahia Padel - Rotación TV</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
     <style>
         /* ========================================
@@ -18,26 +18,46 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            background: #0a0f1a;
-            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: #e2e8f0;
+            background: radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.03), transparent 55%),
+                        radial-gradient(circle at 80% 5%, rgba(255, 255, 255, 0.02), transparent 50%),
+                        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+            font-family: "Space Grotesk", sans-serif;
+            color: var(--text);
             font-weight: 300;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             letter-spacing: 0.01em;
+        }
+
+        :root {
+            --bg-1: #050505;
+            --bg-2: #0b0b0b;
+            --panel: rgba(5, 5, 5, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text: #e6e6e6;
+            --muted: #9aa0a6;
+            --accent: #f97316;
+            --accent-2: #06b6d4;
+            --accent-3: #34d399;
+            --header-height: 7vh;
+            --content-height: calc(100vh - var(--header-height));
+            --slides-height: calc(var(--content-height) * 0.8);
+            --sponsors-height: calc(var(--content-height) * 0.2);
         }
         
         /* ========================================
            HEADER CON COLOR DE CATEGORÍA
            ======================================== */
         .header-tv {
-            height: 7vh;
+            height: var(--header-height);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 1.5vw;
             transition: background 0.5s ease, border-color 0.5s ease;
             backdrop-filter: blur(10px);
+            background: rgba(5, 5, 5, 0.8);
+            border-bottom: 1px solid var(--panel-border);
         }
         
         .header-left {
@@ -47,35 +67,37 @@
         }
         
         .categoria-badge {
-            font-size: 2.2vh;
-            font-weight: 500;
+            font-size: 2.1vh;
+            font-weight: 700;
             padding: 0.5vh 1.2vw;
-            border-radius: 0.5vh;
+            border-radius: 999px;
             text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: #fff;
-            text-shadow: 0 0.1vh 0.2vh rgba(0,0,0,0.3);
+            letter-spacing: 0.2em;
+            color: #04101c;
+            background: var(--accent-2);
+            text-shadow: none;
         }
         
         .header-tv h2 {
-            font-size: 2.5vh;
-            font-weight: 400;
-            color: #fff;
+            font-size: 3vh;
+            font-weight: 600;
+            color: var(--text);
             text-transform: uppercase;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.12em;
             margin: 0;
             transition: opacity 0.3s ease;
         }
         
         .fase-badge {
             font-size: 1.6vh;
-            font-weight: 400;
-            padding: 0.4vh 1vw;
-            border-radius: 0.3vh;
-            background: rgba(0,0,0,0.3);
-            color: #fff;
+            font-weight: 600;
+            padding: 0.45vh 1vw;
+            border-radius: 999px;
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid var(--panel-border);
+            color: var(--muted);
             text-transform: uppercase;
-            letter-spacing: 0.2em;
+            letter-spacing: 0.15em;
         }
         
         .header-indicadores {
@@ -115,17 +137,85 @@
         
         .countdown-display {
             font-size: 1.8vh;
-            color: rgba(255,255,255,0.6);
-            font-weight: 300;
+            color: var(--muted);
+            font-weight: 500;
         }
         
         /* ========================================
            SLIDES CONTAINER
            ======================================== */
         .slides-container {
-            height: 93vh;
+            height: var(--slides-height);
             position: relative;
             overflow: hidden;
+        }
+
+        .sponsors-mini {
+            height: var(--sponsors-height);
+            background: rgba(5, 5, 5, 0.9);
+            border-top: 1px solid var(--panel-border);
+            backdrop-filter: blur(3px);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 1vw;
+            gap: 0.8vw;
+        }
+
+        .sponsors-mini-label {
+            flex-shrink: 0;
+            font-size: 1.3vh;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(226, 232, 240, 0.7);
+            padding: 0.6vh 0.8vw;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 999px;
+        }
+
+        .sponsors-mini-track-wrap {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sponsors-mini-track {
+            display: flex;
+            align-items: center;
+            gap: 0.85vw;
+            will-change: transform;
+        }
+
+        .sponsors-mini-card {
+            height: calc(var(--sponsors-height) - 1.8vh);
+            min-width: 10vw;
+            max-width: 13vw;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid var(--panel-border);
+            border-radius: 0.5vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.35vh 0.45vw;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sponsors-mini-card img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+            filter: saturate(1.05);
+        }
+
+        .sponsors-mini-card span {
+            font-size: 1.45vh;
+            font-weight: 400;
+            color: rgba(226, 232, 240, 0.85);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .slide {
@@ -175,14 +265,16 @@
         
         .bracket-round-title {
             font-size: 1.6vh;
-            font-weight: 300;
-            color: #fbbf24;
+            font-weight: 600;
+            color: var(--muted);
             text-align: center;
             padding: 0.4vh 0;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.14em;
             flex-shrink: 0;
             height: 3vh;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--panel-border);
         }
         
         .bracket-round-body {
@@ -191,6 +283,17 @@
             flex-direction: column;
             position: relative;
             min-height: 0;
+        }
+
+        .bracket-round-body.auto-scroll {
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-right: 0.2vw;
+        }
+
+        .bracket-round-body.auto-scroll::-webkit-scrollbar {
+            display: none;
         }
         
         .match-card {
@@ -209,19 +312,27 @@
         .bracket-column--cuartos .match-card { flex: 4; }
         .bracket-column--semis .match-card { flex: 8; }
         .bracket-column--final .match-card { flex: 16; }
+
+        .bracket-column--dieciseisavos .bracket-round-body.auto-scroll .match-card,
+        .bracket-column--octavos .bracket-round-body.auto-scroll .match-card {
+            flex: 0 0 10vh;
+            min-height: 10vh;
+        }
         
         .player-pair {
             display: flex;
             align-items: center;
-            padding: 0.2vh 0.4vw;
-            background: rgba(30,41,59,0.8);
-            border-left: 3px solid rgba(100,116,139,0.5);
-            margin: 1px 0;
+            padding: 0.25vh 0.45vw;
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid var(--panel-border);
+            border-left: 3px solid rgba(255, 255, 255, 0.14);
+            border-radius: 8px;
+            margin: 0.15vh 0;
         }
         
         .player-pair.winner {
-            border-left-color: #22c55e;
-            background: rgba(34,197,94,0.15);
+            border-left-color: var(--accent-3);
+            background: rgba(52, 211, 153, 0.12);
         }
         
         .player-pair-content {
@@ -234,13 +345,13 @@
         .player-names {
             flex: 1;
             font-size: 2.3vh;
-            font-weight: 300;
-            color: #e2e8f0;
+            font-weight: 500;
+            color: var(--text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             text-transform: uppercase;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.06em;
         }
         
         .player-pair-input { 
@@ -252,9 +363,10 @@
         
         .set-score {
             font-size: 2vh;
-            font-weight: 400;
-            color: #e2e8f0;
-            background: rgba(71,85,105,0.5);
+            font-weight: 600;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             padding: 0.2vh 0.5vw;
             border-radius: 3px;
             min-width: 1.8vw;
@@ -265,21 +377,24 @@
         }
         
         .set-score.won {
-            background: #22c55e;
-            color: #000;
+            background: rgba(52, 211, 153, 0.18);
+            border-color: rgba(52, 211, 153, 0.35);
+            color: var(--accent-3);
         }
         
         .set-score.lost {
-            background: rgba(71,85,105,0.3);
-            color: rgba(255,255,255,0.6);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.08);
+            color: var(--muted);
         }
         
         .player-pair.winner .player-names {
-            color: #22c55e;
+            color: var(--accent-3);
         }
         
         .match-card.placeholder .player-names {
-            color: rgba(148,163,184,0.4);
+            color: var(--muted);
+            opacity: 0.55;
             font-style: italic;
         }
         
@@ -307,60 +422,6 @@
         .rondas-1 .bracket-column--final { width: 100%; }
         
         /* ========================================
-           CUADRO DIVIDIDO (16AVOS)
-           ======================================== */
-        .bracket-split-container {
-            height: 100%;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .bracket-subslide {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.4s ease-in-out;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .bracket-subslide.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        .bracket-parte-label {
-            position: absolute;
-            top: 1vh;
-            right: 1.5vw;
-            font-size: 1.8vh;
-            font-weight: 500;
-            padding: 0.5vh 1.2vw;
-            border-radius: 0.4vh;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            z-index: 10;
-        }
-        
-        .bracket-parte-label.alta {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: #fff;
-        }
-        
-        .bracket-parte-label.baja {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            color: #fff;
-        }
-        
-        .bracket-subslide .bracket-container {
-            flex: 1;
-        }
-        
-        /* ========================================
            FASE: GRUPOS (TABLAS)
            ======================================== */
         .grupos-container {
@@ -376,7 +437,8 @@
             flex: 1;
             min-width: 45%;
             max-width: 49%;
-            background: rgba(30,41,59,0.8);
+            background: rgba(10, 10, 10, 0.85);
+            border: 1px solid var(--panel-border);
             border-radius: 1vh;
             overflow: hidden;
             display: flex;
@@ -543,136 +605,60 @@
                                 $crucesPorRonda[$rondaKey][] = $cruce;
                             }
                         }
+
+                        // Normalizar cantidad máxima por ronda para TV.
+                        // Algunos torneos pueden tener llaves auxiliares y generan más cruces de lo esperado.
+                        $crucesPorRonda['cuartos final'] = array_slice($crucesPorRonda['cuartos final'], 0, 4);
+                        $crucesPorRonda['semifinal'] = array_slice($crucesPorRonda['semifinal'], 0, 2);
+                        $crucesPorRonda['final'] = array_slice($crucesPorRonda['final'], 0, 1);
                         
-                        $tiene16avos = count($crucesPorRonda['dieciseisavos final']) > 0;
-                        
-                        // Si hay 16avos, dividimos en parte alta y baja
-                        if ($tiene16avos) {
-                            $totalDieciseisavos = count($crucesPorRonda['dieciseisavos final']);
-                            $mitadDieciseisavos = (int)ceil($totalDieciseisavos / 2);
-                            
-                            $totalOctavos = count($crucesPorRonda['octavos final']);
-                            $mitadOctavos = (int)ceil($totalOctavos / 2);
-                            
-                            $totalCuartos = count($crucesPorRonda['cuartos final']);
-                            $mitadCuartos = (int)ceil($totalCuartos / 2);
-                            
-                            // Parte ALTA: primeros partidos de cada ronda + final
-                            $cuadroAlta = [
-                                'dieciseisavos final' => array_slice($crucesPorRonda['dieciseisavos final'], 0, $mitadDieciseisavos),
-                                'octavos final' => array_slice($crucesPorRonda['octavos final'], 0, $mitadOctavos),
-                                'cuartos final' => array_slice($crucesPorRonda['cuartos final'], 0, $mitadCuartos),
-                                'semifinal' => array_slice($crucesPorRonda['semifinal'], 0, 1),
-                                'final' => $crucesPorRonda['final']
-                            ];
-                            
-                            // Parte BAJA: últimos partidos de cada ronda + final también
-                            $cuadroBaja = [
-                                'dieciseisavos final' => array_slice($crucesPorRonda['dieciseisavos final'], $mitadDieciseisavos),
-                                'octavos final' => array_slice($crucesPorRonda['octavos final'], $mitadOctavos),
-                                'cuartos final' => array_slice($crucesPorRonda['cuartos final'], $mitadCuartos),
-                                'semifinal' => array_slice($crucesPorRonda['semifinal'], 1),
-                                'final' => $crucesPorRonda['final'] // La final se muestra en ambas partes
-                            ];
-                        }
+                        $rondasConScroll = ['dieciseisavos final', 'octavos final'];
                     @endphp
-                    
-                    @if($tiene16avos)
-                        {{-- CUADRO DIVIDIDO EN PARTE ALTA Y BAJA --}}
-                        <div class="bracket-split-container" data-torneo-id="{{ $torneoData['id'] }}">
-                            @foreach(['alta' => $cuadroAlta, 'baja' => $cuadroBaja] as $parte => $cuadroParte)
-                                @php
-                                    $rondasMostrar = [];
-                                    if (count($cuadroParte['dieciseisavos final']) > 0) {
-                                        $rondasMostrar[] = ['key' => 'dieciseisavos final', 'title' => '16VOS', 'class' => 'dieciseisavos'];
-                                    }
-                                    if (count($cuadroParte['octavos final']) > 0) {
-                                        $rondasMostrar[] = ['key' => 'octavos final', 'title' => 'OCTAVOS', 'class' => 'octavos'];
-                                    }
-                                    if (count($cuadroParte['cuartos final']) > 0) {
-                                        $rondasMostrar[] = ['key' => 'cuartos final', 'title' => 'CUARTOS', 'class' => 'cuartos'];
-                                    }
-                                    if (count($cuadroParte['semifinal']) > 0) {
-                                        $rondasMostrar[] = ['key' => 'semifinal', 'title' => 'SEMI', 'class' => 'semis'];
-                                    }
-                                    if (count($cuadroParte['final']) > 0) {
-                                        $rondasMostrar[] = ['key' => 'final', 'title' => 'FINAL', 'class' => 'final'];
-                                    }
-                                    $numRondas = count($rondasMostrar);
-                                @endphp
-                                <div class="bracket-subslide{{ $parte === 'alta' ? ' active' : '' }}" data-parte="{{ $parte }}">
-                                    <div class="bracket-parte-label {{ $parte }}">
-                                        CUADRO {{ strtoupper($parte) }}
-                                    </div>
-                                    <div class="bracket-container">
-                                        <div class="bracket-row rondas-{{ $numRondas }}">
-                                            @foreach($rondasMostrar as $rondaInfo)
-                                                @php $crucesRonda = $cuadroParte[$rondaInfo['key']] ?? []; @endphp
-                                                <div class="bracket-column bracket-column--{{ $rondaInfo['class'] }}">
-                                                    <div class="bracket-round">
-                                                        <div class="bracket-round-title">{{ $rondaInfo['title'] }}</div>
-                                                        <div class="bracket-round-body">
-                                                            @forelse($crucesRonda as $cruce)
-                                                                @include('bahia_padel.tv.partials.match_card', ['cruce' => $cruce, 'esAmericano' => $esAmericano])
-                                                            @empty
-                                                                <div class="match-card placeholder">
-                                                                    <div class="player-pair">
-                                                                        <div class="player-pair-content">
-                                                                            <div class="player-names">Esperando...</div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endforelse
+                    @php
+                        $rondasMostrar = [];
+                        if (count($crucesPorRonda['dieciseisavos final']) > 0) {
+                            $rondasMostrar[] = ['key' => 'dieciseisavos final', 'title' => '16VOS', 'class' => 'dieciseisavos'];
+                        }
+                        if (count($crucesPorRonda['octavos final']) > 0) {
+                            $rondasMostrar[] = ['key' => 'octavos final', 'title' => 'OCTAVOS', 'class' => 'octavos'];
+                        }
+                        if (count($crucesPorRonda['cuartos final']) > 0) {
+                            $rondasMostrar[] = ['key' => 'cuartos final', 'title' => 'CUARTOS', 'class' => 'cuartos'];
+                        }
+                        if (count($crucesPorRonda['semifinal']) > 0) {
+                            $rondasMostrar[] = ['key' => 'semifinal', 'title' => 'SEMIS', 'class' => 'semis'];
+                        }
+                        if (count($crucesPorRonda['final']) > 0) {
+                            $rondasMostrar[] = ['key' => 'final', 'title' => 'FINAL', 'class' => 'final'];
+                        }
+                        $numRondas = count($rondasMostrar);
+                    @endphp
+
+                    <div class="bracket-container scroll-mode">
+                        <div class="bracket-row rondas-{{ $numRondas }}">
+                            @foreach($rondasMostrar as $rondaInfo)
+                                @php $crucesRonda = $crucesPorRonda[$rondaInfo['key']] ?? []; @endphp
+                                <div class="bracket-column bracket-column--{{ $rondaInfo['class'] }}">
+                                    <div class="bracket-round">
+                                        <div class="bracket-round-title">{{ $rondaInfo['title'] }}</div>
+                                        <div class="bracket-round-body{{ in_array($rondaInfo['key'], $rondasConScroll) ? ' auto-scroll' : '' }}" @if(in_array($rondaInfo['key'], $rondasConScroll)) data-auto-scroll="1" @endif>
+                                            @forelse($crucesRonda as $cruce)
+                                                @include('bahia_padel.tv.partials.match_card', ['cruce' => $cruce, 'esAmericano' => $esAmericano])
+                                            @empty
+                                                <div class="match-card placeholder">
+                                                    <div class="player-pair">
+                                                        <div class="player-pair-content">
+                                                            <div class="player-names">Esperando...</div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            @endforeach
+                                            @endforelse
                                         </div>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
-                    @else
-                        {{-- CUADRO NORMAL SIN 16AVOS --}}
-                        @php
-                            $rondasMostrar = [];
-                            if (count($crucesPorRonda['octavos final']) > 0) {
-                                $rondasMostrar[] = ['key' => 'octavos final', 'title' => 'OCTAVOS', 'class' => 'octavos'];
-                            }
-                            if (count($crucesPorRonda['cuartos final']) > 0) {
-                                $rondasMostrar[] = ['key' => 'cuartos final', 'title' => 'CUARTOS', 'class' => 'cuartos'];
-                            }
-                            $rondasMostrar[] = ['key' => 'semifinal', 'title' => 'SEMIFINALES', 'class' => 'semis'];
-                            $rondasMostrar[] = ['key' => 'final', 'title' => 'FINAL', 'class' => 'final'];
-                            $numRondas = count($rondasMostrar);
-                        @endphp
-                        
-                        <div class="bracket-container">
-                            <div class="bracket-row rondas-{{ $numRondas }}">
-                                @foreach($rondasMostrar as $rondaInfo)
-                                    @php $crucesRonda = $crucesPorRonda[$rondaInfo['key']] ?? []; @endphp
-                                    <div class="bracket-column bracket-column--{{ $rondaInfo['class'] }}">
-                                        <div class="bracket-round">
-                                            <div class="bracket-round-title">{{ $rondaInfo['title'] }}</div>
-                                            <div class="bracket-round-body">
-                                                @forelse($crucesRonda as $cruce)
-                                                    @include('bahia_padel.tv.partials.match_card', ['cruce' => $cruce, 'esAmericano' => $esAmericano])
-                                                @empty
-                                                    <div class="match-card placeholder">
-                                                        <div class="player-pair">
-                                                            <div class="player-pair-content">
-                                                                <div class="player-names">Esperando...</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endforelse
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
+                    </div>
                 @else
                     {{-- VISTA DE GRUPOS/ZONAS --}}
                     @php
@@ -760,21 +746,45 @@
         @endforeach
     </div>
 
+    <div class="sponsors-mini">
+  
+        <div class="sponsors-mini-track-wrap">
+            <div class="sponsors-mini-track" data-sponsors-mini-track>
+                @php
+                    $displaySponsors = $sponsors ?? collect();
+                    $totalSponsors = count($displaySponsors);
+                    $sponsorsLoop = $totalSponsors > 0
+                        ? $displaySponsors->concat($displaySponsors->take(min(6, $totalSponsors)))
+                        : collect();
+                @endphp
+
+                @foreach($sponsorsLoop as $s)
+                    <div class="sponsors-mini-card">
+                        @if(!empty($s->imagen))
+                            <img src="{{ asset(str_starts_with($s->imagen, 'images/ads/') ? $s->imagen : ('images/ads/' . $s->imagen)) }}" alt="{{ $s->nombre ?? 'Sponsor' }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <span style="display:none;">{{ $s->nombre ?? 'Sponsor' }}</span>
+                        @else
+                            <span>{{ $s->nombre ?? 'Sponsor' }}</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript">
     // Configuración
     const INTERVALO_ROTACION = {{ $intervalo }} * 1000;
     const INTERVALO_CHECK_VERSION = 2000;
     const torneoIdsParam = '{{ $torneoIdsParam }}';
-    const INTERVALO_SUBSLIDE = Math.floor({{ $intervalo }} / 2); // Mitad del intervalo para sub-slides
+    const INTERVALO_SEGUNDOS = {{ $intervalo }};
     
     // Estado
     let torneoActualIndex = 0;
     let versiones = {};
-    let countdownSegundos = {{ $intervalo }};
-    let subSlideActual = 'alta'; // Para cuadros divididos (alta/baja)
-    let tieneSubSlides = false;
-    let subSlideCountdown = INTERVALO_SUBSLIDE;
+    let countdownSegundos = INTERVALO_SEGUNDOS;
+    let autoScrollTimer = null;
     
     // Inicializar versiones conocidas
     @foreach($torneosData as $torneo)
@@ -789,33 +799,48 @@
     const faseBadge = document.getElementById('fase-badge');
     const countdownDisplay = document.getElementById('countdown');
     const notification = document.getElementById('update-notification');
+    const sponsorsTrack = document.querySelector('[data-sponsors-mini-track]');
+    const totalOriginalSponsors = {{ count($sponsors ?? []) }};
     
-    // Verificar si el slide tiene sub-slides (cuadro dividido con 16avos)
-    function slideTieneSubSlides(slide) {
-        return slide.querySelector('.bracket-split-container') !== null;
+    function detenerAutoScrollCruces() {
+        if (autoScrollTimer) {
+            clearInterval(autoScrollTimer);
+            autoScrollTimer = null;
+        }
     }
-    
-    // Mostrar un sub-slide específico dentro de un slide con cuadro dividido
-    function mostrarSubSlide(slide, parte) {
-        const subSlides = slide.querySelectorAll('.bracket-subslide');
-        subSlides.forEach(subSlide => {
-            if (subSlide.dataset.parte === parte) {
-                subSlide.classList.add('active');
-            } else {
-                subSlide.classList.remove('active');
-            }
-        });
-        subSlideActual = parte;
-        subSlideCountdown = INTERVALO_SUBSLIDE;
-    }
-    
-    // Alternar entre parte alta y baja
-    function alternarSubSlide() {
-        const slideActivo = slides[torneoActualIndex];
-        if (!slideTieneSubSlides(slideActivo)) return;
-        
-        const nuevaParte = subSlideActual === 'alta' ? 'baja' : 'alta';
-        mostrarSubSlide(slideActivo, nuevaParte);
+
+    function iniciarAutoScrollCruces(slide) {
+        detenerAutoScrollCruces();
+
+        const targets = Array.from(slide.querySelectorAll('[data-auto-scroll]'));
+        if (!targets.length) return;
+
+        const estados = targets.map(el => ({ el, dir: 1 }));
+
+        autoScrollTimer = setInterval(() => {
+            estados.forEach(state => {
+                const el = state.el;
+                const maxScroll = el.scrollHeight - el.clientHeight;
+                if (maxScroll <= 0) return;
+
+                // Velocidad adaptativa: con intervalos cortos (ej: 5s) el scroll sigue siendo visible.
+                const segundosSlide = Math.max(3, INTERVALO_ROTACION / 1000);
+                const recorridoObjetivo = Math.min(maxScroll, Math.max(140, maxScroll * 0.45));
+                const pxPorSegundo = recorridoObjetivo / segundosSlide;
+                const paso = Math.max(0.5, pxPorSegundo * 0.04);
+                const next = el.scrollTop + (paso * state.dir);
+
+                if (next >= maxScroll) {
+                    el.scrollTop = maxScroll;
+                    state.dir = -1;
+                } else if (next <= 0) {
+                    el.scrollTop = 0;
+                    state.dir = 1;
+                } else {
+                    el.scrollTop = next;
+                }
+            });
+        }, 40);
     }
     
     // Mostrar slide específico
@@ -850,14 +875,11 @@
         nombreDisplay.textContent = slideActivo.dataset.torneoNombre;
         faseBadge.textContent = fase === 'cruces' ? 'CRUCES' : 'GRUPOS';
         
-        // Verificar si tiene sub-slides y reiniciar a parte alta
-        tieneSubSlides = slideTieneSubSlides(slideActivo);
-        if (tieneSubSlides) {
-            mostrarSubSlide(slideActivo, 'alta');
-        }
+        // Si la vista de cruces lo requiere, iniciar auto-scroll lento en rondas largas
+        iniciarAutoScrollCruces(slideActivo);
         
         torneoActualIndex = index;
-        countdownSegundos = {{ $intervalo }};
+        countdownSegundos = INTERVALO_SEGUNDOS;
         actualizarCountdown();
     }
     
@@ -919,34 +941,14 @@
         // Inicializar header con el primer torneo
         mostrarSlide(0);
         
-        // Rotación automática con soporte para sub-slides
+        // Rotación automática uniforme entre slides
         setInterval(() => {
             countdownSegundos--;
-            
-            // Si el slide actual tiene sub-slides (16avos), manejar la alternancia
-            if (tieneSubSlides) {
-                subSlideCountdown--;
-                
-                // Alternar entre alta y baja
-                if (subSlideCountdown <= 0) {
-                    if (subSlideActual === 'alta') {
-                        // Pasar a parte baja
-                        alternarSubSlide();
-                    } else {
-                        // Ya estamos en baja, ir al siguiente torneo
-                        siguienteSlide();
-                    }
-                }
-                
-                // Actualizar countdown visual (mostrar el countdown del sub-slide)
-                countdownDisplay.textContent = subSlideCountdown + 's';
+
+            if (countdownSegundos <= 0) {
+                siguienteSlide();
             } else {
-                // Slide normal sin sub-slides
-                if (countdownSegundos <= 0) {
-                    siguienteSlide();
-                } else {
-                    actualizarCountdown();
-                }
+                actualizarCountdown();
             }
         }, 1000);
         
@@ -957,6 +959,35 @@
         dots.forEach((dot, i) => {
             dot.addEventListener('click', () => mostrarSlide(i));
         });
+
+        if (sponsorsTrack && totalOriginalSponsors > 0) {
+            let sponsorIndex = 0;
+
+            const getSponsorStep = () => {
+                const firstCard = sponsorsTrack.querySelector('.sponsors-mini-card');
+                if (!firstCard) return 0;
+                const style = window.getComputedStyle(sponsorsTrack);
+                const gap = parseFloat(style.columnGap || style.gap || 0) || 0;
+                return firstCard.getBoundingClientRect().width + gap;
+            };
+
+            setInterval(() => {
+                const step = getSponsorStep();
+                if (!step) return;
+
+                sponsorIndex++;
+                sponsorsTrack.style.transition = 'transform 0.55s ease';
+                sponsorsTrack.style.transform = `translateX(-${sponsorIndex * step}px)`;
+
+                if (sponsorIndex >= totalOriginalSponsors) {
+                    setTimeout(() => {
+                        sponsorIndex = 0;
+                        sponsorsTrack.style.transition = 'none';
+                        sponsorsTrack.style.transform = 'translateX(0)';
+                    }, 280);
+                }
+            }, 2600);
+        }
     });
 </script>
 </body>

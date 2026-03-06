@@ -43,6 +43,26 @@
 
         </div>
     </div>
+
+    @if(isset($configsCrucesPuntuables) && count($configsCrucesPuntuables) > 0)
+    <div class="row justify-content-center mt-3">
+        <div class="col-lg-6">
+            <div class="card shadow bg-white p-3" style="border-radius: 12px; border: 1px solid #e3e6f0;">
+                <label for="config_cruces_puntuable" class="mb-2"><strong>Configuración de Cruces</strong></label>
+                <select class="form-control" id="config_cruces_puntuable" name="config_cruces_puntuable">
+                    <option value="">-- Seleccionar configuración --</option>
+                    @foreach($configsCrucesPuntuables as $config)
+                        <option value="{{ $config->id }}" @if(($torneo->config_cruces_puntuable_id ?? null) == $config->id) selected @endif>
+                            {{ $config->cantidad_parejas }} parejas {{ $config->tiene_16avos_final ? '(con 16avos)' : '(sin 16avos)' }}
+                        </option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Esta configuración se guarda al crear/armar el torneo.</small>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <br>
 
     <div class="row justify-content-center" id="seccion_zonas">
@@ -1005,6 +1025,7 @@
         let datosEnvio = {
             torneo_id: torneoId,
             zona: zona,
+            config_cruces_puntuable_id: $('#config_cruces_puntuable').val() || null,
             tiene_cuatro_parejas: tieneCuatroParejas ? 1 : 0,
             tiene_cuatro_parejas_eliminatoria: 0, // Por ahora siempre 0
             pareja_1_idJugadorArriba: pareja_1_idJugadorArriba,
@@ -1146,8 +1167,13 @@
     // Event listener para el botón Comenzar Torneo
     $(document).on('click', '#btn-comenzar-torneo', function() {
         let torneoId = $('#torneo_id').val();
+        let configCrucesId = $('#config_cruces_puntuable').val() || null;
         if (!torneoId) {
             alert('Por favor, seleccione un torneo primero');
+            return;
+        }
+        if (!configCrucesId) {
+            alert('Seleccioná una configuración de cruces antes de comenzar el torneo.');
             return;
         }
 
@@ -1159,6 +1185,7 @@
             url: '{{ route("comenzartorneopuntuable") }}',
             data: {
                 torneo_id: torneoId,
+                config_cruces_puntuable_id: configCrucesId,
                 _token: '{{ csrf_token() }}'
             },
             success: function(response) {

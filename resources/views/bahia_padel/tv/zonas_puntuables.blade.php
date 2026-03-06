@@ -201,24 +201,6 @@
             height: 100%;
         }
 
-        .tournament-pages {
-            position: relative;
-            height: 100%;
-        }
-
-        .tournament-page {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.5s ease;
-        }
-
-        .tournament-page.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
         .tournament-card {
             background: rgba(10, 10, 10, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -599,8 +581,29 @@
                                     @endphp
 
                                     @foreach($finalList as $s)
+                                        @php
+                                            $rawImagen = trim((string)($s->imagen ?? ''));
+                                            if ($rawImagen === '') {
+                                                $sponsorImgSrc = asset('images/no-image.png');
+                                            } elseif (preg_match('/^https?:\/\//i', $rawImagen)) {
+                                                $sponsorImgSrc = $rawImagen;
+                                            } else {
+                                                $normalizedImagen = str_replace('\\', '/', $rawImagen);
+                                                $normalizedImagen = ltrim($normalizedImagen, '/');
+
+                                                if (strpos($normalizedImagen, 'public/') === 0) {
+                                                    $normalizedImagen = substr($normalizedImagen, 7);
+                                                }
+
+                                                if (strpos($normalizedImagen, 'images/ads/') !== 0) {
+                                                    $normalizedImagen = 'images/ads/' . ltrim($normalizedImagen, '/');
+                                                }
+
+                                                $sponsorImgSrc = asset($normalizedImagen);
+                                            }
+                                        @endphp
                                         <div class="ad-card">
-                                            <img class="ad-image" src="{{ asset('images/ads/' . ($s->imagen ?? 'no-image.png')) }}" onerror="this.src='{{ asset('images/no-image.png') }}'">
+                                            <img class="ad-image" src="{{ $sponsorImgSrc }}" onerror="this.src='{{ asset('images/no-image.png') }}'">
                                             @if(!($s->imagen))
                                                 <span class="ad-card-label">{{ $s->nombre }}</span>
                                             @endif
@@ -614,84 +617,78 @@
                 @foreach($slidesByTorneo as $torneoId => $torneoSlides)
                     @php
                         $torneoInfo = $torneoSlides->first();
+                        $pages = $torneoSlides->values()->chunk(4);
+                        $totalPages = $pages->count();
                     @endphp
-                    <section class="zone-slide tournament-slide" data-index="torneo-{{ $torneoId }}">
-                        <div class="zone-header">
-                            <div class="zone-title">
-                                <div class="cat-badge">{{ $torneoInfo['categoria'] ?? '-' }}a</div>
-                                <div>
-                                    <div class="zone-name">Estadisticas del torneo</div>
-                                    <div class="tournament-name">{{ $torneoInfo['torneo_nombre'] ?? 'Torneo' }}</div>
+                    @foreach($pages as $pageIndex => $pageSlides)
+                        @php
+                            $pageCount = $pageSlides->count();
+                            $gridCols = $pageCount <= 2 ? max(1, $pageCount) : ($pageCount <= 4 ? 2 : ($pageCount <= 6 ? 3 : 4));
+                        @endphp
+                        <section class="zone-slide tournament-slide" data-index="torneo-{{ $torneoId }}-{{ $pageIndex }}">
+                            <div class="zone-header">
+                                <div class="zone-title">
+                                    <div class="cat-badge">{{ $torneoInfo['categoria'] ?? '-' }}a</div>
+                                    <div>
+                                        <div class="zone-name">Estadisticas del torneo</div>
+                                        <div class="tournament-name">{{ $torneoInfo['torneo_nombre'] ?? 'Torneo' }}</div>
+                                    </div>
+                                </div>
+                                <div class="zone-info">
+                                    <div class="info-pill">Todas las zonas</div>
+                                    <div class="info-pill">Orden PG / DIF SETS / DIF GAMES</div>
+                                    @if($totalPages > 1)
+                                        <div class="info-pill">Pagina {{ $pageIndex + 1 }}/{{ $totalPages }}</div>
+                                    @endif
                                 </div>
                             </div>
-                            <div class="zone-info">
-                                <div class="info-pill">Todas las zonas</div>
-                                <div class="info-pill">Orden PG / DIF SETS / DIF GAMES</div>
-                            </div>
-                        </div>
-                        @php
-                            $zoneCount = $torneoSlides->count();
-                            $gridCols = $zoneCount <= 2 ? max(1, $zoneCount) : ($zoneCount <= 4 ? 2 : ($zoneCount <= 6 ? 3 : 4));
-                        @endphp
-                        @php
-                            $pages = $torneoSlides->values()->chunk(4);
-                        @endphp
-                        <div class="zone-body">
-                            <div class="tournament-pages" data-tournament-pages>
-                                @foreach($pages as $pageIndex => $pageSlides)
-                                    @php
-                                        $pageCount = $pageSlides->count();
-                                        $gridCols = $pageCount <= 2 ? max(1, $pageCount) : ($pageCount <= 4 ? 2 : ($pageCount <= 6 ? 3 : 4));
-                                    @endphp
-                                    <div class="tournament-page {{ $pageIndex === 0 ? 'active' : '' }}" data-page-index="{{ $pageIndex }}">
-                                        <div class="tournament-grid" style="grid-template-columns: repeat({{ $gridCols }}, minmax(0, 1fr));">
-                                            @foreach($pageSlides as $slide)
-                                                <div class="tournament-card {{ (count($slide['parejas'] ?? []) >= 4) ? 'compact' : '' }}">
-                                                    <div class="tournament-card-title">Zona {{ $slide['zona'] }}</div>
-                                                    <table class="tournament-table">
-                                                        <thead>
-                                                            <tr>
-                                                                <th class="tournament-cell">Pareja</th>
-                                                                <th>PJ</th>
-                                                                <th>PG</th>
-                                                                <th>PP</th>
-                                                                <th>SF</th>
-                                                                <th>SC</th>
-                                                                <th>GF</th>
-                                                                <th>GC</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            @foreach(($slide['parejas_ordenadas'] ?? $slide['parejas']) as $p)
-                                                                @php
-                                                                    $stat = $slide['stats'][$p['key']] ?? ['pj' => 0, 'pg' => 0, 'pp' => 0, 'sf' => 0, 'sc' => 0, 'gf' => 0, 'gc' => 0];
-                                                                @endphp
-                                                                <tr>
-                                                                    <td class="tournament-cell">
-                                                                        <div class="pair-names small">
-                                                                            <span>{{ $p['apellido_1'] }}</span>
-                                                                            <span>{{ $p['apellido_2'] }}</span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>{{ $stat['pj'] }}</td>
-                                                                    <td>{{ $stat['pg'] }}</td>
-                                                                    <td>{{ $stat['pp'] }}</td>
-                                                                    <td>{{ $stat['sf'] }}</td>
-                                                                    <td>{{ $stat['sc'] }}</td>
-                                                                    <td>{{ $stat['gf'] }}</td>
-                                                                    <td>{{ $stat['gc'] }}</td>
-                                                                </tr>
-                                                            @endforeach
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            @endforeach
+                            <div class="zone-body">
+                                <div class="tournament-grid" style="grid-template-columns: repeat({{ $gridCols }}, minmax(0, 1fr));">
+                                    @foreach($pageSlides as $slide)
+                                        <div class="tournament-card {{ (count($slide['parejas'] ?? []) >= 4) ? 'compact' : '' }}">
+                                            <div class="tournament-card-title">Zona {{ $slide['zona'] }}</div>
+                                            <table class="tournament-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th class="tournament-cell">Pareja</th>
+                                                        <th>PJ</th>
+                                                        <th>PG</th>
+                                                        <th>PP</th>
+                                                        <th>SF</th>
+                                                        <th>SC</th>
+                                                        <th>GF</th>
+                                                        <th>GC</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach(($slide['parejas_ordenadas'] ?? $slide['parejas']) as $p)
+                                                        @php
+                                                            $stat = $slide['stats'][$p['key']] ?? ['pj' => 0, 'pg' => 0, 'pp' => 0, 'sf' => 0, 'sc' => 0, 'gf' => 0, 'gc' => 0];
+                                                        @endphp
+                                                        <tr>
+                                                            <td class="tournament-cell">
+                                                                <div class="pair-names small">
+                                                                    <span>{{ $p['apellido_1'] }}</span>
+                                                                    <span>{{ $p['apellido_2'] }}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>{{ $stat['pj'] }}</td>
+                                                            <td>{{ $stat['pg'] }}</td>
+                                                            <td>{{ $stat['pp'] }}</td>
+                                                            <td>{{ $stat['sf'] }}</td>
+                                                            <td>{{ $stat['sc'] }}</td>
+                                                            <td>{{ $stat['gf'] }}</td>
+                                                            <td>{{ $stat['gc'] }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
                                         </div>
-                                    </div>
-                                @endforeach
+                                    @endforeach
+                                </div>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    @endforeach
                 @endforeach
             @endif
         </main>
@@ -803,23 +800,6 @@
 
             setActive(0);
             startRotation();
-
-            const pageIntervalMs = Math.max(5000, Math.floor(intervalMs * 0.7));
-            const tournamentSlides = Array.from(document.querySelectorAll('.tournament-slide'));
-
-            tournamentSlides.forEach(slide => {
-                const pages = Array.from(slide.querySelectorAll('.tournament-page'));
-                if (pages.length <= 1) {
-                    return;
-                }
-
-                let pageIndex = 0;
-                setInterval(() => {
-                    pages[pageIndex].classList.remove('active');
-                    pageIndex = (pageIndex + 1) % pages.length;
-                    pages[pageIndex].classList.add('active');
-                }, pageIntervalMs);
-            });
 
             if (adTracks.length) {
                 const totalOriginalAds = {{ count($sponsors ?? []) }};
