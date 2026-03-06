@@ -945,8 +945,13 @@ class PuntuableController extends Controller
             
             // Combinar: 16avos y octavos desde BD (tienen todos los partidos incl. G1-16avos vs A1),
             // cuartos/semifinal/final desde configuración (tienen estructura y placeholders correctos)
-            $cruces16avosOctavosBD = array_filter($cruces, function ($c) {
+            // Respetar tiene_16avos_final: si la config dice que no hay 16avos, no incluir cruces de 16avos
+            $tiene16avosConfig = !empty($configuracionCruces->tiene_16avos_final);
+            $cruces16avosOctavosBD = array_filter($cruces, function ($c) use ($tiene16avosConfig) {
                 $r = $c['ronda'] ?? '';
+                if ($r === '16avos' && !$tiene16avosConfig) {
+                    return false;
+                }
                 return $r === '16avos' || $r === 'octavos';
             });
             $crucesCuartosSemiFinalConfig = array_filter($crucesDesdeConfig, function ($c) {
@@ -1014,7 +1019,12 @@ class PuntuableController extends Controller
         }
         unset($cruce);
 
+        // Respetar tiene_16avos_final: si la config dice que no hay 16avos, no mostrar esa columna
+        $configPara16avos = $configuracionCruces ?? $this->getConfiguracionCruces($torneoId, $totalParejasClasificadas);
         $cruces16avos = $this->obtenerCrucesPorZona($cruces, '16avos final');
+        if ($configPara16avos && empty($configPara16avos->tiene_16avos_final)) {
+            $cruces16avos = [];
+        }
         $crucesOctavos = $this->obtenerCrucesPorZona($cruces, 'octavos final');
         $crucesCuartos = $this->obtenerCrucesPorZona($cruces, 'cuartos final');
         $crucesSemifinales = $this->obtenerCrucesPorZona($cruces, 'semifinal');
@@ -1095,7 +1105,7 @@ class PuntuableController extends Controller
                 ->where('id', $torneoId)
                 ->update(['estado' => 2]);
 
-            // Buscar configuración: primero del campo config_cruces_puntuable_id
+            // Buscar configuración: primero del campo config_cruces_puntuable_id (selección explícita)
             $config = null;
             if (!empty($torneo->config_cruces_puntuable_id)) {
                 $config = DB::table('configuracion_cruces_puntuables')
@@ -1103,12 +1113,11 @@ class PuntuableController extends Controller
                     ->first();
             }
             
-            // Fallback: buscar configuración específica del torneo (última versión)
+            // Fallback: contar parejas desde grupos y buscar config con cantidad_parejas que coincida.
+            // Así se respeta tiene_16avos_final de la config correcta (ej: 21 parejas sin 16avos).
             if (!$config) {
-                $config = DB::table('configuracion_cruces_puntuables')
-                    ->where('torneo_id', $torneoId)
-                    ->orderBy('id', 'desc')
-                    ->first();
+                $cantidadParejas = $this->contarParejasDesdeGrupos($torneoId);
+                $config = $this->getConfiguracionCruces($torneoId, $cantidadParejas);
             }
 
             if (!$config) {
@@ -2814,6 +2823,33 @@ class PuntuableController extends Controller
                 $this->crearPartidoEliminatorio($torneoId, $ganadoresSemifinales[0], $ganadoresSemifinales[1], 'final');
             }
         }
+    }
+
+    /**
+     * Cuenta las parejas reales del torneo desde la tabla grupos (excluyendo zonas eliminatorias).
+     * Usar esto para seleccionar la config con cantidad_parejas que coincida.
+     */
+    private function contarParejasDesdeGrupos($torneoId) {
+        $grupos = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where(function ($q) {
+                $q->whereNotIn('zona', ['cuartos final', 'semifinal', 'final', 'octavos final', '16avos final'])
+                  ->where('zona', 'not like', 'cuartos final|%')
+                  ->where('zona', 'not like', 'ganador %')
+                  ->where('zona', 'not like', 'perdedor %');
+            })
+            ->whereNotNull('jugador_1')
+            ->whereNotNull('jugador_2')
+            ->where('jugador_1', '!=', 0)
+            ->where('jugador_2', '!=', 0)
+            ->select('jugador_1', 'jugador_2')
+            ->get();
+        $parejasUnicas = [];
+        foreach ($grupos as $g) {
+            $key = min($g->jugador_1, $g->jugador_2) . '_' . max($g->jugador_1, $g->jugador_2);
+            $parejasUnicas[$key] = true;
+        }
+        return count($parejasUnicas);
     }
 
     /**

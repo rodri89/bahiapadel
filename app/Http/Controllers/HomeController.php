@@ -6255,11 +6255,13 @@ class HomeController extends Controller
                         ->distinct()
                         ->get();
         
-        // Obtener las parejas de la zona
+        // Obtener las parejas de la zona (incluir id para ordenar y que pareja_1/pareja_2 coincidan con el partido)
         $grupos = DB::table('grupos')
                         ->where('grupos.torneo_id', $torneoId)
                         ->where('grupos.zona', $zona)
-                        ->select('grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id')
+                        ->select('grupos.id', 'grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id')
+                        ->orderBy('grupos.partido_id')
+                        ->orderBy('grupos.id')
                         ->get();
         
         // Agrupar por pareja
@@ -6317,7 +6319,7 @@ class HomeController extends Controller
                 if ($partido->pareja_1_set_2 > $partido->pareja_2_set_2) $setsGanadosP1++;
                 else if ($partido->pareja_2_set_2 > $partido->pareja_1_set_2) $setsGanadosP2++;
                 
-                // Si hay super tie break, ese determina el tercer set
+                // Si hay super tie break, ese determina el tercer set (2-1)
                 if ($partido->pareja_1_set_super_tie_break > 0 || $partido->pareja_2_set_super_tie_break > 0) {
                     $ganoPorSuperTB = true;
                     if ($partido->pareja_1_set_super_tie_break > $partido->pareja_2_set_super_tie_break) {
@@ -6327,6 +6329,10 @@ class HomeController extends Controller
                         $setsGanadosP1 = 1;
                         $setsGanadosP2 = 2; // Gana por super TB (2-1)
                     }
+                } else {
+                    // Set 3 normal (sin super tie break): contar el tercer set
+                    if (($partido->pareja_1_set_3 ?? 0) > ($partido->pareja_2_set_3 ?? 0)) $setsGanadosP1++;
+                    else if (($partido->pareja_2_set_3 ?? 0) > ($partido->pareja_1_set_3 ?? 0)) $setsGanadosP2++;
                 }
                 
                 // Calcular juegos (games) ganados y perdidos
@@ -6607,18 +6613,40 @@ class HomeController extends Controller
         
         // Función de comparación con todos los criterios de desempate
         if ($numParejas == 3) {
-            // Lógica específica para zonas de 3 parejas según el sistema oficial
+            // Criterios de desempate para zonas de 3 parejas (en orden):
+            // 1. Diferencia de sets ganados
+            // 2. Diferencia de games ganados
+            // 3. Número de games ganados a favor
+            // 4. Resultado directo entre las parejas empatadas
             usort($posiciones, function($a, $b) use ($posiciones) {
-                // 1. Primero por PUNTOS (Victoria = 2, Derrota = 1)
+                // Primero por PUNTOS (Victoria = 2, Derrota = 1)
                 if ($a['puntos'] != $b['puntos']) {
                     return $b['puntos'] - $a['puntos'];
                 }
                 
-                // 2. Si empatan en puntos, aplicar desempates
                 $keyA = $a['key'];
                 $keyB = $b['key'];
                 
-                // 2.1. Paso 1: Resultado entre ellas (Partido Directo)
+                // 1. Diferencia de sets ganados
+                $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
+                $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
+                if ($diffSetsA != $diffSetsB) {
+                    return $diffSetsB - $diffSetsA;
+                }
+                
+                // 2. Diferencia de games ganados
+                $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
+                $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
+                if ($diffJuegosA != $diffJuegosB) {
+                    return $diffJuegosB - $diffJuegosA;
+                }
+                
+                // 3. Número de games ganados a favor
+                if ($a['juegos_ganados'] != $b['juegos_ganados']) {
+                    return $b['juegos_ganados'] - $a['juegos_ganados'];
+                }
+                
+                // 4. Resultado directo entre las parejas empatadas
                 if (isset($a['partidos_directos'][$keyB])) {
                     if ($a['partidos_directos'][$keyB]['ganado']) {
                         return -1; // A gana el partido directo
@@ -6627,26 +6655,6 @@ class HomeController extends Controller
                     }
                 }
                 
-                // 2.2. Paso 2: Diferencia de Sets (Sets ganados - Sets perdidos)
-                $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
-                $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
-                if ($diffSetsA != $diffSetsB) {
-                    return $diffSetsB - $diffSetsA;
-                }
-                
-                // 2.3. Paso 3: Diferencia de Games (Games ganados - Games perdidos)
-                $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
-                $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
-                if ($diffJuegosA != $diffJuegosB) {
-                    return $diffJuegosB - $diffJuegosA;
-                }
-                
-                // 2.4. Paso 4: Games a favor (Total de games ganados)
-                if ($a['juegos_ganados'] != $b['juegos_ganados']) {
-                    return $b['juegos_ganados'] - $a['juegos_ganados'];
-                }
-                
-                // 2.5. Paso 5: Sorteo o criterio organizador (mantener orden)
                 return 0;
             });
             
