@@ -1148,10 +1148,12 @@ class PuntuableController extends Controller
             \Log::error('Error en comenzarTorneoPuntuable: ' . $e->getMessage());
             \Log::error($e->getTraceAsString());
 
-            return response()->json([
+            $response = [
                 'success' => false,
-                'message' => 'Error al comenzar el torneo'
-            ], 500);
+                'message' => 'Error al comenzar el torneo',
+                'error_detail' => $e->getMessage()
+            ];
+            return response()->json($response, 500);
         }
     }
     

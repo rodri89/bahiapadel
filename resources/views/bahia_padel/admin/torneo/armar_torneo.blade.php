@@ -2516,8 +2516,14 @@
             },
             error: function(xhr) {
                 btn.prop('disabled', false).text('Comenzar Torneo');
+                let msg = 'Error al comenzar el torneo';
+                try {
+                    let r = JSON.parse(xhr.responseText || '{}');
+                    if (r.error_detail) msg += ': ' + r.error_detail;
+                    else if (r.message) msg = r.message;
+                } catch (e) {}
                 console.error('Error al comenzar torneo puntuable:', xhr.responseText || xhr.statusText);
-                alert('Error al comenzar el torneo');
+                alert(msg);
             }
         });
     });
