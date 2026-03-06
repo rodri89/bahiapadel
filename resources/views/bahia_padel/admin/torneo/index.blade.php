@@ -98,6 +98,9 @@
             <a href="{{ route('tvtorneospuntuableszonas') }}" target="_blank" class="btn btn-warning btn-grande" style="border-color: #f59e0b; color: #f59e0b;">
                 <i class="fas fa-tv"></i> TV Zonas Puntuables (Hoy)
             </a>
+            <a href="{{ route('admintvcontrol') }}" class="btn btn-grande" style="border-color: #6f42c1; color: #6f42c1; background: transparent;">
+                <i class="fas fa-sliders-h"></i> Control de TV
+            </a>
         </div>
     </div>
 

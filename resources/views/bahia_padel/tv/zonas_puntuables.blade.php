@@ -784,8 +784,24 @@
                     return;
                 }
 
+                // Detectar si debe hacer solo un ciclo (cuando se usa desde tv_display)
+                const urlParams = new URLSearchParams(window.location.search);
+                const singleCycle = urlParams.has('single_cycle') || urlParams.has('intervalo_total');
+                let cycleCompleted = false;
+
                 slideTimer = setInterval(() => {
-                    index = (index + 1) % slides.length;
+                    const nextIndex = (index + 1) % slides.length;
+                    
+                    // Si ya completamos un ciclo y es single_cycle, detenerse
+                    if (singleCycle && nextIndex === 0 && !cycleCompleted) {
+                        cycleCompleted = true;
+                        clearInterval(slideTimer);
+                        clearInterval(countdownTimer);
+                        // Quedarse en el último slide sin hacer nada más
+                        return;
+                    }
+                    
+                    index = nextIndex;
                     setActive(index);
                 }, intervalMs);
 

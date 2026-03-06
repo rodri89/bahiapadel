@@ -416,8 +416,8 @@
         $(document).ready(function() {
             let slides = $('.zona-slide');
             let currentIndex = 0;
-            // 20 seconds slide interval
-            let slideInterval = 20000; 
+            // Intervalo configurado desde el panel de control o 20 segundos por defecto
+            let slideInterval = {{ ($intervalo ?? 20) * 1000 }}; 
             let torneoId = {{ $torneo->id ?? 0 }};
             let ultimaVersionConocida = {{ $torneo->version ?? 0 }};
             
@@ -610,8 +610,23 @@
                 showSlide(currentIndex);
                 
                 if (slides.length > 1) {
-                    setInterval(function() {
-                        currentIndex = (currentIndex + 1) % slides.length;
+                    // Detectar si debe hacer solo un ciclo (cuando se usa desde tv_display)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const singleCycle = urlParams.has('single_cycle') || urlParams.has('intervalo_total');
+                    let cycleCompleted = false;
+                    
+                    let rotationTimer = setInterval(function() {
+                        const nextIndex = (currentIndex + 1) % slides.length;
+                        
+                        // Si ya completamos un ciclo y es single_cycle, detenerse
+                        if (singleCycle && nextIndex === 0 && !cycleCompleted) {
+                            cycleCompleted = true;
+                            clearInterval(rotationTimer);
+                            // Quedarse en el último slide
+                            return;
+                        }
+                        
+                        currentIndex = nextIndex;
                         showSlide(currentIndex);
                     }, slideInterval);
                 } else {

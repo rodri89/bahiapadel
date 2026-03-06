@@ -2478,9 +2478,11 @@ class HomeController extends Controller
     /**
      * Vista TV para zonas de torneos puntuables.
      * URL: /tv_torneos_puntuables_zonas?torneos=1,2&intervalo=20
+     * Si se pasa intervalo_total, se divide automáticamente entre la cantidad de zonas
      */
     public function tvTorneosPuntuablesZonas(Request $request) {
         $torneoIdsParam = $request->torneos;
+        $intervaloTotal = $request->intervalo_total ? (int) $request->intervalo_total : null;
         $intervalo = (int) ($request->intervalo ?? 20);
         $fecha = $request->fecha ?? date('Y-m-d');
 
@@ -2925,6 +2927,22 @@ class HomeController extends Controller
         }
 
         $sponsors = \App\Sponsor::where('active', 1)->orderBy('orden')->get();
+
+        // Si se pasó intervalo_total, calcular el intervalo por slide
+        // para que la rotación completa (zonas + páginas de estadísticas) quepa en el tiempo total.
+        // La vista agrega páginas de estadísticas en bloques de 4 zonas por torneo.
+        $cantidadSlidesZonas = count($slides);
+        if ($intervaloTotal && $cantidadSlidesZonas > 0) {
+            $slidesCollection = collect($slides);
+            $paginasEstadisticas = $slidesCollection
+                ->groupBy('torneo_id')
+                ->sum(function ($torneoSlides) {
+                    return (int) ceil($torneoSlides->count() / 4);
+                });
+
+            $totalPantallasInternas = $cantidadSlidesZonas + $paginasEstadisticas;
+            $intervalo = max(3, floor($intervaloTotal / max(1, $totalPantallasInternas)));
+        }
 
         return view('bahia_padel.tv.zonas_puntuables', [
             'slides' => $slides,
@@ -3412,6 +3430,7 @@ class HomeController extends Controller
 
     public function tvTorneoAmericano(Request $request) {
         $torneoId = $request->torneo_id;
+        $intervaloTotal = $request->intervalo_total ? (int) $request->intervalo_total : null;
         
         $torneo = DB::table('torneos')
                         ->where('torneos.id', $torneoId)
@@ -3675,12 +3694,20 @@ class HomeController extends Controller
              $posicionesPorZona[$zona] = $posiciones;
         }
         
+        // Calcular intervalo por zona si se pasó intervalo_total
+        $cantidadZonas = count($posicionesPorZona);
+        $intervalo = 20; // Default: 20 segundos por zona
+        if ($intervaloTotal && $cantidadZonas > 0) {
+            $intervalo = max(5, floor($intervaloTotal / $cantidadZonas));
+        }
+        
         return View('bahia_padel.tv.resultados')
                     ->with('torneo', $torneo)
                     ->with('partidosPorZona', $partidosPorZona)
                     ->with('jugadores', $jugadores)
                     ->with('partidosConResultados', $partidosConResultados)
-                    ->with('posicionesPorZona', $posicionesPorZona);
+                    ->with('posicionesPorZona', $posicionesPorZona)
+                    ->with('intervalo', $intervalo);
     }
     
     public function tvTorneoAmericanoActualizar(Request $request) {
@@ -6255,13 +6282,11 @@ class HomeController extends Controller
                         ->distinct()
                         ->get();
         
-        // Obtener las parejas de la zona (incluir id para ordenar y que pareja_1/pareja_2 coincidan con el partido)
+        // Obtener las parejas de la zona
         $grupos = DB::table('grupos')
                         ->where('grupos.torneo_id', $torneoId)
                         ->where('grupos.zona', $zona)
-                        ->select('grupos.id', 'grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id')
-                        ->orderBy('grupos.partido_id')
-                        ->orderBy('grupos.id')
+                        ->select('grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id')
                         ->get();
         
         // Agrupar por pareja
@@ -6319,7 +6344,7 @@ class HomeController extends Controller
                 if ($partido->pareja_1_set_2 > $partido->pareja_2_set_2) $setsGanadosP1++;
                 else if ($partido->pareja_2_set_2 > $partido->pareja_1_set_2) $setsGanadosP2++;
                 
-                // Si hay super tie break, ese determina el tercer set (2-1)
+                // Si hay super tie break, ese determina el tercer set
                 if ($partido->pareja_1_set_super_tie_break > 0 || $partido->pareja_2_set_super_tie_break > 0) {
                     $ganoPorSuperTB = true;
                     if ($partido->pareja_1_set_super_tie_break > $partido->pareja_2_set_super_tie_break) {
@@ -6329,10 +6354,6 @@ class HomeController extends Controller
                         $setsGanadosP1 = 1;
                         $setsGanadosP2 = 2; // Gana por super TB (2-1)
                     }
-                } else {
-                    // Set 3 normal (sin super tie break): contar el tercer set
-                    if (($partido->pareja_1_set_3 ?? 0) > ($partido->pareja_2_set_3 ?? 0)) $setsGanadosP1++;
-                    else if (($partido->pareja_2_set_3 ?? 0) > ($partido->pareja_1_set_3 ?? 0)) $setsGanadosP2++;
                 }
                 
                 // Calcular juegos (games) ganados y perdidos
@@ -6613,40 +6634,18 @@ class HomeController extends Controller
         
         // Función de comparación con todos los criterios de desempate
         if ($numParejas == 3) {
-            // Criterios de desempate para zonas de 3 parejas (en orden):
-            // 1. Diferencia de sets ganados
-            // 2. Diferencia de games ganados
-            // 3. Número de games ganados a favor
-            // 4. Resultado directo entre las parejas empatadas
+            // Lógica específica para zonas de 3 parejas según el sistema oficial
             usort($posiciones, function($a, $b) use ($posiciones) {
-                // Primero por PUNTOS (Victoria = 2, Derrota = 1)
+                // 1. Primero por PUNTOS (Victoria = 2, Derrota = 1)
                 if ($a['puntos'] != $b['puntos']) {
                     return $b['puntos'] - $a['puntos'];
                 }
                 
+                // 2. Si empatan en puntos, aplicar desempates
                 $keyA = $a['key'];
                 $keyB = $b['key'];
                 
-                // 1. Diferencia de sets ganados
-                $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
-                $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
-                if ($diffSetsA != $diffSetsB) {
-                    return $diffSetsB - $diffSetsA;
-                }
-                
-                // 2. Diferencia de games ganados
-                $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
-                $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
-                if ($diffJuegosA != $diffJuegosB) {
-                    return $diffJuegosB - $diffJuegosA;
-                }
-                
-                // 3. Número de games ganados a favor
-                if ($a['juegos_ganados'] != $b['juegos_ganados']) {
-                    return $b['juegos_ganados'] - $a['juegos_ganados'];
-                }
-                
-                // 4. Resultado directo entre las parejas empatadas
+                // 2.1. Paso 1: Resultado entre ellas (Partido Directo)
                 if (isset($a['partidos_directos'][$keyB])) {
                     if ($a['partidos_directos'][$keyB]['ganado']) {
                         return -1; // A gana el partido directo
@@ -6655,6 +6654,26 @@ class HomeController extends Controller
                     }
                 }
                 
+                // 2.2. Paso 2: Diferencia de Sets (Sets ganados - Sets perdidos)
+                $diffSetsA = $a['sets_ganados'] - $a['sets_perdidos'];
+                $diffSetsB = $b['sets_ganados'] - $b['sets_perdidos'];
+                if ($diffSetsA != $diffSetsB) {
+                    return $diffSetsB - $diffSetsA;
+                }
+                
+                // 2.3. Paso 3: Diferencia de Games (Games ganados - Games perdidos)
+                $diffJuegosA = $a['juegos_ganados'] - $a['juegos_perdidos'];
+                $diffJuegosB = $b['juegos_ganados'] - $b['juegos_perdidos'];
+                if ($diffJuegosA != $diffJuegosB) {
+                    return $diffJuegosB - $diffJuegosA;
+                }
+                
+                // 2.4. Paso 4: Games a favor (Total de games ganados)
+                if ($a['juegos_ganados'] != $b['juegos_ganados']) {
+                    return $b['juegos_ganados'] - $a['juegos_ganados'];
+                }
+                
+                // 2.5. Paso 5: Sorteo o criterio organizador (mantener orden)
                 return 0;
             });
             

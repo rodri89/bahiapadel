@@ -40,6 +40,12 @@ Route::get("/tv_torneos_versiones", "HomeController@tvTorneosVersiones")->name("
 Route::get("/tv_torneos_hoy", "HomeController@tvTorneosHoy")->name("tvtorneoshoy");
 Route::get("/tv_torneos_diagnostico", "HomeController@tvTorneosDiagnostico")->name("tvtorneosdiagnostico");
 
+// Rutas de configuración TV
+Route::get("/admin_tv_control", "TvConfiguracionController@panelControl")->name("admintvcontrol");
+Route::post("/tv_config_guardar", "TvConfiguracionController@guardarConfiguracion")->name("tvconfig.guardar");
+Route::get("/tv_config_obtener", "TvConfiguracionController@obtenerConfiguracion")->name("tvconfig.obtener");
+Route::get("/tv_display", "TvConfiguracionController@display")->name("tvdisplay");
+
 // ################################# estas rutas debo tocar para volver al mantenimiento ################
 /*Route::get('/home_test', function () {	
 	return View('home.index');    
