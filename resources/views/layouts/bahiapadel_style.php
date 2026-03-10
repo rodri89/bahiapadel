@@ -81,6 +81,48 @@ main .container-fluid > section > .h3,
 .sticky-footer {
   margin-top: 0;
 }
+.sticky-footer .copyright {
+  padding: 1.25rem 1rem;
+}
+
+/* Sponsors en el footer del home (fijos, sin scroll ni animación) */
+.footer-sponsors {
+  background: rgba(5, 5, 5, 0.9);
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 1rem 1.5rem;
+}
+.footer-sponsors-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.footer-sponsor-card {
+  height: 48px;
+  min-width: 80px;
+  max-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  flex-shrink: 0;
+}
+.footer-sponsor-card img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  filter: saturate(1.05);
+}
+.footer-sponsor-label {
+  font-size: 0.75rem;
+  color: rgba(226, 232, 240, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Video a ancho completo en la Home (solo video, sin comentarios) */
 .home-video-fullwidth {

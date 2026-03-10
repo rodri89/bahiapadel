@@ -15,26 +15,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
-  <!-- Para que funcione el datatable-->
-  <link rel="stylesheet" type="text/css" href="{{asset('datatable/jquery.dataTables.min.css')}}">
   <!-- Custom styles for this template-->
-  <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('css/sb-admin-2.css') }}" rel="stylesheet">
   <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
 
-  <!-- Para que funcione ajax-->
-  <script src = "https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <script src="{{asset('js/jquery.min.js')}}"> </script>
-  <!-- Para que funcione ajax fin-->    
+  @include('layouts.bahiapadel_style')
 </head>
-
-@include('layouts.bahiapadel_style')
-
-@include('modal.snackbar')
-<div id="snackbar"><p id="snackbar_text">Cambios guardados</p></div>
-
-
 <body>
+  @include('modal.snackbar')
+  <div id="snackbar"><p id="snackbar_text">Cambios guardados</p></div>
   <div class="wrapper">
     <nav class="navbar navbar-expand-md custom-header p-2 mb-4">
       <div class="container-fluid">
@@ -82,6 +72,19 @@
     </main>
 
     <footer class="sticky-footer">
+      {{-- Sponsors fijos (sin consulta a BD para evitar recargas) --}}
+      <div class="footer-sponsors">
+        <div class="footer-sponsors-track">
+          @php
+            $sponsorsFijos = ['bahiapadel.png', 'sancor.png', 'pampero.png', 'kalea.png', 'adn.png', 'drift.png', 'garage.png', 'latino.png', 'reims.png', 'sis.png', 'stork.png', 'iph.png', 'af.png'];
+          @endphp
+          @foreach($sponsorsFijos as $img)
+            <div class="footer-sponsor-card">
+              <img src="{{ asset('images/ads/' . $img) }}" alt="Sponsor" loading="lazy">
+            </div>
+          @endforeach
+        </div>
+      </div>
       <div class="copyright text-center my-auto">
         <span>Copyright &copy; BahiaPadel</span>
       </div>
@@ -110,18 +113,9 @@
   }
 
   </script>
-  <!-- Bootstrap core JavaScript-->
+  <!-- jQuery y Bootstrap (solo lo esencial para navbar y collapse) -->
   <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
   <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-
-  <!-- Core plugin JavaScript-->
-  <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
-
-  <!-- Custom scripts for all pages-->
-  <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
-
-  <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-  <script type="text/javascript" src="{{asset('datatable/jquery.dataTables.min.js')}}"></script>
 </body>
 
 </html>
