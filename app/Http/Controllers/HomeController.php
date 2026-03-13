@@ -282,28 +282,36 @@ class HomeController extends Controller
     }
     
     function adminConfig() {
-        // Cargar configuración existente si hay
-        $configuracion = DB::table('configuracion_cruces_puntuables')
-            ->whereNull('torneo_id') // Configuración global
+        // Cargar TODAS las configuraciones globales para el listado
+        $configuraciones = DB::table('configuracion_cruces_puntuables')
+            ->whereNull('torneo_id')
             ->orderBy('id', 'desc')
-            ->first();
+            ->get();
         
+        // Cargar configuración específica si se está editando
         $config = null;
-        if ($configuracion) {
-            $config = [
-                'cantidad_parejas' => $configuracion->cantidad_parejas,
-                'tiene_16avos_final' => $configuracion->tiene_16avos_final,
-                'tiene_8vos_final' => $configuracion->tiene_8vos_final,
-                'tiene_4tos_final' => $configuracion->tiene_4tos_final,
-                'llave_16avos' => $configuracion->llave_16avos ? json_decode($configuracion->llave_16avos, true) : null,
-                'llave_8vos' => $configuracion->llave_8vos ? json_decode($configuracion->llave_8vos, true) : null,
-                'llave_4tos' => $configuracion->llave_4tos ? json_decode($configuracion->llave_4tos, true) : null,
-                'llave_semifinal' => $configuracion->llave_semifinal ? json_decode($configuracion->llave_semifinal, true) : null,
-                'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
-            ];
+        $editarId = request()->get('editar');
+        if ($editarId) {
+            $configuracion = DB::table('configuracion_cruces_puntuables')
+                ->where('id', $editarId)
+                ->whereNull('torneo_id')
+                ->first();
+            
+            if ($configuracion) {
+                $config = [
+                    'id' => $configuracion->id,
+                    'cantidad_parejas' => $configuracion->cantidad_parejas,
+                    'tiene_16avos_final' => $configuracion->tiene_16avos_final,
+                    'tiene_8vos_final' => $configuracion->tiene_8vos_final,
+                    'tiene_4tos_final' => $configuracion->tiene_4tos_final,
+                    'llave_16avos' => $configuracion->llave_16avos ? json_decode($configuracion->llave_16avos, true) : null,
+                    'llave_8vos' => $configuracion->llave_8vos ? json_decode($configuracion->llave_8vos, true) : null,
+                    'llave_4tos' => $configuracion->llave_4tos ? json_decode($configuracion->llave_4tos, true) : null,
+                    'llave_semifinal' => $configuracion->llave_semifinal ? json_decode($configuracion->llave_semifinal, true) : null,
+                    'llave_final' => $configuracion->llave_final ? json_decode($configuracion->llave_final, true) : null,
+                ];
+            }
         }
-
-        $configuraciones = $configuracion ? collect([$configuracion]) : collect();
         
         return View('bahia_padel.admin.config.index')
             ->with('config', $config)
@@ -331,18 +339,26 @@ class HomeController extends Controller
                 'updated_at' => now()
             ];
             
-            // Verificar si ya existe una configuración global
-            $existente = DB::table('configuracion_cruces_puntuables')
-                ->whereNull('torneo_id')
-                ->first();
+            $configId = $request->config_id ? (int) $request->config_id : null;
             
-            if ($existente) {
-                // Actualizar
-                DB::table('configuracion_cruces_puntuables')
-                    ->where('id', $existente->id)
-                    ->update($data);
+            if ($configId) {
+                // Actualizar configuración existente
+                $existente = DB::table('configuracion_cruces_puntuables')
+                    ->where('id', $configId)
+                    ->whereNull('torneo_id')
+                    ->first();
+                
+                if ($existente) {
+                    DB::table('configuracion_cruces_puntuables')
+                        ->where('id', $configId)
+                        ->update($data);
+                } else {
+                    // ID inválido, crear nueva
+                    $data['created_at'] = now();
+                    DB::table('configuracion_cruces_puntuables')->insert($data);
+                }
             } else {
-                // Crear nueva
+                // Crear nueva configuración
                 $data['created_at'] = now();
                 DB::table('configuracion_cruces_puntuables')->insert($data);
             }
@@ -648,6 +664,7 @@ class HomeController extends Controller
             if($id == 0){
                 $torneo = new Torneo;            
                 $torneo->activo = 1;
+                $torneo->estado = 1;
             } else {
                 $torneo = Torneo::find($id);
                 if (!$torneo) {
@@ -736,11 +753,29 @@ class HomeController extends Controller
                 return redirect()->route('admintorneos')->with('error', 'Torneo no encontrado');
             }
             
+            $estado = (int) ($torneo->estado ?? 1);
+            $tipoTorneo = isset($torneo->tipo_torneo_formato) ? $torneo->tipo_torneo_formato : 'puntuable';
+            $torneoId = $request->torneo_id;
+            
+            // En progreso (estado 2): ir directo a zonas/resultados
+            if ($estado === 2) {
+                if ($tipoTorneo == 'americano') {
+                    return redirect()->route('admintorneoamericanopartidos', ['torneo_id' => $torneoId]);
+                }
+                return redirect()->route('admintorneoresultados', ['torneo_id' => $torneoId]);
+            }
+            
+            // Finalizado (estado 3): ir directo a cruces
+            if ($estado === 3) {
+                if ($tipoTorneo == 'americano') {
+                    return redirect()->route('admintorneoamericanocruces', ['torneo_id' => $torneoId]);
+                }
+                return redirect()->route('admintorneopuntuablecrucesv2', ['torneo_id' => $torneoId]);
+            }
+            
             $jugadores = DB::table('jugadores')                                                                                        
                             ->where('jugadores.activo', 1)                                
                             ->get();
-            // Determinar el tipo de torneo (por defecto puntuable si no existe)
-            $tipoTorneo = isset($torneo->tipo_torneo_formato) ? $torneo->tipo_torneo_formato : 'puntuable';
             
             // Obtener grupos excluyendo los de eliminatoria (zonas: 'cuartos final', 'semifinal', 'final')
             // Los grupos de eliminatoria son solo para los cruces y no deben mostrarse en la configuración inicial

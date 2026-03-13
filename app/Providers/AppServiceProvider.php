@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View;
 use Schema;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,5 +26,14 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Schema::defaultStringLength(191);
+
+        // Compartir sponsors con la plantilla del home (footer)
+        View::composer('bahia_padel.home.plantilla', function ($view) {
+            try {
+                $view->with('sponsors', \App\Sponsor::where('active', 1)->orderBy('orden')->get());
+            } catch (\Throwable $e) {
+                $view->with('sponsors', collect());
+            }
+        });
     }
 }

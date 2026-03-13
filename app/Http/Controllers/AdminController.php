@@ -105,6 +105,7 @@ class AdminController extends Controller
             $torneo->imagen = '';
             $torneo->tipo = '';
             $torneo->activo = 1;
+            $torneo->estado = 1;
         } else {
             $torneo = Torneo::find($id);
         }

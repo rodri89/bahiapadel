@@ -1,3 +1,12 @@
+<style>
+    .torneo-card-estado-1 { border-left: 4px solid #4e73df !important; }
+    .torneo-card-estado-2 { border-left: 4px solid #1cc88a !important; background: linear-gradient(to right, rgba(28,200,138,0.08), transparent) !important; }
+    .torneo-card-estado-3 { border-left: 4px solid #6c757d !important; background: linear-gradient(to right, rgba(108,117,125,0.12), transparent) !important; opacity: 0.92; }
+    .badge-estado { font-size: 0.75rem; padding: 0.35em 0.65em; font-weight: 600; }
+    .badge-estado-creado { background-color: #4e73df; color: white; }
+    .badge-estado-progreso { background-color: #1cc88a; color: white; }
+    .badge-estado-finalizado { background-color: #6c757d; color: white; }
+</style>
 <div class="position-relative" style="padding-top:0 !important; width: 100%;">
     <button type="button"
             onclick="volverAtrasNuevoTorneo()"
@@ -66,6 +75,11 @@
             // Obtener el tipo de torneo (puntuable, americano, suma) o usar 'puntuable' por defecto
             const tipoTorneo = torneo.tipo_torneo_formato || 'puntuable';
             const nombreTorneo = torneo.nombre || 'Sin nombre';
+            const estado = parseInt(torneo.estado, 10) || 1;
+            const claseEstado = 'torneo-card-estado-' + estado;
+            const textosEstado = { 1: 'Creado', 2: 'En progreso', 3: 'Finalizado' };
+            const clasesBadge = { 1: 'badge-estado-creado', 2: 'badge-estado-progreso', 3: 'badge-estado-finalizado' };
+            const badgeEstado = '<span class="badge badge-estado ' + (clasesBadge[estado] || clasesBadge[1]) + ' ml-2">' + (textosEstado[estado] || textosEstado[1]) + '</span>';
             
             // Función para capitalizar la primera letra
             const capitalizar = (str) => str.charAt(0).toUpperCase() + str.slice(1);
@@ -75,10 +89,10 @@
                     <form action="{{ route('admintorneoselected') }}" method="POST" class="w-100">
                         <input type="hidden" name="_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="torneo_id" value="${torneo.id}"/>
-                        <div class="card shadow bg-white w-100 p-3 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between torneo-card"
+                        <div class="card shadow bg-white w-100 p-3 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between torneo-card ${claseEstado}"
                             style="cursor:pointer; border-radius: 12px; border: 1px solid #e3e6f0;" onclick="this.closest('form').submit();">
                             <div class="d-flex flex-column align-items-start flex-grow-1 mb-2 mb-md-0">
-                                <div class="categoria" style="font-size:1.8rem; font-weight:700; color:#4e73df; line-height:1.2;">${torneo.categoria}º Categoría</div>
+                                <div class="categoria d-flex align-items-center flex-wrap" style="font-size:1.8rem; font-weight:700; color:#4e73df; line-height:1.2;">${torneo.categoria}º Categoría${badgeEstado}</div>
                                 <div class="fechas mt-2" style="font-size:0.85rem; color:#888;">
                                     <span style="font-weight:500;">${nombreTorneo}</span> - <span style="font-style:italic;">${capitalizar(tipoTorneo)}</span> - ${torneo.tipo}
                                 </div>
