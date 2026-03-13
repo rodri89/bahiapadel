@@ -62,6 +62,144 @@ class HomeController extends Controller
     function adminTorneos() {
         return View('bahia_padel.admin.torneo.index'); 
     }
+
+    /**
+     * Cargar resultados - pantalla mobile para partidos sin resultado de torneos en progreso
+     */
+    function adminCargarResultados(Request $request) {
+        $torneoId = $request->torneo_id;
+        
+        // Si no hay torneo seleccionado: mostrar listado de torneos en progreso
+        if (!$torneoId) {
+            $torneos = DB::table('torneos')
+                ->where('activo', 1)
+                ->where('estado', 2)
+                ->orderBy('fecha_inicio', 'desc')
+                ->get();
+            return View('bahia_padel.admin.torneo.cargar_resultados')
+                ->with('torneos', $torneos)
+                ->with('torneo', null)
+                ->with('partidos', collect())
+                ->with('jugadores', collect());
+        }
+        
+        $torneo = DB::table('torneos')
+            ->where('id', $torneoId)
+            ->where('activo', 1)
+            ->first();
+        
+        if (!$torneo) {
+            return redirect()->route('admincargarresultados')->with('error', 'Torneo no encontrado');
+        }
+        
+        $jugadores = DB::table('jugadores')->where('activo', 1)->get();
+        
+        // Obtener partidos SIN resultado (todos los sets en 0), ordenados por fecha y horario
+        $grupos = DB::table('grupos')
+            ->join('partidos', 'grupos.partido_id', '=', 'partidos.id')
+            ->where('grupos.torneo_id', $torneoId)
+            ->whereNotNull('grupos.partido_id')
+            ->whereRaw('(COALESCE(partidos.pareja_1_set_1,0) + COALESCE(partidos.pareja_2_set_1,0) + COALESCE(partidos.pareja_1_set_2,0) + COALESCE(partidos.pareja_2_set_2,0) + COALESCE(partidos.pareja_1_set_3,0) + COALESCE(partidos.pareja_2_set_3,0)) = 0')
+            ->select(
+                'grupos.id as grupo_id', 'grupos.torneo_id', 'grupos.zona', 'grupos.fecha', 'grupos.horario',
+                'grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id',
+                'partidos.id as partido_id_full',
+                'partidos.pareja_1_set_1', 'partidos.pareja_1_set_1_tie_break', 'partidos.pareja_2_set_1', 'partidos.pareja_2_set_1_tie_break',
+                'partidos.pareja_1_set_2', 'partidos.pareja_1_set_2_tie_break', 'partidos.pareja_2_set_2', 'partidos.pareja_2_set_2_tie_break',
+                'partidos.pareja_1_set_3', 'partidos.pareja_1_set_3_tie_break', 'partidos.pareja_2_set_3', 'partidos.pareja_2_set_3_tie_break',
+                'partidos.pareja_1_set_super_tie_break', 'partidos.pareja_2_set_super_tie_break'
+            )
+            ->orderBy('grupos.fecha')
+            ->orderBy('grupos.horario')
+            ->orderBy('grupos.partido_id')
+            ->get();
+        
+        // Agrupar por partido_id y construir estructura (reutilizando lógica de adminTorneoResultados)
+        $partidosMap = [];
+        foreach ($grupos as $grupo) {
+            $partidoId = $grupo->partido_id;
+            $zonaOriginal = $grupo->zona;
+            
+            if (in_array($zonaOriginal, ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])) {
+                continue; // Cruces se manejan aparte; por ahora solo zonas
+            }
+            
+            $zonaBase = $zonaOriginal;
+            $esGanador = strpos($zonaOriginal, 'ganador ') === 0;
+            $esPerdedor = strpos($zonaOriginal, 'perdedor ') === 0;
+            if ($esGanador) $zonaBase = substr($zonaOriginal, 8);
+            if ($esPerdedor) $zonaBase = substr($zonaOriginal, 9);
+            
+            if (!isset($partidosMap[$partidoId])) {
+                $partidosMap[$partidoId] = [
+                    'partido_id' => $partidoId,
+                    'zona' => $zonaBase,
+                    'pareja_1' => null,
+                    'pareja_2' => null,
+                    'fecha' => $grupo->fecha,
+                    'horario' => $grupo->horario,
+                    'resultados' => $grupo,
+                    'tipo' => $esGanador ? 'ganador' : ($esPerdedor ? 'perdedor' : 'normal'),
+                    'grupos' => []
+                ];
+            }
+            $partidosMap[$partidoId]['grupos'][] = [
+                'jugador_1' => $grupo->jugador_1,
+                'jugador_2' => $grupo->jugador_2,
+                'fecha' => $grupo->fecha,
+                'horario' => $grupo->horario
+            ];
+        }
+        
+        // Procesar parejas para cada partido
+        foreach ($partidosMap as $partidoId => &$partidoData) {
+            $gruposList = $partidoData['grupos'] ?? [];
+            $gruposConJugadores = array_filter($gruposList, fn($g) => ($g['jugador_1'] ?? 0) && ($g['jugador_2'] ?? 0));
+            $gruposUnicos = [];
+            $vistos = [];
+            foreach ($gruposConJugadores as $g) {
+                $k = min($g['jugador_1'], $g['jugador_2']) . '_' . max($g['jugador_1'], $g['jugador_2']);
+                if (!isset($vistos[$k])) {
+                    $vistos[$k] = true;
+                    $gruposUnicos[] = $g;
+                }
+            }
+            if (empty($gruposUnicos) && !empty($gruposList)) {
+                $gruposUnicos = array_slice($gruposList, 0, 2);
+            }
+            $partidoData['pareja_1'] = isset($gruposUnicos[0]) ? ['jugador_1' => (int)$gruposUnicos[0]['jugador_1'], 'jugador_2' => (int)$gruposUnicos[0]['jugador_2']] : null;
+            $pareja1Key = $partidoData['pareja_1'] ? min($partidoData['pareja_1']['jugador_1'], $partidoData['pareja_1']['jugador_2']) . '_' . max($partidoData['pareja_1']['jugador_1'], $partidoData['pareja_1']['jugador_2']) : null;
+            $partidoData['pareja_2'] = null;
+            foreach ($gruposUnicos as $i => $g) {
+                if ($i === 0) continue;
+                $k = min($g['jugador_1'], $g['jugador_2']) . '_' . max($g['jugador_1'], $g['jugador_2']);
+                if ($k !== $pareja1Key) {
+                    $partidoData['pareja_2'] = ['jugador_1' => (int)$g['jugador_1'], 'jugador_2' => (int)$g['jugador_2']];
+                    break;
+                }
+            }
+            if (!empty($gruposUnicos)) {
+                $partidoData['fecha'] = $gruposUnicos[0]['fecha'];
+                $partidoData['horario'] = $gruposUnicos[0]['horario'];
+            }
+            unset($partidoData['grupos']);
+        }
+        unset($partidoData);
+        
+        // Ordenar por fecha y horario
+        $partidos = collect($partidosMap)->sortBy(function ($p) {
+            $f = $p['fecha'] ?? '2000-01-01';
+            $h = $p['horario'] ?? '00:00';
+            return $f . ' ' . $h;
+        })->values();
+        
+        return View('bahia_padel.admin.torneo.cargar_resultados')
+            ->with('torneos', collect())
+            ->with('torneo', $torneo)
+            ->with('partidos', $partidos)
+            ->with('jugadores', $jugadores);
+    }
+
     function adminFotos() {
         return View('bahia_padel.admin.fotos.index'); 
     }

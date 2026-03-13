@@ -29,6 +29,21 @@
 </head>
 
 @include('layouts.bahiapadel_style')
+<style>
+  /* Sidebar oculto completamente cuando está toggled (todas las pantallas) */
+  #accordionSidebar.toggled {
+    width: 0 !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+  }
+  #sidebarToggleTop {
+    font-size: 1.25rem;
+    color: #4e73df;
+  }
+  #sidebarToggleTop:hover {
+    color: #2e59d9;
+  }
+</style>
 
 @include('modal.snackbar')
 <div id="snackbar"><p id="snackbar_text">Cambios guardados</p></div>
@@ -38,8 +53,8 @@
   <!-- Page Wrapper -->
   <div id="wrapper">
 
-    <!-- Sidebar -->
-    <ul class="navbar-nav lumen_color sidebar sidebar-dark accordion fondoNav" id="accordionSidebar">
+    <!-- Sidebar (oculto por defecto, toggle con botón arriba) -->
+    <ul class="navbar-nav lumen_color sidebar sidebar-dark accordion fondoNav toggled" id="accordionSidebar">
 
       <!-- Sidebar - Brand -->
       <a class="sidebar-brand d-flex align-items-center justify-content-center" href="index.html">                
@@ -67,6 +82,12 @@
         <a class="nav-link" href="admin_torneos">
           <i class="fas fa-fw fa-folder-open"></i>
           <span>Torneos</span></a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="{{ route('admincargarresultados') }}">
+          <i class="fas fa-fw fa-edit"></i>
+          <span>Cargar resultados</span></a>
       </li>
        
       <li class="nav-item">
@@ -146,9 +167,9 @@
         <!-- Topbar -->
         <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
 
-          <!-- Sidebar Toggle (Topbar) -->
-          <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-            <i class="fa fa-bars"></i>
+          <!-- Sidebar Toggle (Topbar) - siempre visible -->
+          <button id="sidebarToggleTop" class="btn btn-link rounded-circle mr-3" type="button" title="Mostrar/ocultar menú">
+            <i class="fa fa-bars" id="sidebarToggleIcon"></i>
           </button>
 
           <h1 id="title_header_secretaria" class="h3 mb-0 text-gray-800">@yield('title_header','Admin')</h1>            
@@ -295,6 +316,40 @@
     </div>
   </div>
   <script type="text/javascript">
+
+    // Toggle sidebar (menú izquierda)
+    function toggleSidebar() {
+      var sidebar = document.getElementById('accordionSidebar');
+      var icon = document.getElementById('sidebarToggleIcon');
+      if (sidebar.classList.contains('toggled')) {
+        sidebar.classList.remove('toggled');
+        if (icon) icon.className = 'fa fa-times';
+      } else {
+        sidebar.classList.add('toggled');
+        if (icon) icon.className = 'fa fa-bars';
+      }
+      localStorage.setItem('sidebarHidden', sidebar.classList.contains('toggled'));
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      var btn = document.getElementById('sidebarToggleTop');
+      var btnSidebar = document.getElementById('sidebarToggle');
+      var sidebar = document.getElementById('accordionSidebar');
+      var icon = document.getElementById('sidebarToggleIcon');
+      if (btn) btn.addEventListener('click', toggleSidebar);
+      if (btnSidebar) btnSidebar.addEventListener('click', function(e) { e.preventDefault(); toggleSidebar(); });
+      // Restaurar estado guardado
+      if (localStorage.getItem('sidebarHidden') === 'true' && sidebar && !sidebar.classList.contains('toggled')) {
+        sidebar.classList.add('toggled');
+        if (icon) icon.className = 'fa fa-bars';
+      } else if (localStorage.getItem('sidebarHidden') === 'false' && sidebar && sidebar.classList.contains('toggled')) {
+        sidebar.classList.remove('toggled');
+        if (icon) icon.className = 'fa fa-times';
+      } else if (sidebar && sidebar.classList.contains('toggled') && icon) {
+        icon.className = 'fa fa-bars';
+      } else if (sidebar && !sidebar.classList.contains('toggled') && icon) {
+        icon.className = 'fa fa-times';
+      }
+    });
 
     function toggleDarkMode() {
       document.body.classList.toggle('dark-mode');
