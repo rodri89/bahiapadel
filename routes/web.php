@@ -100,6 +100,9 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_ranking','HomeController@adminRanking')->name('adminranking');
 	Route::post('guardar_referencias_puntuacion','HomeController@guardarReferenciasPuntuacion')->name('guardarreferenciaspuntuacion');
 	Route::post('generar_datos_prueba_torneo','HomeController@generarDatosPruebaTorneo')->name('generardatospruebatorneo');
+	Route::get('admin_calendario','HomeController@adminCalendario')->name('admincalendario');
+	Route::post('admin_calendario_guardar','HomeController@guardarCalendario')->name('admincalendarioguardar');
+	Route::post('admin_calendario_eliminar','HomeController@eliminarCalendario')->name('admincalendarioeliminar');
 	Route::get('admin_config','HomeController@adminConfig')->name('adminconfig');
 	Route::post('admin_config_guardar','HomeController@guardarConfigCruces')->name('adminconfigguardar');
 	Route::get('admin_config_americano','HomeController@adminConfigAmericano')->name('adminconfigamericano');

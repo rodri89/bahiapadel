@@ -115,6 +115,12 @@
       </li>
       
       <li class="nav-item">
+        <a class="nav-link" href="{{ route('admincalendario') }}">
+          <i class="fas fa-fw fa-calendar-alt"></i>
+          <span>Calendario</span></a>
+      </li>
+
+      <li class="nav-item">
           <a class="nav-link" href="{{ route('adminconfig') }}">
             <i class="fas fa-fw fa-cog"></i>
             <span>Config</span></a>

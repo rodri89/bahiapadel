@@ -344,20 +344,28 @@ class HomeFreeController extends Controller
                         'p2_set2' => (int) ($p->pareja_2_set_2 ?? 0),
                         'p1_set3' => (int) ($p->pareja_1_set_3 ?? 0),
                         'p2_set3' => (int) ($p->pareja_2_set_3 ?? 0),
+                        'p1_super_tb' => (int) ($p->pareja_1_set_super_tie_break ?? 0),
+                        'p2_super_tb' => (int) ($p->pareja_2_set_super_tie_break ?? 0),
                     ],
                 ];
             }
 
-            // Clasificación por zona (simplificada: partidos ganados + diferencia de games + games a favor)
+            // Clasificación por zona: mismo criterio que admin (set 3, super TB, zona 3 con puntos 2/1/0)
+            $keyNorm = function ($j1, $j2) {
+                return min((int) $j1, (int) $j2) . '_' . max((int) $j1, (int) $j2);
+            };
             $parejas = [];
             foreach ($gruposZona as $g) {
-                $key = $g->jugador_1 . '_' . $g->jugador_2;
+                $key = $keyNorm($g->jugador_1, $g->jugador_2);
                 if (!isset($parejas[$key])) {
                     $parejas[$key] = [
                         'jugador_1' => (int) $g->jugador_1,
                         'jugador_2' => (int) $g->jugador_2,
                         'partidos_ganados' => 0,
                         'partidos_perdidos' => 0,
+                        'puntos' => 0,
+                        'sets_ganados' => 0,
+                        'sets_perdidos' => 0,
                         'puntos_ganados' => 0,
                         'puntos_perdidos' => 0,
                     ];
@@ -372,47 +380,94 @@ class HomeFreeController extends Controller
                 $g1 = $gList[0];
                 $g2 = $gList[1];
 
-                $key1 = $g1->jugador_1 . '_' . $g1->jugador_2;
-                $key2 = $g2->jugador_1 . '_' . $g2->jugador_2;
+                $key1 = $keyNorm($g1->jugador_1, $g1->jugador_2);
+                $key2 = $keyNorm($g2->jugador_1, $g2->jugador_2);
                 if (!isset($parejas[$key1]) || !isset($parejas[$key2])) {
                     continue;
                 }
 
-                $puntos1 = (int) ($p->pareja_1_set_1 ?? 0);
-                $puntos2 = (int) ($p->pareja_2_set_1 ?? 0);
+                // Contar sets ganados (incluyendo set 3 y super tie-break)
+                $sets1 = 0;
+                $sets2 = 0;
+                if (($p->pareja_1_set_1 ?? 0) > ($p->pareja_2_set_1 ?? 0)) $sets1++;
+                elseif (($p->pareja_2_set_1 ?? 0) > ($p->pareja_1_set_1 ?? 0)) $sets2++;
+                if (($p->pareja_1_set_2 ?? 0) > ($p->pareja_2_set_2 ?? 0)) $sets1++;
+                elseif (($p->pareja_2_set_2 ?? 0) > ($p->pareja_1_set_2 ?? 0)) $sets2++;
+                if (($p->pareja_1_set_super_tie_break ?? 0) > 0 || ($p->pareja_2_set_super_tie_break ?? 0) > 0) {
+                    if (($p->pareja_1_set_super_tie_break ?? 0) > ($p->pareja_2_set_super_tie_break ?? 0)) {
+                        $sets1 = 2; $sets2 = 1;
+                    } elseif (($p->pareja_2_set_super_tie_break ?? 0) > ($p->pareja_1_set_super_tie_break ?? 0)) {
+                        $sets1 = 1; $sets2 = 2;
+                    }
+                } elseif (($p->pareja_1_set_3 ?? 0) > 0 || ($p->pareja_2_set_3 ?? 0) > 0) {
+                    if (($p->pareja_1_set_3 ?? 0) > ($p->pareja_2_set_3 ?? 0)) $sets1++;
+                    elseif (($p->pareja_2_set_3 ?? 0) > ($p->pareja_1_set_3 ?? 0)) $sets2++;
+                }
 
-                if ($puntos1 > 0 || $puntos2 > 0) {
-                    if ($puntos1 > $puntos2) {
+                // Juegos (games): set1 + set2 + set3 (super TB no suma juegos)
+                $juegos1 = ($p->pareja_1_set_1 ?? 0) + ($p->pareja_1_set_2 ?? 0) + ($p->pareja_1_set_3 ?? 0);
+                $juegos2 = ($p->pareja_2_set_1 ?? 0) + ($p->pareja_2_set_2 ?? 0) + ($p->pareja_2_set_3 ?? 0);
+
+                if ($juegos1 > 0 || $juegos2 > 0) {
+                    $parejas[$key1]['sets_ganados'] += $sets1;
+                    $parejas[$key1]['sets_perdidos'] += $sets2;
+                    $parejas[$key2]['sets_ganados'] += $sets2;
+                    $parejas[$key2]['sets_perdidos'] += $sets1;
+                    $parejas[$key1]['puntos_ganados'] += $juegos1;
+                    $parejas[$key1]['puntos_perdidos'] += $juegos2;
+                    $parejas[$key2]['puntos_ganados'] += $juegos2;
+                    $parejas[$key2]['puntos_perdidos'] += $juegos1;
+
+                    if ($sets1 > $sets2) {
                         $parejas[$key1]['partidos_ganados']++;
                         $parejas[$key2]['partidos_perdidos']++;
-                    } elseif ($puntos2 > $puntos1) {
+                        if (count($parejas) === 3) {
+                            $parejas[$key1]['puntos'] += 2;
+                            $parejas[$key2]['puntos'] += 1;
+                        }
+                    } elseif ($sets2 > $sets1) {
                         $parejas[$key2]['partidos_ganados']++;
                         $parejas[$key1]['partidos_perdidos']++;
+                        if (count($parejas) === 3) {
+                            $parejas[$key2]['puntos'] += 2;
+                            $parejas[$key1]['puntos'] += 1;
+                        }
                     }
-                    $parejas[$key1]['puntos_ganados'] += $puntos1;
-                    $parejas[$key1]['puntos_perdidos'] += $puntos2;
-                    $parejas[$key2]['puntos_ganados'] += $puntos2;
-                    $parejas[$key2]['puntos_perdidos'] += $puntos1;
                 }
             }
 
             foreach ($parejas as $key => $val) {
                 $parejas[$key]['diferencia_games'] = ($val['puntos_ganados'] ?? 0) - ($val['puntos_perdidos'] ?? 0);
+                $parejas[$key]['diferencia_sets'] = ($val['sets_ganados'] ?? 0) - ($val['sets_perdidos'] ?? 0);
+                if (count($parejas) === 3 && !isset($parejas[$key]['puntos'])) {
+                    $parejas[$key]['puntos'] = 0;
+                }
             }
 
             $posiciones = array_values($parejas);
-            usort($posiciones, function ($a, $b) {
-                if ($a['partidos_ganados'] !== $b['partidos_ganados']) {
-                    return $b['partidos_ganados'] <=> $a['partidos_ganados'];
-                }
-                if (($a['diferencia_games'] ?? 0) !== ($b['diferencia_games'] ?? 0)) {
+            $numParejas = count($posiciones);
+
+            if ($numParejas === 3) {
+                usort($posiciones, function ($a, $b) {
+                    if (($a['puntos'] ?? 0) !== ($b['puntos'] ?? 0)) {
+                        return ($b['puntos'] ?? 0) <=> ($a['puntos'] ?? 0);
+                    }
+                    if (($a['diferencia_sets'] ?? 0) !== ($b['diferencia_sets'] ?? 0)) {
+                        return ($b['diferencia_sets'] ?? 0) <=> ($a['diferencia_sets'] ?? 0);
+                    }
                     return ($b['diferencia_games'] ?? 0) <=> ($a['diferencia_games'] ?? 0);
-                }
-                if (($a['puntos_ganados'] ?? 0) !== ($b['puntos_ganados'] ?? 0)) {
-                    return ($b['puntos_ganados'] ?? 0) <=> ($a['puntos_ganados'] ?? 0);
-                }
-                return 0;
-            });
+                });
+            } else {
+                usort($posiciones, function ($a, $b) {
+                    if ($a['partidos_ganados'] !== $b['partidos_ganados']) {
+                        return $b['partidos_ganados'] <=> $a['partidos_ganados'];
+                    }
+                    if (($a['diferencia_sets'] ?? 0) !== ($b['diferencia_sets'] ?? 0)) {
+                        return ($b['diferencia_sets'] ?? 0) <=> ($a['diferencia_sets'] ?? 0);
+                    }
+                    return ($b['diferencia_games'] ?? 0) <=> ($a['diferencia_games'] ?? 0);
+                });
+            }
 
             $clasificacionOut = [];
             $posNum = 1;
@@ -426,6 +481,10 @@ class HomeFreeController extends Controller
                     'jugador_1' => $j1,
                     'jugador_2' => $j2,
                     'partidos_ganados' => $fila['partidos_ganados'],
+                    'partidos_perdidos' => $fila['partidos_perdidos'] ?? 0,
+                    'puntos' => $fila['puntos'] ?? null,
+                    'sets_ganados' => $fila['sets_ganados'] ?? 0,
+                    'sets_perdidos' => $fila['sets_perdidos'] ?? 0,
                     'puntos_ganados' => $fila['puntos_ganados'],
                     'puntos_perdidos' => $fila['puntos_perdidos'],
                 ];
@@ -674,7 +733,8 @@ class HomeFreeController extends Controller
     }
 
     public function calendario(){
-        return view('bahia_padel.home.calendario');
+        $eventos = \App\Calendario::orderBy('fecha')->orderBy('id')->get();
+        return view('bahia_padel.home.calendario', ['eventos' => $eventos]);
     }
 
     public function reglamento(){

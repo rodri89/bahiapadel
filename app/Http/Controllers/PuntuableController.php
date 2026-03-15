@@ -418,11 +418,19 @@ class PuntuableController extends Controller
                     $parejas[$key2]['partidos_perdidos']++;
                     $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => true];
                     $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => false];
+                    if (count($parejas) === 3) {
+                        $parejas[$key1]['puntos'] = ($parejas[$key1]['puntos'] ?? 0) + 2;
+                        $parejas[$key2]['puntos'] = ($parejas[$key2]['puntos'] ?? 0) + 1;
+                    }
                 } elseif ($sets2 > $sets1) {
                     $parejas[$key2]['partidos_ganados']++;
                     $parejas[$key1]['partidos_perdidos']++;
                     $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => true];
                     $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => false];
+                    if (count($parejas) === 3) {
+                        $parejas[$key2]['puntos'] = ($parejas[$key2]['puntos'] ?? 0) + 2;
+                        $parejas[$key1]['puntos'] = ($parejas[$key1]['puntos'] ?? 0) + 1;
+                    }
                 }
             }
 
@@ -430,6 +438,9 @@ class PuntuableController extends Controller
                 $parejas[$key]['key'] = $key;
                 $parejas[$key]['diferencia_sets'] = ($pareja['sets_ganados'] ?? 0) - ($pareja['sets_perdidos'] ?? 0);
                 $parejas[$key]['diferencia_games'] = ($pareja['puntos_ganados'] ?? 0) - ($pareja['puntos_perdidos'] ?? 0);
+                if (count($parejas) === 3 && !isset($parejas[$key]['puntos'])) {
+                    $parejas[$key]['puntos'] = 0;
+                }
             }
 
             $posiciones = array_values($parejas);
@@ -474,8 +485,25 @@ class PuntuableController extends Controller
                 }
             }
 
-            // Fallback general: partidos ganados, y en triple empate de 3 parejas usar sets y luego games
-            if (count($posiciones) !== 4 || ($posiciones[0]['partidos_ganados'] ?? null) !== 2 || ($posiciones[3]['partidos_ganados'] ?? null) !== 0) {
+            // Fallback: zona de 3 usa puntos (2/1/0), diff sets, diff games. Zona de 4 usa bracket. Otras: PG, partido directo, diff sets, diff games.
+            if (count($posiciones) === 3) {
+                // Zona de 3: Victoria=2, Derrota=1, No presentarse=0. Desempate: diferencia sets, diferencia juegos.
+                usort($posiciones, function($a, $b) {
+                    $puntosA = $a['puntos'] ?? 0;
+                    $puntosB = $b['puntos'] ?? 0;
+                    if ($puntosA != $puntosB) {
+                        return $puntosB - $puntosA;
+                    }
+                    $diffSetsA = $a['diferencia_sets'] ?? 0;
+                    $diffSetsB = $b['diferencia_sets'] ?? 0;
+                    if ($diffSetsA != $diffSetsB) {
+                        return $diffSetsB - $diffSetsA;
+                    }
+                    $diffGamesA = $a['diferencia_games'] ?? 0;
+                    $diffGamesB = $b['diferencia_games'] ?? 0;
+                    return $diffGamesB - $diffGamesA;
+                });
+            } elseif (count($posiciones) !== 4 || ($posiciones[0]['partidos_ganados'] ?? null) !== 2 || ($posiciones[3]['partidos_ganados'] ?? null) !== 0) {
                 $esTripleEmpate3 = count($posiciones) === 3
                     && count(array_unique(array_map(function($p) { return $p['partidos_ganados']; }, $posiciones))) === 1;
 
@@ -3250,11 +3278,19 @@ class PuntuableController extends Controller
                     $parejas[$key2]['partidos_perdidos']++;
                     $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => true];
                     $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => false];
+                    if (count($parejas) === 3) {
+                        $parejas[$key1]['puntos'] = ($parejas[$key1]['puntos'] ?? 0) + 2;
+                        $parejas[$key2]['puntos'] = ($parejas[$key2]['puntos'] ?? 0) + 1;
+                    }
                 } elseif ($sets2 > $sets1) {
                     $parejas[$key2]['partidos_ganados']++;
                     $parejas[$key1]['partidos_perdidos']++;
                     $parejas[$key2]['partidos_directos'][$key1] = ['ganado' => true];
                     $parejas[$key1]['partidos_directos'][$key2] = ['ganado' => false];
+                    if (count($parejas) === 3) {
+                        $parejas[$key2]['puntos'] = ($parejas[$key2]['puntos'] ?? 0) + 2;
+                        $parejas[$key1]['puntos'] = ($parejas[$key1]['puntos'] ?? 0) + 1;
+                    }
                 }
             }
 
@@ -3262,6 +3298,9 @@ class PuntuableController extends Controller
                 $parejas[$key]['key'] = $key;
                 $parejas[$key]['diferencia_sets'] = ($pareja['sets_ganados'] ?? 0) - ($pareja['sets_perdidos'] ?? 0);
                 $parejas[$key]['diferencia_games'] = ($pareja['puntos_ganados'] ?? 0) - ($pareja['puntos_perdidos'] ?? 0);
+                if (count($parejas) === 3 && !isset($parejas[$key]['puntos'])) {
+                    $parejas[$key]['puntos'] = 0;
+                }
             }
 
             $posiciones = array_values($parejas);
@@ -3305,7 +3344,19 @@ class PuntuableController extends Controller
                 }
             }
 
-            if (count($posiciones) !== 4 || ($posiciones[0]['partidos_ganados'] ?? null) !== 2 || ($posiciones[3]['partidos_ganados'] ?? null) !== 0) {
+            if (count($posiciones) === 3) {
+                usort($posiciones, function($a, $b) {
+                    $puntosA = $a['puntos'] ?? 0;
+                    $puntosB = $b['puntos'] ?? 0;
+                    if ($puntosA != $puntosB) return $puntosB - $puntosA;
+                    $diffSetsA = $a['diferencia_sets'] ?? 0;
+                    $diffSetsB = $b['diferencia_sets'] ?? 0;
+                    if ($diffSetsA != $diffSetsB) return $diffSetsB - $diffSetsA;
+                    $diffGamesA = $a['diferencia_games'] ?? 0;
+                    $diffGamesB = $b['diferencia_games'] ?? 0;
+                    return $diffGamesB - $diffGamesA;
+                });
+            } elseif (count($posiciones) !== 4 || ($posiciones[0]['partidos_ganados'] ?? null) !== 2 || ($posiciones[3]['partidos_ganados'] ?? null) !== 0) {
                 $esTripleEmpate3 = count($posiciones) === 3
                     && count(array_unique(array_map(function($p) { return $p['partidos_ganados']; }, $posiciones))) === 1;
 
