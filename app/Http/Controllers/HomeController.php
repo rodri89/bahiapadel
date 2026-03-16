@@ -81,7 +81,8 @@ class HomeController extends Controller
                 ->with('torneos', $torneos)
                 ->with('torneo', null)
                 ->with('partidos', collect())
-                ->with('jugadores', collect());
+                ->with('jugadores', collect())
+                ->with('modoEditar', false);
         }
         
         $torneo = DB::table('torneos')
@@ -95,13 +96,19 @@ class HomeController extends Controller
         
         $jugadores = DB::table('jugadores')->where('activo', 1)->get();
         
-        // Obtener partidos SIN resultado (todos los sets en 0), ordenados por fecha y horario
-        $grupos = DB::table('grupos')
+        $modoEditar = $request->get('editar', 0) == 1;
+        
+        // Obtener partidos: sin resultado por defecto, o TODOS si modo editar
+        $query = DB::table('grupos')
             ->join('partidos', 'grupos.partido_id', '=', 'partidos.id')
             ->where('grupos.torneo_id', $torneoId)
-            ->whereNotNull('grupos.partido_id')
-            ->whereRaw('(COALESCE(partidos.pareja_1_set_1,0) + COALESCE(partidos.pareja_2_set_1,0) + COALESCE(partidos.pareja_1_set_2,0) + COALESCE(partidos.pareja_2_set_2,0) + COALESCE(partidos.pareja_1_set_3,0) + COALESCE(partidos.pareja_2_set_3,0)) = 0')
-            ->select(
+            ->whereNotNull('grupos.partido_id');
+        
+        if (!$modoEditar) {
+            $query->whereRaw('(COALESCE(partidos.pareja_1_set_1,0) + COALESCE(partidos.pareja_2_set_1,0) + COALESCE(partidos.pareja_1_set_2,0) + COALESCE(partidos.pareja_2_set_2,0) + COALESCE(partidos.pareja_1_set_3,0) + COALESCE(partidos.pareja_2_set_3,0)) = 0');
+        }
+        
+        $grupos = $query->select(
                 'grupos.id as grupo_id', 'grupos.torneo_id', 'grupos.zona', 'grupos.fecha', 'grupos.horario',
                 'grupos.jugador_1', 'grupos.jugador_2', 'grupos.partido_id',
                 'partidos.id as partido_id_full',
@@ -117,19 +124,28 @@ class HomeController extends Controller
         
         // Agrupar por partido_id y construir estructura (reutilizando lógica de adminTorneoResultados)
         $partidosMap = [];
+        $zonasCruces = ['16avos final', 'dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'];
+        $esZonaCruce = function($z) use ($zonasCruces) {
+            if (in_array($z, $zonasCruces)) return true;
+            foreach (['16avos final', 'dieciseisavos final', 'octavos final', 'cuartos final'] as $pref) {
+                if (strpos($z ?? '', $pref) === 0) return true;
+            }
+            return false;
+        };
+        
         foreach ($grupos as $grupo) {
             $partidoId = $grupo->partido_id;
             $zonaOriginal = $grupo->zona;
             
-            if (in_array($zonaOriginal, ['16avos final', 'octavos final', 'cuartos final', 'semifinal', 'final'])) {
-                continue; // Cruces se manejan aparte; por ahora solo zonas
-            }
-            
             $zonaBase = $zonaOriginal;
             $esGanador = strpos($zonaOriginal, 'ganador ') === 0;
             $esPerdedor = strpos($zonaOriginal, 'perdedor ') === 0;
+            $esCruce = $esZonaCruce($zonaOriginal);
             if ($esGanador) $zonaBase = substr($zonaOriginal, 8);
             if ($esPerdedor) $zonaBase = substr($zonaOriginal, 9);
+            if ($esCruce && strpos($zonaOriginal, '|') !== false) {
+                $zonaBase = explode('|', $zonaOriginal)[0];
+            }
             
             if (!isset($partidosMap[$partidoId])) {
                 $partidosMap[$partidoId] = [
@@ -140,7 +156,7 @@ class HomeController extends Controller
                     'fecha' => $grupo->fecha,
                     'horario' => $grupo->horario,
                     'resultados' => $grupo,
-                    'tipo' => $esGanador ? 'ganador' : ($esPerdedor ? 'perdedor' : 'normal'),
+                    'tipo' => $esCruce ? 'cruce' : ($esGanador ? 'ganador' : ($esPerdedor ? 'perdedor' : 'normal')),
                     'grupos' => []
                 ];
             }
@@ -187,18 +203,31 @@ class HomeController extends Controller
         }
         unset($partidoData);
         
-        // Ordenar por fecha y horario
-        $partidos = collect($partidosMap)->sortBy(function ($p) {
+        // Ordenar: cruces primero (16avos, octavos, cuartos, semifinal, final), luego zonas por fecha/horario
+        $ordenRonda = function($zona) {
+            $z = $zona ?? '';
+            if (strpos($z, '16avos') === 0 || strpos($z, 'dieciseisavos') === 0) return 1;
+            if (strpos($z, 'octavos') === 0) return 2;
+            if (strpos($z, 'cuartos') === 0) return 3;
+            if ($z === 'semifinal') return 4;
+            if ($z === 'final') return 5;
+            return 6; // zonas
+        };
+        $partidos = collect($partidosMap)->sortBy(function ($p) use ($ordenRonda) {
+            $zona = $p['zona'] ?? '';
+            $tipo = $p['tipo'] ?? 'normal';
+            $r = ($tipo === 'cruce') ? $ordenRonda($zona) : 6;
             $f = $p['fecha'] ?? '2000-01-01';
             $h = $p['horario'] ?? '00:00';
-            return $f . ' ' . $h;
+            return sprintf('%d_%s_%s', $r, $f, $h);
         })->values();
         
         return View('bahia_padel.admin.torneo.cargar_resultados')
             ->with('torneos', collect())
             ->with('torneo', $torneo)
             ->with('partidos', $partidos)
-            ->with('jugadores', $jugadores);
+            ->with('jugadores', $jugadores)
+            ->with('modoEditar', $modoEditar);
     }
 
     function adminFotos() {
@@ -5111,11 +5140,23 @@ class HomeController extends Controller
                     ->where('partido_id', $partidoId)
                     ->first();
         
-        if ($grupo && in_array($grupo->zona, ['cuartos final', 'semifinal', 'final'])) {
-            if ($grupo->zona === 'cuartos final') {
-                $this->crearSemifinalesPuntuable($grupo->torneo_id);
-            } else if ($grupo->zona === 'semifinal') {
-                $this->crearFinalPuntuable($grupo->torneo_id);
+        if ($grupo && $grupo->torneo_id) {
+            $torneo = DB::table('torneos')->where('id', $grupo->torneo_id)->first();
+            $esPuntuable = $torneo && ($torneo->tipo_torneo_formato ?? 'puntuable') === 'puntuable';
+            if ($esPuntuable) {
+                $zonaNorm = $grupo->zona;
+                $zonaBase = (strpos($zonaNorm, '|') !== false) ? explode('|', $zonaNorm)[0] : $zonaNorm;
+                if ($zonaBase === 'cuartos final' || strpos($zonaNorm, 'cuartos final') === 0) {
+                    $this->crearSemifinalesPuntuable($grupo->torneo_id);
+                } else if ($zonaBase === 'semifinal') {
+                    $this->crearFinalPuntuable($grupo->torneo_id);
+                } else if (($zonaBase === 'octavos final' || strpos($zonaNorm, 'octavos final') === 0) || ($zonaBase === '16avos final' || strpos($zonaNorm, '16avos final') === 0) || ($zonaBase === 'dieciseisavos final' || strpos($zonaNorm, 'dieciseisavos final') === 0)) {
+                    try {
+                        app(\App\Http\Controllers\PuntuableController::class)->crearSiguienteRondaDesdeCruce($grupo->torneo_id, $partido);
+                    } catch (\Exception $e) {
+                        \Log::warning('crearSiguienteRondaDesdeCruce: ' . $e->getMessage());
+                    }
+                }
             }
         }
 
@@ -5134,10 +5175,12 @@ class HomeController extends Controller
             }
         }
         
-        // Si es una zona de 4 parejas eliminatoria, actualizar partidos de Ganador y Perdedor
+        // Si es una zona de 4 parejas eliminatoria, actualizar partidos de Ganador y Perdedor (no para cruces)
         $recargar = false;
         $debugInfo = [];
-        if ($grupo && !in_array($grupo->zona, ['cuartos final', 'semifinal', 'final'])) {
+        $zonasCrucesExcluir = ['16avos final', 'dieciseisavos final', 'octavos final', 'cuartos final', 'semifinal', 'final'];
+        $esCruceParaExcluir = $grupo && (in_array($grupo->zona, $zonasCrucesExcluir) || strpos($grupo->zona ?? '', 'octavos final') === 0 || strpos($grupo->zona ?? '', 'cuartos final') === 0 || strpos($grupo->zona ?? '', '16avos final') === 0 || strpos($grupo->zona ?? '', 'dieciseisavos final') === 0);
+        if ($grupo && !$esCruceParaExcluir) {
             $debugInfo['zona'] = $grupo->zona;
             $debugInfo['torneo_id'] = $grupo->torneo_id;
             $debugInfo['partido_id'] = $partidoId;

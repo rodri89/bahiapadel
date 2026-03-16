@@ -1572,6 +1572,27 @@ class PuntuableController extends Controller
     }
 
     /**
+     * Crea la siguiente ronda cuando se guarda un resultado de cruce desde cargar_resultados (HomeController).
+     * Para 16avos -> asigna ganador a octavos; para octavos -> crea cuartos.
+     */
+    public function crearSiguienteRondaDesdeCruce($torneoId, $partido) {
+        $grupo = DB::table('grupos')
+            ->where('torneo_id', $torneoId)
+            ->where('partido_id', $partido->id)
+            ->first();
+        if (!$grupo) {
+            return;
+        }
+        $zona = $grupo->zona;
+        $zonaBase = (strpos($zona, '|') !== false) ? explode('|', $zona)[0] : $zona;
+        if ($zonaBase === '16avos final' || strpos($zona, '16avos final') === 0) {
+            $this->asignarGanador16avosAOctavos($torneoId, $partido);
+        } else if ($zonaBase === 'octavos final' || strpos($zona, 'octavos final') === 0) {
+            $this->crearCuartosDesdeConfiguracionYOctavos($torneoId, $partido);
+        }
+    }
+
+    /**
      * Obtiene los datos del ganador del partido para que el frontend actualice la llave siguiente sin recargar.
      * Retorna refs (O1, G1-8vos, etc.), ronda_siguiente, jugadores y datos para mostrar (nombre, foto).
      */

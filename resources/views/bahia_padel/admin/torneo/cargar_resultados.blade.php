@@ -37,8 +37,6 @@
         pointer-events: none;
         transform: scale(0.95);
     }
-    .tie-break-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.25rem; }
-    .tie-break-row input { width: 50px !important; }
     /* Colores por categoría (1-7) */
     .banner-cat-1 { background: #4e73df; color: #fff !important; }
     .banner-cat-2 { background: #1cc88a; color: #fff !important; }
@@ -90,7 +88,8 @@
             </div>
         </div>
     @else
-        {{-- Partidos sin resultado --}}
+        {{-- Partidos --}}
+        @php $modoEditar = $modoEditar ?? false; @endphp
         <div class="row">
             <div class="col-12 d-flex justify-content-between align-items-center mb-3 flex-wrap">
                 <div>
@@ -98,7 +97,18 @@
                         <i class="fas fa-arrow-left"></i> Cambiar torneo
                     </a>
                     <h5 class="mb-0" style="color:#4e73df;">{{ $torneo->categoria }}º {{ $torneo->nombre ?? 'Torneo' }}</h5>
-                    <small class="text-muted">Partidos pendientes de resultado</small>
+                    <small class="text-muted">{{ $modoEditar ? 'Todos los partidos (editar)' : 'Partidos pendientes de resultado' }}</small>
+                </div>
+                <div>
+                    @if($modoEditar)
+                        <a href="{{ route('admincargarresultados') }}?torneo_id={{ $torneo->id }}" class="btn btn-sm btn-outline-secondary">
+                            Ver pendientes
+                        </a>
+                    @else
+                        <a href="{{ route('admincargarresultados') }}?torneo_id={{ $torneo->id }}&editar=1" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -138,7 +148,18 @@
                             $fechaFormateada = ucfirst($diasSemana[date('w', strtotime($fecha))]) . ' ' . date('d', strtotime($fecha));
                         }
                         $tipoPartido = $partidoData['tipo'] ?? 'normal';
-                        $tituloPartido = $tipoPartido === 'ganador' ? 'Ganador' : ($tipoPartido === 'perdedor' ? 'Perdedor' : 'Zona ' . ($partidoData['zona'] ?? ''));
+                        $zonaPartido = $partidoData['zona'] ?? '';
+                        $tituloPartido = $tipoPartido === 'cruce'
+                            ? (match(true) {
+                                str_starts_with($zonaPartido, '16avos') => '16avos',
+                                str_starts_with($zonaPartido, 'dieciseisavos') => '16avos',
+                                str_starts_with($zonaPartido, 'octavos') => 'Octavos',
+                                str_starts_with($zonaPartido, 'cuartos') => 'Cuartos',
+                                $zonaPartido === 'semifinal' => 'Semifinal',
+                                $zonaPartido === 'final' => 'Final',
+                                default => $zonaPartido
+                            })
+                            : ($tipoPartido === 'ganador' ? 'Ganador' : ($tipoPartido === 'perdedor' ? 'Perdedor' : 'Zona ' . $zonaPartido));
                         $categoria = (int) ($torneo->categoria ?? 1);
                         $categoriaClase = 'banner-cat-' . (($categoria % 7) ?: 7);
                     @endphp
@@ -185,55 +206,38 @@
                                     @endif
                                 </div>
                             </div>
+                            @php
+                                $r = $resultados ?? null;
+                                $v1_1 = $r ? ($r->pareja_1_set_1 ?? 0) : 0;
+                                $v2_1 = $r ? ($r->pareja_2_set_1 ?? 0) : 0;
+                                $v1_2 = $r ? ($r->pareja_1_set_2 ?? 0) : 0;
+                                $v2_2 = $r ? ($r->pareja_2_set_2 ?? 0) : 0;
+                                $v1_3 = $r ? ($r->pareja_1_set_3 ?? 0) : 0;
+                                $v2_3 = $r ? ($r->pareja_2_set_3 ?? 0) : 0;
+                            @endphp
                             <div class="resultado-partido" data-partido-id="{{ $partidoId }}">
                                 <div class="mb-2">
                                     <label style="font-size:0.75rem;color:#000;">Set 1</label>
                                     <div class="d-flex justify-content-center align-items-center">
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_1" value="0" data-partido-id="{{ $partidoId }}">
+                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_1" value="{{ $v1_1 }}" data-partido-id="{{ $partidoId }}">
                                         <span class="mx-1" style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_1" value="0" data-partido-id="{{ $partidoId }}">
-                                    </div>
-                                    <div class="tie-break-row">
-                                        <span style="font-size:0.65rem;color:#000;">TB</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" name="pareja_1_set_1_tie_break" value="0" data-partido-id="{{ $partidoId }}">
-                                        <span style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" name="pareja_2_set_1_tie_break" value="0" data-partido-id="{{ $partidoId }}">
+                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_1" value="{{ $v2_1 }}" data-partido-id="{{ $partidoId }}">
                                     </div>
                                 </div>
                                 <div class="mb-2">
                                     <label style="font-size:0.75rem;color:#000;">Set 2</label>
                                     <div class="d-flex justify-content-center align-items-center">
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_2" value="0" data-partido-id="{{ $partidoId }}">
+                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_2" value="{{ $v1_2 }}" data-partido-id="{{ $partidoId }}">
                                         <span class="mx-1" style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_2" value="0" data-partido-id="{{ $partidoId }}">
-                                    </div>
-                                    <div class="tie-break-row">
-                                        <span style="font-size:0.65rem;color:#000;">TB</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" name="pareja_1_set_2_tie_break" value="0" data-partido-id="{{ $partidoId }}">
-                                        <span style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" name="pareja_2_set_2_tie_break" value="0" data-partido-id="{{ $partidoId }}">
+                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_2" value="{{ $v2_2 }}" data-partido-id="{{ $partidoId }}">
                                     </div>
                                 </div>
                                 <div class="mb-2">
                                     <label style="font-size:0.75rem;color:#000;">Set 3</label>
                                     <div class="d-flex justify-content-center align-items-center">
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_3" value="0" data-partido-id="{{ $partidoId }}">
+                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_3" value="{{ $v1_3 }}" data-partido-id="{{ $partidoId }}">
                                         <span class="mx-1" style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_3" value="0" data-partido-id="{{ $partidoId }}">
-                                    </div>
-                                    <div class="tie-break-row">
-                                        <span style="font-size:0.65rem;color:#000;">TB</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" name="pareja_1_set_3_tie_break" value="0" data-partido-id="{{ $partidoId }}">
-                                        <span style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" name="pareja_2_set_3_tie_break" value="0" data-partido-id="{{ $partidoId }}">
-                                    </div>
-                                </div>
-                                <div class="mb-2">
-                                    <label style="font-size:0.75rem;color:#000;">Super TB</label>
-                                    <div class="d-flex justify-content-center align-items-center">
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_1_set_super_tie_break" value="0" data-partido-id="{{ $partidoId }}">
-                                        <span class="mx-1" style="color:#000;">-</span>
-                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_super_tie_break" value="0" data-partido-id="{{ $partidoId }}">
+                                        <input type="number" min="0" max="99" class="form-control form-control-sm" style="width:50px;" name="pareja_2_set_3" value="{{ $v2_3 }}" data-partido-id="{{ $partidoId }}">
                                     </div>
                                 </div>
                                 <button type="button" class="btn btn-primary btn-sm btn-block guardar-resultado-cargar" data-partido-id="{{ $partidoId }}">
@@ -252,6 +256,8 @@
 @if($torneo && $partidos->isNotEmpty())
 <script>
 $(function() {
+    var modoEditar = {{ ($modoEditar ?? false) ? 'true' : 'false' }};
+    
     $(document).on('click', '.guardar-resultado-cargar', function() {
         var partidoId = $(this).data('partido-id');
         var card = $('#card-partido-' + partidoId);
@@ -261,19 +267,19 @@ $(function() {
         var datos = {
             partido_id: partidoId,
             pareja_1_set_1: resultadoPartido.find('input[name="pareja_1_set_1"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_1_set_1_tie_break: resultadoPartido.find('input[name="pareja_1_set_1_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
             pareja_2_set_1: resultadoPartido.find('input[name="pareja_2_set_1"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_2_set_1_tie_break: resultadoPartido.find('input[name="pareja_2_set_1_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
             pareja_1_set_2: resultadoPartido.find('input[name="pareja_1_set_2"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_1_set_2_tie_break: resultadoPartido.find('input[name="pareja_1_set_2_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
             pareja_2_set_2: resultadoPartido.find('input[name="pareja_2_set_2"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_2_set_2_tie_break: resultadoPartido.find('input[name="pareja_2_set_2_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
             pareja_1_set_3: resultadoPartido.find('input[name="pareja_1_set_3"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_1_set_3_tie_break: resultadoPartido.find('input[name="pareja_1_set_3_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
             pareja_2_set_3: resultadoPartido.find('input[name="pareja_2_set_3"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_2_set_3_tie_break: resultadoPartido.find('input[name="pareja_2_set_3_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_1_set_super_tie_break: resultadoPartido.find('input[name="pareja_1_set_super_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
-            pareja_2_set_super_tie_break: resultadoPartido.find('input[name="pareja_2_set_super_tie_break"][data-partido-id="' + partidoId + '"]').val() || 0,
+            pareja_1_set_1_tie_break: 0,
+            pareja_2_set_1_tie_break: 0,
+            pareja_1_set_2_tie_break: 0,
+            pareja_2_set_2_tie_break: 0,
+            pareja_1_set_3_tie_break: 0,
+            pareja_2_set_3_tie_break: 0,
+            pareja_1_set_super_tie_break: 0,
+            pareja_2_set_super_tie_break: 0,
             _token: '{{ csrf_token() }}'
         };
         
@@ -286,13 +292,21 @@ $(function() {
             data: datos,
             success: function(data) {
                 if (data.success) {
-                    card.addClass('guardado');
-                    setTimeout(function() {
-                        card.remove();
-                        if ($('#partidos-row').children().length === 0) {
-                            location.reload();
-                        }
-                    }, 300);
+                    if (modoEditar) {
+                        btn.prop('disabled', false).text('Guardar');
+                        btn.closest('.card-body').prepend('<div class="alert alert-success py-1 px-2 mb-2" style="font-size:0.75rem;">Guardado</div>');
+                        setTimeout(function() {
+                            btn.closest('.card-body').find('.alert-success').remove();
+                        }, 2000);
+                    } else {
+                        card.addClass('guardado');
+                        setTimeout(function() {
+                            card.remove();
+                            if ($('#partidos-row').children().length === 0) {
+                                location.reload();
+                            }
+                        }, 300);
+                    }
                 } else {
                     alert('Error: ' + (data.message || 'Error desconocido'));
                     btn.prop('disabled', false).text('Guardar');
