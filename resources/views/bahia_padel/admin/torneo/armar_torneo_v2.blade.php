@@ -73,6 +73,35 @@
 @include('bahia_padel.modal.jugadores')
 
 <!-- Modal Seleccionar Día y Horario -->
+<style>
+  .pill-dia, .pill-hora, .pill-minuto {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    margin: 0.2rem;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border: 2px solid #dee2e6;
+    background: #fff;
+    transition: all 0.2s;
+  }
+  .pill-dia:hover, .pill-hora:hover, .pill-minuto:hover {
+    border-color: #4e73df;
+    background: #f8f9fc;
+  }
+  .pill-dia.active, .pill-hora.active, .pill-minuto.active {
+    background: #4e73df;
+    border-color: #4e73df;
+    color: #fff;
+  }
+  .horario-armado {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #4e73df;
+    padding: 0.5rem 0;
+    min-height: 2rem;
+  }
+</style>
 <div class="modal fade body_admin" id="modalDiaHorario" tabindex="-1" role="dialog" aria-labelledby="modalDiaHorarioLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
     <form id="formDiaHorario">
@@ -85,25 +114,32 @@
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label for="dia">Día</label>
-            <input type="date" class="form-control" id="dia" name="dia">
+            <label class="mb-2">Día</label>
+            <div id="pills-dias" class="d-flex flex-wrap">
+              {{-- Se rellenan por JS con los días del torneo (fecha_inicio a fecha_fin) --}}
+            </div>
+            <input type="hidden" id="dia" name="dia" value="">
           </div>
           <div class="form-group">
-            <label for="hora">Horario</label>
-            <div class="d-flex">
-                <select class="form-control mr-2" id="hora" name="hora" style="width:auto;">
-                    @for ($h = 0; $h < 24; $h++)
-                        <option value="{{ sprintf('%02d', $h) }}">{{ sprintf('%02d', $h) }}</option>
-                    @endfor
-                </select>
-                <span class="align-self-center">:</span>
-                <select class="form-control ml-2" id="minuto" name="minuto" style="width:auto;">
-                    <option value="00">00</option>
-                    <option value="15">15</option>
-                    <option value="30">30</option>
-                    <option value="45">45</option>
-                </select>
+            <label class="mb-2">Horario</label>
+            <div class="horario-armado mb-2" id="horario-armado">--:--</div>
+            <div class="mb-2">
+              <small class="text-muted d-block mb-1">Hora</small>
+              <div id="pills-horas" class="d-flex flex-wrap">
+                {{-- 08 a 23, luego 00 --}}
+              </div>
             </div>
+            <div>
+              <small class="text-muted d-block mb-1">Minutos</small>
+              <div id="pills-minutos" class="d-flex flex-wrap">
+                <span class="pill-minuto" data-val="00">00</span>
+                <span class="pill-minuto" data-val="15">15</span>
+                <span class="pill-minuto" data-val="30">30</span>
+                <span class="pill-minuto" data-val="45">45</span>
+              </div>
+            </div>
+            <input type="hidden" id="hora" name="hora" value="">
+            <input type="hidden" id="minuto" name="minuto" value="">
           </div>
         </div>
         <div class="modal-footer">
@@ -120,8 +156,64 @@
     let zonas = ['A']; // Array de zonas (A, B, C, etc.)
     let zonaIndex = 0; // Índice de la zona actual
     
+    // Fechas del torneo para pills de días (fecha_inicio y fecha_fin)
+    const torneoFechaInicio = '{{ $torneo->fecha_inicio ?? date("Y-m-d") }}';
+    const torneoFechaFin = '{{ $torneo->fecha_fin ?? $torneo->fecha_inicio ?? date("Y-m-d") }}';
+    
+    function initModalDiaHorario() {
+        const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        const diasContainer = $('#pills-dias');
+        diasContainer.empty();
+        const inicio = new Date(torneoFechaInicio + 'T00:00:00');
+        const fin = new Date(torneoFechaFin + 'T00:00:00');
+        if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) return;
+        for (let d = new Date(inicio.getTime()); d <= fin; d.setDate(d.getDate() + 1)) {
+            const y = d.getFullYear(), mes = d.getMonth() + 1, day = d.getDate();
+            const fechaStr = y + '-' + ('0' + mes).slice(-2) + '-' + ('0' + day).slice(-2);
+            const diaNum = day;
+            const nombreDia = diasSemana[d.getDay()];
+            const label = nombreDia + ' ' + diaNum;
+            diasContainer.append('<span class="pill-dia" data-fecha="' + fechaStr + '">' + label + '</span>');
+        }
+        // Horas: 08 a 23, luego 00
+        const horasContainer = $('#pills-horas');
+        horasContainer.empty();
+        for (let h = 8; h <= 23; h++) {
+            const v = ('0' + h).slice(-2);
+            horasContainer.append('<span class="pill-hora" data-val="' + v + '">' + v + '</span>');
+        }
+        horasContainer.append('<span class="pill-hora" data-val="00">00</span>');
+    }
+    
+    function actualizarHorarioArmado() {
+        const h = $('#hora').val();
+        const m = $('#minuto').val();
+        $('#horario-armado').text((h && m) ? (h + ':' + m) : '--:--');
+    }
+    
     window.onload = function() {
         inicializarZonas();
+        initModalDiaHorario();
+        // Pills de día
+        $(document).on('click', '.pill-dia', function() {
+            $('.pill-dia').removeClass('active');
+            $(this).addClass('active');
+            $('#dia').val($(this).data('fecha'));
+        });
+        // Pills de hora
+        $(document).on('click', '.pill-hora', function() {
+            $('.pill-hora').removeClass('active');
+            $(this).addClass('active');
+            $('#hora').val($(this).data('val'));
+            actualizarHorarioArmado();
+        });
+        // Pills de minuto
+        $(document).on('click', '.pill-minuto', function() {
+            $('.pill-minuto').removeClass('active');
+            $(this).addClass('active');
+            $('#minuto').val($(this).data('val'));
+            actualizarHorarioArmado();
+        });
     };
     
     // Función para inicializar las zonas desde la base de datos
@@ -853,6 +945,13 @@
         const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         return dias[fecha.getDay()];
     }
+    // Función para obtener "Viernes 20" (día + número)
+    function getDiaYNumero(fechaStr) {
+        if (!fechaStr) return '';
+        const fecha = new Date(fechaStr + 'T00:00:00');
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        return dias[fecha.getDay()] + ' ' + fecha.getDate();
+    }
     
     // Al abrir el modal de horarios
     $(document).on('click', '.btn-abrir-modal', function() {
@@ -861,14 +960,30 @@
         const dia = celdaActual.data('dia') || '';
         const horario = celdaActual.data('horario') || '';
         $('#dia').val(dia);
-        if(horario) {
-            const [h, m] = horario.split(':');
-            $('#hora').val(h);
-            $('#minuto').val(m);
+        $('.pill-dia').removeClass('active');
+        if (dia) {
+            $('.pill-dia[data-fecha="' + dia + '"]').addClass('active');
         } else {
-            $('#hora').val('00');
-            $('#minuto').val('00');
+            // Por defecto seleccionar el primer día del torneo
+            const primerPill = $('.pill-dia').first();
+            if (primerPill.length) {
+                primerPill.addClass('active');
+                $('#dia').val(primerPill.data('fecha'));
+            }
         }
+        let h = '08', m = '00';
+        if (horario) {
+            const parts = horario.split(':');
+            h = parts[0] || '08';
+            m = (parts[1] !== undefined) ? parts[1] : '00';
+        }
+        $('#hora').val(h);
+        $('#minuto').val(m);
+        $('.pill-hora').removeClass('active');
+        $('.pill-hora[data-val="' + h + '"]').addClass('active');
+        $('.pill-minuto').removeClass('active');
+        $('.pill-minuto[data-val="' + m + '"]').addClass('active');
+        actualizarHorarioArmado();
     });
     
     // Al guardar en el modal de horarios
@@ -880,10 +995,7 @@
         const horario = hora + ':' + minuto;
         
         if (celdaActual && dia && horario) {
-            // Parsear fecha manualmente
-            const [anio, mes, diaNum] = dia.split('-').map(Number);
-            const nombreDia = getNombreDia(dia);
-            const fechaFormateada = `${nombreDia}`;
+            const fechaFormateada = getDiaYNumero(dia);
             celdaActual.data('dia', dia);
             celdaActual.data('horario', horario);
             
