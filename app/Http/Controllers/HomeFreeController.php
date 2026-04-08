@@ -13,6 +13,9 @@ use App\Jugadore;
 use Image;
 use Storage;
 use DateTime;
+use Carbon\Carbon;
+use App\Calendario;
+use App\CalendarioInscripcion;
 
 
 class HomeFreeController extends Controller
@@ -732,9 +735,114 @@ class HomeFreeController extends Controller
         ]);
     }
 
-    public function calendario(){
-        $eventos = \App\Calendario::orderBy('fecha')->orderBy('id')->get();
-        return view('bahia_padel.home.calendario', ['eventos' => $eventos]);
+    public function calendario(Request $request)
+    {
+        $anio = (int) $request->query('anio', now()->year);
+        if ($anio < 2000 || $anio > 2100) {
+            $anio = (int) now()->year;
+        }
+
+        $mesActual = (int) now()->format('n');
+        $mesDefault = $mesActual >= 3 && $mesActual <= 12 ? $mesActual : 3;
+
+        $mes = (int) $request->query('mes', $mesDefault);
+        if ($mes < 3 || $mes > 12) {
+            $mes = $mesDefault;
+        }
+
+        $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth();
+        $finMes = Carbon::create($anio, $mes, 1)->endOfMonth();
+
+        $todos = Calendario::orderByRaw('COALESCE(fecha_desde, fecha)')
+            ->orderBy('id')
+            ->get();
+
+        $eventos = $todos->filter(function (Calendario $e) use ($inicioMes, $finMes) {
+            $desde = $e->fecha_desde ?? $e->fecha;
+            $hasta = $e->fecha_hasta ?? $e->fecha_desde ?? $e->fecha;
+            if (!$desde || !$hasta) {
+                return false;
+            }
+            $d0 = $desde instanceof Carbon ? $desde->copy()->startOfDay() : Carbon::parse($desde)->startOfDay();
+            $d1 = $hasta instanceof Carbon ? $hasta->copy()->startOfDay() : Carbon::parse($hasta)->startOfDay();
+            if ($d1->lt($d0)) {
+                $d1 = $d0->copy();
+            }
+
+            return $d1->gte($inicioMes) && $d0->lte($finMes);
+        })->values();
+
+        $nombresMes = [
+            3 => 'Marzo', 4 => 'Abril', 5 => 'Mayo', 6 => 'Junio',
+            7 => 'Julio', 8 => 'Agosto', 9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+        ];
+
+        return view('bahia_padel.home.calendario', [
+            'eventos' => $eventos,
+            'mesSeleccionado' => $mes,
+            'anioCalendario' => $anio,
+            'nombresMes' => $nombresMes,
+            'tieneEventosTotales' => $todos->isNotEmpty(),
+        ]);
+    }
+
+    public function calendarioInscribir(Calendario $calendario)
+    {
+        if (!$calendario->inscripcionAbiertaHoy()) {
+            return redirect()
+                ->route('home.calendario')
+                ->with('error', 'La inscripción no está abierta para este evento.');
+        }
+
+        return view('bahia_padel.home.calendario_inscribir', [
+            'evento' => $calendario,
+        ]);
+    }
+
+    public function calendarioInscribirGuardar(Request $request, Calendario $calendario)
+    {
+        if (!$calendario->inscripcionAbiertaHoy()) {
+            return redirect()
+                ->route('home.calendario')
+                ->with('error', 'La inscripción no está abierta para este evento.');
+        }
+
+        $validated = $request->validate([
+            'jugador1_nombre' => 'required|string|max:120',
+            'jugador1_apellido' => 'required|string|max:120',
+            'jugador1_telefono' => 'required|string|max:40',
+            'jugador2_nombre' => 'required|string|max:120',
+            'jugador2_apellido' => 'required|string|max:120',
+            'jugador2_telefono' => 'nullable|string|max:40',
+            'disponibilidad_horaria' => 'required|string|max:5000',
+        ], [
+            'jugador1_nombre.required' => 'Completá el nombre del jugador 1.',
+            'jugador1_apellido.required' => 'Completá el apellido del jugador 1.',
+            'jugador1_telefono.required' => 'Completá el teléfono del jugador 1.',
+            'jugador2_nombre.required' => 'Completá el nombre del jugador 2.',
+            'jugador2_apellido.required' => 'Completá el apellido del jugador 2.',
+            'disponibilidad_horaria.required' => 'Indicá la disponibilidad horaria.',
+        ]);
+
+        $j2tel = $validated['jugador2_telefono'] ?? null;
+        if (is_string($j2tel) && trim($j2tel) === '') {
+            $j2tel = null;
+        }
+
+        CalendarioInscripcion::create([
+            'calendario_id' => $calendario->id,
+            'jugador1_nombre' => $validated['jugador1_nombre'],
+            'jugador1_apellido' => $validated['jugador1_apellido'],
+            'jugador1_telefono' => $validated['jugador1_telefono'],
+            'jugador2_nombre' => $validated['jugador2_nombre'],
+            'jugador2_apellido' => $validated['jugador2_apellido'],
+            'jugador2_telefono' => $j2tel,
+            'disponibilidad_horaria' => $validated['disponibilidad_horaria'],
+        ]);
+
+        return redirect()
+            ->route('home.calendario')
+            ->with('success', 'Tu inscripción fue registrada. Nos pondremos en contacto.');
     }
 
     public function reglamento(){

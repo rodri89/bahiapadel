@@ -350,7 +350,10 @@ class HomeController extends Controller
      * Admin: Calendario (eventos a mostrar en home)
      */
     function adminCalendario(Request $request) {
-        $eventos = Calendario::orderBy('fecha')->orderBy('id')->get();
+        $eventos = Calendario::withCount('inscripciones')
+            ->orderByRaw('COALESCE(fecha_desde, fecha)')
+            ->orderBy('id')
+            ->get();
         $editarId = $request->get('editar');
         $item = null;
         if ($editarId) {
@@ -364,31 +367,39 @@ class HomeController extends Controller
     function guardarCalendario(Request $request) {
         try {
             $id = $request->id ? (int) $request->id : null;
-            $fecha = $request->fecha;
+            $fechaDesde = $request->fecha_desde ?: $request->fecha;
+            $fechaHasta = $request->fecha_hasta ?: $fechaDesde;
             $categoria = (int) $request->categoria;
             $tipo = $request->tipo;
             if (!in_array($tipo, ['mixto', 'femenino', 'masculino'])) {
                 $tipo = 'mixto';
             }
-            if (!$fecha || $categoria < 1 || $categoria > 7) {
-                return response()->json(['success' => false, 'message' => 'Datos inválidos']);
+            if (!$fechaDesde || $categoria < 1 || $categoria > 7) {
+                return response()->json(['success' => false, 'message' => 'Fecha desde y categoría son obligatorios']);
             }
+            $data = [
+                'fecha' => $fechaDesde,
+                'fecha_desde' => $fechaDesde,
+                'fecha_hasta' => $fechaHasta,
+                'fecha_abre_inscripcion' => $request->fecha_abre_inscripcion ?: null,
+                'fecha_cierra_inscripcion' => $request->fecha_cierra_inscripcion ?: null,
+                'categoria' => $categoria,
+                'tipo' => $tipo,
+                'nombre' => $request->nombre,
+                'premio_1' => $request->premio_1 !== null && $request->premio_1 !== '' ? (float) $request->premio_1 : null,
+                'premio_2' => $request->premio_2 !== null && $request->premio_2 !== '' ? (float) $request->premio_2 : null,
+                'premio_3' => $request->premio_3 !== null && $request->premio_3 !== '' ? (float) $request->premio_3 : null,
+                'premio_4' => $request->premio_4 !== null && $request->premio_4 !== '' ? (float) $request->premio_4 : null,
+                'valor_inscripcion' => $request->valor_inscripcion !== null && $request->valor_inscripcion !== '' ? (float) $request->valor_inscripcion : null,
+            ];
             if ($id) {
                 $item = Calendario::find($id);
                 if ($item) {
-                    $item->fecha = $fecha;
-                    $item->categoria = $categoria;
-                    $item->tipo = $tipo;
-                    $item->nombre = $request->nombre;
+                    $item->fill($data);
                     $item->save();
                 }
             } else {
-                Calendario::create([
-                    'fecha' => $fecha,
-                    'categoria' => $categoria,
-                    'tipo' => $tipo,
-                    'nombre' => $request->nombre,
-                ]);
+                Calendario::create($data);
             }
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -407,6 +418,34 @@ class HomeController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Admin: datos JSON de inscripciones (modal en admin_calendario).
+     */
+    public function adminCalendarioInscripcionesJson(Calendario $calendario)
+    {
+        $inscripciones = $calendario->inscripciones()
+            ->orderByDesc('created_at')
+            ->get();
+
+        $titulo = $calendario->nombre
+            ?: ($calendario->categoria.'ª categoría · '.$calendario->tipo_label);
+
+        return response()->json([
+            'titulo' => $titulo,
+            'fechas' => $calendario->textoFechasTorneo(),
+            'inscripciones' => $inscripciones->map(function ($i) {
+                return [
+                    'registrado' => $i->created_at ? $i->created_at->format('d/m/Y H:i') : '—',
+                    'jugador1' => trim($i->jugador1_nombre.' '.$i->jugador1_apellido),
+                    'tel1' => $i->jugador1_telefono,
+                    'jugador2' => trim($i->jugador2_nombre.' '.$i->jugador2_apellido),
+                    'tel2' => $i->jugador2_telefono ?: '',
+                    'disponibilidad' => $i->disponibilidad_horaria,
+                ];
+            })->values(),
+        ]);
     }
 
     /**

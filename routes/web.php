@@ -64,6 +64,8 @@ Route::get('/torneos/{id}/zonas', 'HomeFreeController@torneoZonasPublic')->name(
 Route::get('/torneos/{id}/cruces', 'HomeFreeController@torneoCrucesPublic')->name('home.torneo.cruces');
 Route::get('/ranking', 'HomeFreeController@ranking')->name('home.ranking');
 Route::get('/calendario', 'HomeFreeController@calendario')->name('home.calendario');
+Route::get('/calendario/{calendario}/inscribirme', 'HomeFreeController@calendarioInscribir')->name('home.calendario.inscribir');
+Route::post('/calendario/{calendario}/inscribirme', 'HomeFreeController@calendarioInscribirGuardar')->name('home.calendario.inscribir.guardar');
 Route::get('/reglamento', 'HomeFreeController@reglamento')->name('home.reglamento');	
 
 Route::get('/index2', 'Auth\LoginController@showLoginForm')->name('index2');	
@@ -101,6 +103,7 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('guardar_referencias_puntuacion','HomeController@guardarReferenciasPuntuacion')->name('guardarreferenciaspuntuacion');
 	Route::post('generar_datos_prueba_torneo','HomeController@generarDatosPruebaTorneo')->name('generardatospruebatorneo');
 	Route::get('admin_calendario','HomeController@adminCalendario')->name('admincalendario');
+	Route::get('admin_calendario_inscripciones_json/{calendario}','HomeController@adminCalendarioInscripcionesJson')->name('admincalendarioinscripcionesjson');
 	Route::post('admin_calendario_guardar','HomeController@guardarCalendario')->name('admincalendarioguardar');
 	Route::post('admin_calendario_eliminar','HomeController@eliminarCalendario')->name('admincalendarioeliminar');
 	Route::get('admin_config','HomeController@adminConfig')->name('adminconfig');
