@@ -845,6 +845,42 @@ class HomeFreeController extends Controller
             ->with('success', 'Tu inscripción fue registrada. Nos pondremos en contacto.');
     }
 
+    public function calendarioCrearJugador(Request $request)
+    {
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:120',
+            'apellido' => 'required|string|max:120',
+            'telefono' => 'nullable|string|max:40',
+        ], [
+            'nombre.required' => 'Completá el nombre.',
+            'apellido.required' => 'Completá el apellido.',
+        ]);
+
+        $tel = $validated['telefono'] ?? '';
+        if (is_string($tel)) {
+            $tel = trim($tel);
+        }
+
+        $jugador = new Jugadore();
+        $jugador->activo = 1;
+        $jugador->nombre = $validated['nombre'];
+        $jugador->apellido = $validated['apellido'];
+        $jugador->telefono = $tel === '' ? '0' : $tel;
+        $jugador->posicion = 0;
+        $jugador->foto = 'images/jugador_img.png';
+        $jugador->save();
+
+        return response()->json([
+            'success' => true,
+            'jugador' => [
+                'id' => $jugador->id,
+                'nombre' => $jugador->nombre,
+                'apellido' => $jugador->apellido,
+                'telefono' => $jugador->telefono,
+            ],
+        ]);
+    }
+
     public function reglamento(){
         return view('bahia_padel.home.reglamento');
     }

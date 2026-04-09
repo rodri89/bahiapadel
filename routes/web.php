@@ -66,6 +66,7 @@ Route::get('/ranking', 'HomeFreeController@ranking')->name('home.ranking');
 Route::get('/calendario', 'HomeFreeController@calendario')->name('home.calendario');
 Route::get('/calendario/{calendario}/inscribirme', 'HomeFreeController@calendarioInscribir')->name('home.calendario.inscribir');
 Route::post('/calendario/{calendario}/inscribirme', 'HomeFreeController@calendarioInscribirGuardar')->name('home.calendario.inscribir.guardar');
+Route::post('/calendario/crear-jugador', 'HomeFreeController@calendarioCrearJugador')->name('home.calendario.crear.jugador');
 Route::get('/reglamento', 'HomeFreeController@reglamento')->name('home.reglamento');	
 
 Route::get('/index2', 'Auth\LoginController@showLoginForm')->name('index2');	
