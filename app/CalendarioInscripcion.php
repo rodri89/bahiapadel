@@ -11,6 +11,8 @@ class CalendarioInscripcion extends Model
 
     protected $fillable = [
         'calendario_id',
+        'jugador1_id',
+        'jugador2_id',
         'jugador1_nombre',
         'jugador1_apellido',
         'jugador1_telefono',

@@ -808,20 +808,22 @@ class HomeFreeController extends Controller
         }
 
         $validated = $request->validate([
+            'jugador1_id' => 'nullable|integer|min:1',
+            'jugador2_id' => 'nullable|integer|min:1',
             'jugador1_nombre' => 'required|string|max:120',
             'jugador1_apellido' => 'required|string|max:120',
             'jugador1_telefono' => 'required|string|max:40',
             'jugador2_nombre' => 'required|string|max:120',
             'jugador2_apellido' => 'required|string|max:120',
             'jugador2_telefono' => 'nullable|string|max:40',
-            'disponibilidad_horaria' => 'required|string|max:5000',
+            // Puede venir vacío = sin restricciones horarias
+            'disponibilidad_horaria' => 'nullable|string|max:5000',
         ], [
             'jugador1_nombre.required' => 'Completá el nombre del jugador 1.',
             'jugador1_apellido.required' => 'Completá el apellido del jugador 1.',
             'jugador1_telefono.required' => 'Completá el teléfono del jugador 1.',
             'jugador2_nombre.required' => 'Completá el nombre del jugador 2.',
             'jugador2_apellido.required' => 'Completá el apellido del jugador 2.',
-            'disponibilidad_horaria.required' => 'Indicá la disponibilidad horaria.',
         ]);
 
         $j2tel = $validated['jugador2_telefono'] ?? null;
@@ -831,18 +833,42 @@ class HomeFreeController extends Controller
 
         CalendarioInscripcion::create([
             'calendario_id' => $calendario->id,
+            'jugador1_id' => $validated['jugador1_id'] ?? null,
+            'jugador2_id' => $validated['jugador2_id'] ?? null,
             'jugador1_nombre' => $validated['jugador1_nombre'],
             'jugador1_apellido' => $validated['jugador1_apellido'],
             'jugador1_telefono' => $validated['jugador1_telefono'],
             'jugador2_nombre' => $validated['jugador2_nombre'],
             'jugador2_apellido' => $validated['jugador2_apellido'],
             'jugador2_telefono' => $j2tel,
-            'disponibilidad_horaria' => $validated['disponibilidad_horaria'],
+            'disponibilidad_horaria' => $validated['disponibilidad_horaria'] ?? '',
         ]);
 
         return redirect()
             ->route('home.calendario')
             ->with('success', 'Tu inscripción fue registrada. Nos pondremos en contacto.');
+    }
+
+    public function calendarioBuscarJugadores(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $query = \DB::table('jugadores')->where('activo', 1);
+        if ($q !== '' && mb_strlen($q) >= 1) {
+            $query->where(function ($w) use ($q) {
+                $w->where('nombre', 'LIKE', "%{$q}%")
+                    ->orWhere('apellido', 'LIKE', "%{$q}%")
+                    ->orWhere(\DB::raw("CONCAT(nombre, ' ', apellido)"), 'LIKE', "%{$q}%");
+            });
+        }
+
+        $jugadores = $query
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->limit(15)
+            ->get(['id', 'nombre', 'apellido', 'telefono']);
+
+        return response()->json(['jugadores' => $jugadores]);
     }
 
     public function calendarioCrearJugador(Request $request)

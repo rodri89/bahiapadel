@@ -214,7 +214,8 @@ function verInscripcionesCalendario(calendarioId) {
     $title.text('Inscripciones');
     $sub.empty();
     $('#modalInscripcionesCalendario').modal('show');
-    var url = '{{ url('/admin_calendario_inscripciones_json') }}/' + calendarioId;
+    var urlTpl = '{{ route('admincalendarioinscripcionesjson', ['calendario' => '__ID__']) }}';
+    var url = urlTpl.replace('__ID__', String(calendarioId));
     $.getJSON(url).done(function(data) {
         $title.text(data.titulo || 'Inscripciones');
         var subLines = [];
@@ -241,8 +242,12 @@ function verInscripcionesCalendario(calendarioId) {
         });
         html += '</tbody></table></div>';
         $body.html(html);
-    }).fail(function() {
-        $body.html('<p class="text-danger mb-0">No se pudo cargar el listado. Intentá de nuevo.</p>');
+    }).fail(function(xhr) {
+        var status = xhr && xhr.status ? (' (' + xhr.status + ')') : '';
+        $body.html(
+            '<p class="text-danger mb-2">No se pudo cargar el listado' + status + '.</p>' +
+            '<p class="text-muted small mb-0">' + escHtml(url) + '</p>'
+        );
     });
 }
 

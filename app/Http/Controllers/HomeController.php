@@ -432,17 +432,53 @@ class HomeController extends Controller
         $titulo = $calendario->nombre
             ?: ($calendario->categoria.'ª categoría · '.$calendario->tipo_label);
 
+        $fmtDisp = function ($raw) {
+            $raw = is_string($raw) ? trim($raw) : '';
+            if ($raw === '') {
+                return 'Sin restricciones';
+            }
+            $j = json_decode($raw, true);
+            if (!is_array($j)) {
+                return $raw;
+            }
+            $fmtDia = function ($label, $dia) {
+                if (!is_array($dia)) return null;
+                $desde = $dia['desde'] ?? null;
+                $hasta = $dia['hasta'] ?? null;
+                $desde = is_string($desde) && trim($desde) !== '' ? trim($desde) : null;
+                $hasta = is_string($hasta) && trim($hasta) !== '' ? trim($hasta) : null;
+                if (!$desde && !$hasta) return null;
+                if ($desde && $hasta) return $label.': '.$desde.' a '.$hasta;
+                if ($desde && !$hasta) return $label.': desde '.$desde;
+                if (!$desde && $hasta) return $label.': hasta '.$hasta;
+                return null;
+            };
+            $partes = array_filter([
+                $fmtDia('Viernes', $j['viernes'] ?? null),
+                $fmtDia('Sábado', $j['sabado'] ?? null),
+            ]);
+            return !empty($partes) ? implode(' · ', $partes) : 'Sin restricciones';
+        };
+
         return response()->json([
             'titulo' => $titulo,
             'fechas' => $calendario->textoFechasTorneo(),
-            'inscripciones' => $inscripciones->map(function ($i) {
+            'inscripciones' => $inscripciones->map(function ($i) use ($fmtDisp) {
+                $j1 = trim($i->jugador1_nombre.' '.$i->jugador1_apellido);
+                if ($i->jugador1_id) {
+                    $j1 .= ' ('.$i->jugador1_id.')';
+                }
+                $j2 = trim($i->jugador2_nombre.' '.$i->jugador2_apellido);
+                if ($i->jugador2_id) {
+                    $j2 .= ' ('.$i->jugador2_id.')';
+                }
                 return [
                     'registrado' => $i->created_at ? $i->created_at->format('d/m/Y H:i') : '—',
-                    'jugador1' => trim($i->jugador1_nombre.' '.$i->jugador1_apellido),
+                    'jugador1' => $j1,
                     'tel1' => $i->jugador1_telefono,
-                    'jugador2' => trim($i->jugador2_nombre.' '.$i->jugador2_apellido),
+                    'jugador2' => $j2,
                     'tel2' => $i->jugador2_telefono ?: '',
-                    'disponibilidad' => $i->disponibilidad_horaria,
+                    'disponibilidad' => $fmtDisp($i->disponibilidad_horaria),
                 ];
             })->values(),
         ]);
