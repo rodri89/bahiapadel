@@ -66,6 +66,7 @@
                                             </th>
                                         @endforeach
                                         <th class="text-right font-weight-bold" style="width: 90px;">Total</th>
+                                        <th class="text-right" style="width: 120px;">Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -86,6 +87,20 @@
                                             </td>
                                         @endforeach
                                         <td class="text-right font-weight-bold">{{ number_format($fila->puntos_totales, 0, ',', '.') }}</td>
+                                        <td class="text-right text-nowrap">
+                                            <button type="button"
+                                                    class="btn btn-outline-success btn-sm"
+                                                    title="Subir de categoría (divide puntos por 2)"
+                                                    onclick="moverCategoriaRanking({{ (int) $fila->jugador_id }}, 'up')">
+                                                <i class="fas fa-arrow-up"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-warning btn-sm"
+                                                    title="Bajar de categoría (divide puntos por 2)"
+                                                    onclick="moverCategoriaRanking({{ (int) $fila->jugador_id }}, 'down')">
+                                                <i class="fas fa-arrow-down"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                     @endforeach
                                 </tbody>
@@ -184,6 +199,40 @@ $(function() {
         });
     });
 });
+
+function moverCategoriaRanking(jugadorId, direccion) {
+    if (!jugadorId) return;
+    var tipo = $('#tipo').val();
+    var categoria = $('#categoria').val();
+    var temporada = $('#temporada').val();
+    var texto = (direccion === 'up') ? 'subir' : 'bajar';
+    if (!confirm('¿Seguro que querés ' + texto + ' de categoría? (los puntos se dividen por 2)')) return;
+
+    $.ajax({
+        url: '{{ route("adminrankingmover") }}',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            jugador_id: jugadorId,
+            direccion: direccion,
+            tipo: tipo,
+            categoria: categoria,
+            temporada: temporada,
+            _token: '{{ csrf_token() }}'
+        },
+        success: function(res) {
+            if (res && res.success) {
+                location.reload();
+            } else {
+                alert((res && res.message) ? res.message : 'Error');
+            }
+        },
+        error: function(xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error';
+            alert(msg);
+        }
+    });
+}
 </script>
 
 @endsection

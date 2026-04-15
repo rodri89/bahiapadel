@@ -347,6 +347,100 @@ class HomeController extends Controller
     }
 
     /**
+     * Admin: subir/bajar jugador de categoría en ranking_totales (temporada actual).
+     * - Up: categoria - 1
+     * - Down: categoria + 1
+     * - puntos_totales: se divide por 2 (entero)
+     */
+    public function adminRankingMoverCategoria(Request $request)
+    {
+        $jugadorId = (int) $request->input('jugador_id');
+        $direccion = (string) $request->input('direccion');
+        $tipo = (string) $request->input('tipo');
+        $temporada = (int) $request->input('temporada', (int) date('Y'));
+        $categoriaActual = (int) $request->input('categoria');
+
+        if ($jugadorId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Jugador inválido'], 400);
+        }
+        if (!in_array($direccion, ['up', 'down'], true)) {
+            return response()->json(['success' => false, 'message' => 'Dirección inválida'], 400);
+        }
+        if (!in_array($tipo, ['masculino', 'femenino', 'mixto'], true)) {
+            return response()->json(['success' => false, 'message' => 'Tipo inválido'], 400);
+        }
+        if ($temporada < 2000 || $temporada > 2100) {
+            return response()->json(['success' => false, 'message' => 'Temporada inválida'], 400);
+        }
+        if ($categoriaActual <= 0) {
+            return response()->json(['success' => false, 'message' => 'Categoría inválida'], 400);
+        }
+
+        $nuevaCategoria = $direccion === 'up' ? ($categoriaActual - 1) : ($categoriaActual + 1);
+        if ($nuevaCategoria <= 0) {
+            return response()->json(['success' => false, 'message' => 'No se puede subir más de categoría'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $actual = DB::table('ranking_totales')
+                ->where('jugador_id', $jugadorId)
+                ->where('tipo', $tipo)
+                ->where('temporada', $temporada)
+                ->where('categoria', $categoriaActual)
+                ->lockForUpdate()
+                ->first(['id', 'puntos_totales']);
+
+            if (!$actual) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'No se encontró el registro de ranking para este jugador/categoría/temporada'], 404);
+            }
+
+            $puntosActuales = (int) ($actual->puntos_totales ?? 0);
+            $puntosNuevos = intdiv($puntosActuales, 2);
+
+            $destino = DB::table('ranking_totales')
+                ->where('jugador_id', $jugadorId)
+                ->where('tipo', $tipo)
+                ->where('temporada', $temporada)
+                ->where('categoria', $nuevaCategoria)
+                ->lockForUpdate()
+                ->first(['id']);
+
+            if ($destino) {
+                // Si ya existe un registro en la categoría destino, lo sobreescribimos y borramos el actual.
+                DB::table('ranking_totales')
+                    ->where('id', $destino->id)
+                    ->update([
+                        'puntos_totales' => $puntosNuevos,
+                        'updated_at' => now(),
+                    ]);
+                DB::table('ranking_totales')->where('id', $actual->id)->delete();
+            } else {
+                DB::table('ranking_totales')
+                    ->where('id', $actual->id)
+                    ->update([
+                        'categoria' => $nuevaCategoria,
+                        'puntos_totales' => $puntosNuevos,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'nueva_categoria' => $nuevaCategoria,
+                'puntos_nuevos' => $puntosNuevos,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Admin: Calendario (eventos a mostrar en home)
      */
     function adminCalendario(Request $request) {
