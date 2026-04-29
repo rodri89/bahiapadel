@@ -48,7 +48,7 @@
 @include('modal.snackbar')
 <div id="snackbar"><p id="snackbar_text">Cambios guardados</p></div>
 
-<body id="page-top">
+<body id="page-top" class="body_admin">
 
   <!-- Page Wrapper -->
   <div id="wrapper">

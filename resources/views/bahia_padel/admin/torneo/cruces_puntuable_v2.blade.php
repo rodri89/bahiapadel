@@ -79,6 +79,38 @@
                 <input type="hidden" id="torneo_id" value="{{ $torneo->id ?? 0 }}">
             </div>
         </div>
+
+        {{-- Depuración: cómo el servidor armó posiciones + cruces (solo PuntuableController pasa $crucesV2Debug). Consola del navegador. --}}
+        @isset($crucesV2Debug)
+        <script>
+        (function () {
+            var D = @json($crucesV2Debug);
+            window.CRUZES_PUNT_V2_DEBUG = D;
+            console.groupCollapsed('[Cruces puntuable v2] armado en servidor (debug)');
+            console.log('Torneo id', D.torneo_id);
+            console.log('Total parejas clasificadas (filas con posicion_grupo)', D.totalParejasClasificadas);
+            console.log('Posiciones por zona (desde grupos.posicion_grupo)', D.posicionesPorZona);
+            console.log('Orden de zonas y letra usada en config (A,B,…)', D.zonasOrdenadas, D.zonaALetra);
+            console.log('Config aplicada', D.configResumen);
+            if (D.nota) console.warn(D.nota);
+            if (D.pasos) {
+                if (D.pasos.desde_config_generador) {
+                    console.log('Paso 1 — Tras generarCrucesDesdeConfiguracion (refs A1… resueltas a jugadores)', D.pasos.desde_config_generador);
+                }
+                if (D.pasos.solo_16avos_octavos_bd) {
+                    console.log('Paso 2a — 16avos/octavos tomados solo desde BD (no desde config)', D.pasos.solo_16avos_octavos_bd);
+                }
+                if (D.pasos.cuartos_semifinal_final_desde_config) {
+                    console.log('Paso 2b — Cuartos / semis / final desde config (+ enlaces a partidos BD)', D.pasos.cuartos_semifinal_final_desde_config);
+                }
+                if (D.pasos.resumen_merge) console.log('Resumen merge', D.pasos.resumen_merge);
+            }
+            console.log('Lista final enviada a la vista (merge)', D.crucesFinales);
+            console.groupEnd();
+            console.info('Objeto completo en window.CRUZES_PUNT_V2_DEBUG');
+        })();
+        </script>
+        @endisset
         
         <div class="bracket-columns-scroll">
             <div class="bracket-columns-row">
@@ -96,12 +128,13 @@
                             $jugador2_1 = $esPlaceholder2 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']);
                             $jugador2_2 = $esPlaceholder2 ? null : collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']);
                             $partido = $cruce['partido'] ?? null;
-                            $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
-                            $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
-                            $pareja1_set3 = $partido ? ($partido->pareja_1_set_3 ?? 0) : 0;
-                            $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
-                            $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
-                            $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $__sv = isset($cruce['sets_visual']) && is_array($cruce['sets_visual']) ? $cruce['sets_visual'] : null;
+                            $pareja1_set1 = $__sv ? ($__sv['pareja_1_set_1'] ?? 0) : ($partido ? ($partido->pareja_1_set_1 ?? 0) : 0);
+                            $pareja1_set2 = $__sv ? ($__sv['pareja_1_set_2'] ?? 0) : ($partido ? ($partido->pareja_1_set_2 ?? 0) : 0);
+                            $pareja1_set3 = $__sv ? ($__sv['pareja_1_set_3'] ?? 0) : ($partido ? ($partido->pareja_1_set_3 ?? 0) : 0);
+                            $pareja2_set1 = $__sv ? ($__sv['pareja_2_set_1'] ?? 0) : ($partido ? ($partido->pareja_2_set_1 ?? 0) : 0);
+                            $pareja2_set2 = $__sv ? ($__sv['pareja_2_set_2'] ?? 0) : ($partido ? ($partido->pareja_2_set_2 ?? 0) : 0);
+                            $pareja2_set3 = $__sv ? ($__sv['pareja_2_set_3'] ?? 0) : ($partido ? ($partido->pareja_2_set_3 ?? 0) : 0);
                         @endphp
                         @include('bahia_padel.admin.torneo.partials.cruce_card_octavos', ['cruce' => $cruce, 'jugadores' => $jugadores, 'esPlaceholder1' => $esPlaceholder1, 'esPlaceholder2' => $esPlaceholder2, 'jugador1_1' => $jugador1_1, 'jugador1_2' => $jugador1_2, 'jugador2_1' => $jugador2_1, 'jugador2_2' => $jugador2_2, 'pareja1_set1' => $pareja1_set1, 'pareja1_set2' => $pareja1_set2, 'pareja1_set3' => $pareja1_set3, 'pareja2_set1' => $pareja2_set1, 'pareja2_set2' => $pareja2_set2, 'pareja2_set3' => $pareja2_set3])
                     @endforeach
@@ -125,12 +158,13 @@
                             
                             // Obtener resultados del partido si existen
                             $partido = $cruce['partido'] ?? null;
-                            $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
-                            $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
-                            $pareja1_set3 = $partido ? ($partido->pareja_1_set_3 ?? 0) : 0;
-                            $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
-                            $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
-                            $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $__sv = isset($cruce['sets_visual']) && is_array($cruce['sets_visual']) ? $cruce['sets_visual'] : null;
+                            $pareja1_set1 = $__sv ? ($__sv['pareja_1_set_1'] ?? 0) : ($partido ? ($partido->pareja_1_set_1 ?? 0) : 0);
+                            $pareja1_set2 = $__sv ? ($__sv['pareja_1_set_2'] ?? 0) : ($partido ? ($partido->pareja_1_set_2 ?? 0) : 0);
+                            $pareja1_set3 = $__sv ? ($__sv['pareja_1_set_3'] ?? 0) : ($partido ? ($partido->pareja_1_set_3 ?? 0) : 0);
+                            $pareja2_set1 = $__sv ? ($__sv['pareja_2_set_1'] ?? 0) : ($partido ? ($partido->pareja_2_set_1 ?? 0) : 0);
+                            $pareja2_set2 = $__sv ? ($__sv['pareja_2_set_2'] ?? 0) : ($partido ? ($partido->pareja_2_set_2 ?? 0) : 0);
+                            $pareja2_set3 = $__sv ? ($__sv['pareja_2_set_3'] ?? 0) : ($partido ? ($partido->pareja_2_set_3 ?? 0) : 0);
                         @endphp
                         @php
                             $ref1 = $cruce['referencia_1'] ?? '';
@@ -163,6 +197,7 @@
                                 <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaDisplay }}</span>
                                 <span><strong>Horario:</strong> {{ $horarioDisplay }}</span>
                             </div>
+                            <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
                             <!-- Pareja 1 -->
                             <div class="d-flex align-items-center mb-3" 
                                  data-pareja="1"
@@ -358,12 +393,13 @@
                             
                             // Obtener resultados del partido si existen
                             $partido = $cruce['partido'] ?? null;
-                            $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
-                            $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
-                            $pareja1_set3 = $partido ? ($partido->pareja_1_set_3 ?? 0) : 0;
-                            $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
-                            $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
-                            $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $__sv = isset($cruce['sets_visual']) && is_array($cruce['sets_visual']) ? $cruce['sets_visual'] : null;
+                            $pareja1_set1 = $__sv ? ($__sv['pareja_1_set_1'] ?? 0) : ($partido ? ($partido->pareja_1_set_1 ?? 0) : 0);
+                            $pareja1_set2 = $__sv ? ($__sv['pareja_1_set_2'] ?? 0) : ($partido ? ($partido->pareja_1_set_2 ?? 0) : 0);
+                            $pareja1_set3 = $__sv ? ($__sv['pareja_1_set_3'] ?? 0) : ($partido ? ($partido->pareja_1_set_3 ?? 0) : 0);
+                            $pareja2_set1 = $__sv ? ($__sv['pareja_2_set_1'] ?? 0) : ($partido ? ($partido->pareja_2_set_1 ?? 0) : 0);
+                            $pareja2_set2 = $__sv ? ($__sv['pareja_2_set_2'] ?? 0) : ($partido ? ($partido->pareja_2_set_2 ?? 0) : 0);
+                            $pareja2_set3 = $__sv ? ($__sv['pareja_2_set_3'] ?? 0) : ($partido ? ($partido->pareja_2_set_3 ?? 0) : 0);
                             $ref1 = $cruce['referencia_1'] ?? '';
                             $ref2 = $cruce['referencia_2'] ?? '';
                         @endphp
@@ -587,12 +623,13 @@
                             $jugador2_1 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']) : null;
                             $jugador2_2 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']) : null;
                             $partido = $cruce['partido'] ?? null;
-                            $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
-                            $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
-                            $pareja1_set3 = $partido ? ($partido->pareja_1_set_3 ?? 0) : 0;
-                            $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
-                            $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
-                            $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $__sv = isset($cruce['sets_visual']) && is_array($cruce['sets_visual']) ? $cruce['sets_visual'] : null;
+                            $pareja1_set1 = $__sv ? ($__sv['pareja_1_set_1'] ?? 0) : ($partido ? ($partido->pareja_1_set_1 ?? 0) : 0);
+                            $pareja1_set2 = $__sv ? ($__sv['pareja_1_set_2'] ?? 0) : ($partido ? ($partido->pareja_1_set_2 ?? 0) : 0);
+                            $pareja1_set3 = $__sv ? ($__sv['pareja_1_set_3'] ?? 0) : ($partido ? ($partido->pareja_1_set_3 ?? 0) : 0);
+                            $pareja2_set1 = $__sv ? ($__sv['pareja_2_set_1'] ?? 0) : ($partido ? ($partido->pareja_2_set_1 ?? 0) : 0);
+                            $pareja2_set2 = $__sv ? ($__sv['pareja_2_set_2'] ?? 0) : ($partido ? ($partido->pareja_2_set_2 ?? 0) : 0);
+                            $pareja2_set3 = $__sv ? ($__sv['pareja_2_set_3'] ?? 0) : ($partido ? ($partido->pareja_2_set_3 ?? 0) : 0);
                             $ref1 = $cruce['referencia_1'] ?? '';
                             $ref2 = $cruce['referencia_2'] ?? '';
                         @endphp
@@ -738,12 +775,13 @@
                             $jugador2_1 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_1']) : null;
                             $jugador2_2 = !$pareja2Esperando ? collect($jugadores)->firstWhere('id', $cruce['pareja_2']['jugador_2']) : null;
                             $partido = $cruce['partido'] ?? null;
-                            $pareja1_set1 = $partido ? ($partido->pareja_1_set_1 ?? 0) : 0;
-                            $pareja1_set2 = $partido ? ($partido->pareja_1_set_2 ?? 0) : 0;
-                            $pareja1_set3 = $partido ? ($partido->pareja_1_set_3 ?? 0) : 0;
-                            $pareja2_set1 = $partido ? ($partido->pareja_2_set_1 ?? 0) : 0;
-                            $pareja2_set2 = $partido ? ($partido->pareja_2_set_2 ?? 0) : 0;
-                            $pareja2_set3 = $partido ? ($partido->pareja_2_set_3 ?? 0) : 0;
+                            $__sv = isset($cruce['sets_visual']) && is_array($cruce['sets_visual']) ? $cruce['sets_visual'] : null;
+                            $pareja1_set1 = $__sv ? ($__sv['pareja_1_set_1'] ?? 0) : ($partido ? ($partido->pareja_1_set_1 ?? 0) : 0);
+                            $pareja1_set2 = $__sv ? ($__sv['pareja_1_set_2'] ?? 0) : ($partido ? ($partido->pareja_1_set_2 ?? 0) : 0);
+                            $pareja1_set3 = $__sv ? ($__sv['pareja_1_set_3'] ?? 0) : ($partido ? ($partido->pareja_1_set_3 ?? 0) : 0);
+                            $pareja2_set1 = $__sv ? ($__sv['pareja_2_set_1'] ?? 0) : ($partido ? ($partido->pareja_2_set_1 ?? 0) : 0);
+                            $pareja2_set2 = $__sv ? ($__sv['pareja_2_set_2'] ?? 0) : ($partido ? ($partido->pareja_2_set_2 ?? 0) : 0);
+                            $pareja2_set3 = $__sv ? ($__sv['pareja_2_set_3'] ?? 0) : ($partido ? ($partido->pareja_2_set_3 ?? 0) : 0);
                             $ref1 = $cruce['referencia_1'] ?? '';
                             $ref2 = $cruce['referencia_2'] ?? '';
                         @endphp
@@ -1228,14 +1266,14 @@
                 console.log('Message:', response.message);
                 console.log('===================================');
                 
-                btnGuardar.prop('disabled', false).text('Guardar');
-                
                 if (response.success) {
                     mostrarSnackbar('Resultado guardado correctamente');
+                    // Pequeña pausa para ver el aviso, luego recargar (datos alineados con BD: llave, grupos, partido_id)
                     setTimeout(function() {
                         window.location.reload();
-                    }, 500);
+                    }, 350);
                 } else {
+                    btnGuardar.prop('disabled', false).text('Guardar');
                     console.error('Error al guardar resultado:', response);
                     mostrarSnackbar(response.message || 'Error al guardar el resultado');
                 }

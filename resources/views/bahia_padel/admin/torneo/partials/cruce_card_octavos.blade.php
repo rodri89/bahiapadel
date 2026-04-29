@@ -10,12 +10,21 @@
     $diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
     $diaDisplay = $esDefault ? 'N/A' : ($diaStr ? (preg_match('/^\d{4}-\d{2}-\d{2}$/', $diaStr) ? ($diasSemana[date('w', strtotime($diaStr))] ?? $diaStr) : $diaStr) : '—');
     $horarioDisplay = $esDefault ? 'N/A' : ($horarioStr ?: '—');
+    $ref1 = $cruce['referencia_1'] ?? '';
+    $ref2 = $cruce['referencia_2'] ?? '';
 @endphp
-<div class="match-card" data-cruce-id="{{ $cruce['id'] }}" data-ronda="{{ $cruce['ronda'] }}" data-partido-id="{{ $cruce['partido_id'] ?? '' }}" style="padding: 15px; margin-bottom: 20px;">
+<div class="match-card"
+     data-cruce-id="{{ $cruce['id'] }}"
+     data-ronda="{{ $cruce['ronda'] }}"
+     data-partido-id="{{ $cruce['partido_id'] ?? '' }}"
+     data-llave-ref1="{{ $ref1 }}"
+     data-llave-ref2="{{ $ref2 }}"
+     style="padding: 15px; margin-bottom: 20px;">
     <div class="small mb-2" style="color: #555;">
         <span class="d-inline-block mr-2"><strong>Día:</strong> {{ $diaDisplay }}</span>
         <span><strong>Horario:</strong> {{ $horarioDisplay }}</span>
     </div>
+    <div class="small text-muted mb-2" style="font-weight: 600;">Llave: {{ $ref1 ?: '—' }} vs {{ $ref2 ?: '—' }}</div>
     <!-- Pareja 1 -->
     <div class="d-flex align-items-center mb-3" data-pareja="1" data-jugador-1="{{ $cruce['pareja_1']['jugador_1'] ?? '' }}" data-jugador-2="{{ $cruce['pareja_1']['jugador_2'] ?? '' }}">
         @if($esPlaceholder1 ?? false)

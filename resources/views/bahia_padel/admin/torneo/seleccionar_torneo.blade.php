@@ -60,10 +60,23 @@
         contenedor.empty();
         $("#mes-actual").text(meses[mesActual] + " " + anioActual);
 
-        // Filtrar torneos por mes y año
+        // Filtrar por mes/año del calendario usando solo la parte fecha (YYYY-MM-DD).
+        // Evitar `new Date('YYYY-MM-DD')`: en zonas UTC− se interpreta como UTC medianoche y getMonth()
+        // puede ser el mes anterior respecto al día civil que muestra la tarjeta (ej. mayo → abril).
+        const mesAnioCalendario = function (valor) {
+            if (!valor) return null;
+            const solo = String(valor).trim().split(/[\sT]/)[0];
+            const p = solo.split('-');
+            if (p.length < 2) return null;
+            const y = parseInt(p[0], 10);
+            const m = parseInt(p[1], 10) - 1;
+            if (isNaN(y) || isNaN(m)) return null;
+            return { year: y, month: m };
+        };
+
         const torneosMes = torneos.filter(t => {
-            const fecha = new Date(t.fecha_inicio);
-            return fecha.getMonth() === mesActual && fecha.getFullYear() === anioActual;
+            const fa = mesAnioCalendario(t.fecha_inicio);
+            return fa && fa.month === mesActual && fa.year === anioActual;
         });
 
         if (torneosMes.length === 0) {

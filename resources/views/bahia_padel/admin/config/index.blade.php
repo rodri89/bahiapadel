@@ -175,7 +175,7 @@
                             <div id="llave-4tos-content">
                                 @foreach([['O1','O2'],['O3','O4'],['O5','O6'],['O7','O8']] as $i => $par)
                                     <div class="form-group row mb-2 partido-llave" data-ronda="4tos" data-partido="{{ $i+1 }}">
-                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (C{{ $i+1 }}):</label>
+                                    <label class="col-sm-2 col-form-label">Partido {{ $i+1 }} (CU{{ $i+1 }}):</label>
                                     <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_4tos[{{ $i }}][pareja_1]" value="{{ $par[0] }}" placeholder="Ej: O1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
                                     <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_4tos[{{ $i }}][pareja_2]" value="{{ $par[1] }}" placeholder="Ej: O2"></div>
@@ -187,19 +187,19 @@
                         <!-- Llave Semifinal (inputs fijos para que siempre se vean) -->
                         <div id="llave-semifinal-container" class="mb-4">
                             <h6>Semifinal</h6>
-                            <p class="text-muted small mb-2">C1 vs C2 = ganador cuartos 1 vs ganador cuartos 2. Use C1, C2, C3, C4.</p>
+                            <p class="text-muted small mb-2">CU1 vs CU2 = ganador cuartos 1 vs ganador cuartos 2. Use CU1, CU2, CU3, CU4 (evita confundir con la zona C del grupo, p. ej. C1).</p>
                             <div id="llave-semifinal-content">
                                 <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="1">
                                     <label class="col-sm-2 col-form-label">Partido 1 (S1):</label>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="C1" placeholder="Ej: C1"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[0][pareja_1]" value="CU1" placeholder="Ej: CU1"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="C2" placeholder="Ej: C2"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[0][pareja_2]" value="CU2" placeholder="Ej: CU2"></div>
                                 </div>
                                 <div class="form-group row mb-2 partido-llave" data-ronda="semifinal" data-partido="2">
                                     <label class="col-sm-2 col-form-label">Partido 2 (S2):</label>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="C3" placeholder="Ej: C3"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-1-input" name="llave_semifinal[1][pareja_1]" value="CU3" placeholder="Ej: CU3"></div>
                                     <div class="col-sm-1 text-center">VS</div>
-                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="C4" placeholder="Ej: C4"></div>
+                                    <div class="col-sm-4"><input type="text" class="form-control pareja-2-input" name="llave_semifinal[1][pareja_2]" value="CU4" placeholder="Ej: CU4"></div>
                                 </div>
                             </div>
                         </div>
@@ -253,7 +253,7 @@ $(document).ready(function() {
         '16avos': ['Ej: A1', 'Ej: H2'],
         '8vos': ['Ej: A1 o G1-8vos', 'Ej: H2 o G2-8vos'],
         '4tos': ['Ej: O1', 'Ej: O2'],
-        'semifinal': ['Ej: C1', 'Ej: C2'],
+        'semifinal': ['Ej: CU1', 'Ej: CU2'],
         'final': ['Ej: S1', 'Ej: S2']
     };
 
@@ -418,9 +418,9 @@ $(document).ready(function() {
                 pareja1 = 'O' + (i * 2 + 1);
                 pareja2 = 'O' + (i * 2 + 2);
             } else if (ronda === 'semifinal') {
-                // Semifinal: C1 vs C2, C3 vs C4
-                pareja1 = 'C' + (i * 2 + 1);
-                pareja2 = 'C' + (i * 2 + 2);
+                // Semifinal: CU1 vs CU2, CU3 vs CU4 (ganadores de cuartos; no usar C1 = zona C)
+                pareja1 = 'CU' + (i * 2 + 1);
+                pareja2 = 'CU' + (i * 2 + 2);
             } else if (ronda === 'final') {
                 // Final: S1 vs S2
                 pareja1 = 'S1';
