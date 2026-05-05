@@ -1,13 +1,13 @@
-@extends('layouts.app')
+@extends('layouts.admin_app')
 
-@section('title', 'Admin - Menú')
+@section('title', 'Gestión de Menú')
 
-@section('content')
-<div class="container" style="max-width: 900px; margin-top: 100px;">
+@section('admin_content')
+<div style="max-width: 900px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="m-0" style="font-weight: 600;">Gestión de Menú</h3>
+        <h3 class="m-0" style="font-weight: 600;">Productos del Menú</h3>
         <a href="{{ route('admin.menu.create') }}" class="btn btn-success">
-            + Nuevo producto
+            <i class="fas fa-plus"></i> Nuevo producto
         </a>
     </div>
 
@@ -46,10 +46,14 @@
                             @endif
                         </td>
                         <td class="text-right">
-                            <a href="{{ route('admin.menu.edit', $item) }}" class="btn btn-sm btn-outline-primary">Editar</a>
+                            <a href="{{ route('admin.menu.edit', $item) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
                             <form action="{{ route('admin.menu.destroy', $item) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este producto?')">
                                 @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger">Borrar</button>
+                                <button class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Borrar
+                                </button>
                             </form>
                         </td>
                     </tr>

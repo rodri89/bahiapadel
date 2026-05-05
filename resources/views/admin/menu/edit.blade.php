@@ -1,9 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.admin_app')
 
 @section('title', 'Editar producto')
 
-@section('content')
-<div class="container" style="max-width: 600px; margin-top: 100px;">
+@section('admin_content')
+<div style="max-width: 600px;">
     <h3 class="mb-4" style="font-weight: 600;">Editar producto</h3>
 
     <div class="card shadow-sm">
@@ -46,7 +46,7 @@
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center pt-2">
-                    <a href="{{ route('admin.menu.index') }}" class="text-muted">Cancelar</a>
+                    <a href="{{ route('admin.menu.index') }}" class="btn btn-outline-secondary">Cancelar</a>
                     <button type="submit" class="btn btn-success">Guardar cambios</button>
                 </div>
             </form>

@@ -132,6 +132,12 @@
             <span>Sponsors</span></a>
       </li>
 
+      <li class="nav-item">
+          <a class="nav-link" href="{{ route('admin.menu.index') }}">
+            <i class="fas fa-fw fa-utensils"></i>
+            <span>Menú</span></a>
+      </li>
+
 
       <hr class="sidebar-divider my-0"><br>
 
