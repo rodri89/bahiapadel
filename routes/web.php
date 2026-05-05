@@ -98,7 +98,7 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('bp_admin','HomeController@adminHomeBp')->name('bp_admin');	
 
 	Route::get('home_admin','HomeController@adminHome')->name('home_admin');
-
+	Route::resource('admin/menu', MenuItemController::class)->names('admin.menu')->parameters(['menu' => 'menuItem']);
 	Route::get('admin_jugadores','HomeController@adminJugadores')->name('adminjugadores');
 	Route::get('admin_vivo','HomeController@adminVivo')->name('adminvivo');
 	Route::get('admin_torneos','HomeController@adminTorneos')->name('admintorneos');
@@ -233,4 +233,3 @@ Route::post('/deploy-webhook', [\App\Http\Controllers\DeployWebhookController::c
 
 // Webhook configurado y funcionando - Test de despliegue automático
 Route::get('/carta', [CartaController::class, 'index'])->name('carta');
-Route::resource('admin/menu', MenuItemController::class)->names('admin.menu')->parameters(['menu' => 'menuItem']);
