@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\MenuItemController;
+use App\Http\Controllers\CartaController;
+
 Route::get('/index_new', function () {	
 	return View('home/index');   
 });
@@ -229,3 +232,5 @@ Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('passw
 Route::post('/deploy-webhook', [\App\Http\Controllers\DeployWebhookController::class, 'handle'])->name('deploy.webhook');
 
 // Webhook configurado y funcionando - Test de despliegue automático
+Route::get('/carta', [CartaController::class, 'index'])->name('carta');
+Route::resource('admin/menu', MenuItemController::class)->names('admin.menu')->parameters(['menu' => 'menuItem']);

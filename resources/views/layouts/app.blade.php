@@ -20,6 +20,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
             
     @include('layouts.serrucho_style')
+    @stack('head')
 </head>
 <body>
     <div id="app">

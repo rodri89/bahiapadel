@@ -22,3 +22,6 @@ Route::group(['prefix' => 'auth'], function () {
         Route::get('user', 'AuthController@user');        
     });
 });
+
+Route::get('/menu', [MenuApiController::class, 'index']);
+Route::get('/menu/{menuItem}', [MenuApiController::class, 'show']);
