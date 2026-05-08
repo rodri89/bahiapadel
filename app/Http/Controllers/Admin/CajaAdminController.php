@@ -53,6 +53,15 @@ class CajaAdminController extends Controller
     }
 
     /**
+     * Filtro por día de caja. `fecha_venta` es columna DATE: usar igualdad evita
+     * diferencias de driver/timezone con whereDate(DATE(col)) en algunos hosts.
+     */
+    private function aplicarFiltroFechaVentas(\Illuminate\Database\Eloquent\Builder $q, string $fechaYmd): \Illuminate\Database\Eloquent\Builder
+    {
+        return $q->where('fecha_venta', $fechaYmd);
+    }
+
+    /**
      * Datos del panel superior + HTML de la tabla "pendientes con saldo" (para actualizar vía AJAX tras un cobro).
      *
      * @return array<string, mixed>
@@ -63,12 +72,12 @@ class CajaAdminController extends Controller
         $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
 
         $statsHoy = [
-            'transacciones' => StockVenta::query()->whereDate('fecha_venta', $dia)->count(),
-            'monto_total' => (float) StockVenta::query()->whereDate('fecha_venta', $dia)->sum('precio_total'),
-            'efectivo' => (float) StockVenta::query()->whereDate('fecha_venta', $dia)->where('metodo_pago', 'efectivo')->sum('precio_total'),
-            'transferencia' => (float) StockVenta::query()->whereDate('fecha_venta', $dia)->where('metodo_pago', 'transferencia')->sum('precio_total'),
-            'pagado' => (float) StockVenta::query()->whereDate('fecha_venta', $dia)->where('estado_pago', 'pagado')->sum('precio_total'),
-            'pendiente' => (float) StockVenta::query()->whereDate('fecha_venta', $dia)->where('estado_pago', 'pendiente')->sum('precio_total'),
+            'transacciones' => $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->count(),
+            'monto_total' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->sum('precio_total'),
+            'efectivo' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('metodo_pago', 'efectivo')->sum('precio_total'),
+            'transferencia' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('metodo_pago', 'transferencia')->sum('precio_total'),
+            'pagado' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('estado_pago', 'pagado')->sum('precio_total'),
+            'pendiente' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('estado_pago', 'pendiente')->sum('precio_total'),
         ];
 
         $pendientes = StockVenta::query()
@@ -159,15 +168,15 @@ class CajaAdminController extends Controller
             ->get();
 
         $statsHoy = [
-            'transacciones' => StockVenta::query()->whereDate('fecha_venta', $fechaCaja)->count(),
-            'monto_total' => (float) StockVenta::query()->whereDate('fecha_venta', $fechaCaja)->sum('precio_total'),
-            'efectivo' => (float) StockVenta::query()->whereDate('fecha_venta', $fechaCaja)->where('metodo_pago', 'efectivo')->sum('precio_total'),
-            'transferencia' => (float) StockVenta::query()->whereDate('fecha_venta', $fechaCaja)->where('metodo_pago', 'transferencia')->sum('precio_total'),
-            'pagado' => (float) StockVenta::query()->whereDate('fecha_venta', $fechaCaja)->where('estado_pago', 'pagado')->sum('precio_total'),
-            'pendiente' => (float) StockVenta::query()->whereDate('fecha_venta', $fechaCaja)->where('estado_pago', 'pendiente')->sum('precio_total'),
+            'transacciones' => $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->count(),
+            'monto_total' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->sum('precio_total'),
+            'efectivo' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('metodo_pago', 'efectivo')->sum('precio_total'),
+            'transferencia' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('metodo_pago', 'transferencia')->sum('precio_total'),
+            'pagado' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('estado_pago', 'pagado')->sum('precio_total'),
+            'pendiente' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('estado_pago', 'pendiente')->sum('precio_total'),
         ];
 
-        $baseHoy = StockVenta::query()->with('cancha')->whereDate('fecha_venta', $fechaCaja);
+        $baseHoy = $this->aplicarFiltroFechaVentas(StockVenta::query()->with('cancha'), $fechaCaja);
         $listaVentasHoy = (clone $baseHoy)->orderByDesc('id')->get();
         $listaEfectivoHoy = (clone $baseHoy)->where('metodo_pago', 'efectivo')->orderByDesc('id')->get();
         $listaTransferHoy = (clone $baseHoy)->where('metodo_pago', 'transferencia')->orderByDesc('id')->get();
@@ -177,7 +186,7 @@ class CajaAdminController extends Controller
         $ticketsAbiertos = StockVenta::query()
             ->with(['cancha', 'detalles.producto'])
             ->where('estado_pago', 'pendiente')
-            ->whereDate('fecha_venta', $fechaCaja)
+            ->where('fecha_venta', $fechaCaja)
             ->orderByDesc('updated_at')
             ->get();
 
@@ -210,11 +219,14 @@ class CajaAdminController extends Controller
         $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
 
         try {
+            // Misma fecha que muestra "Caja del día" (input + caja_fecha en JSON). Evita desfasaje UTC vs Argentina.
+            $fechaVenta = $this->normalizarFechaCaja($request->input('caja_fecha'));
+
             $venta = $ventaService->crearVentaBorrador([
                 'nombre_cliente' => $request->nombre_cliente,
                 'stock_cancha_id' => (int) $request->stock_cancha_id,
-                'fecha_venta' => now()->toDateString(),
-                'hora_venta' => now()->format('H:i'),
+                'fecha_venta' => $fechaVenta,
+                'hora_venta' => now()->format('H:i:s'),
             ]);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

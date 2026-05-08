@@ -23,7 +23,7 @@
                     <td>#{{ $v->id }}</td>
                     <td>{{ $v->nombre_cliente }}</td>
                     <td>{{ $v->cancha ? $v->cancha->nombre : '—' }}</td>
-                    <td>{{ $v->fecha_venta ? $v->fecha_venta->format('d/m/Y') : '—' }}</td>
+                    <td>{{ optional($v->fecha_venta)->format('d/m/Y') ?: '—' }}</td>
                     <td class="text-right">{{ $fmtMoney($v->precio_total) }}</td>
                     <td>{{ $v->metodo_pago }}</td>
                     <td>

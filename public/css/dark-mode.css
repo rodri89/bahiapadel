@@ -631,3 +631,14 @@ body.dark-mode .table thead.thead-light th {
 body.dark-mode .table-hover tbody tr:hover {
   color: #e0e0e0;
 }
+
+/* Caja admin: listados bajo las tarjetas (resumen) — legibles en oscuro */
+body.dark-mode #caja-resumen-detalle .table,
+body.dark-mode #caja-resumen-detalle .table td,
+body.dark-mode #caja-resumen-detalle .table tbody th {
+  color: #e8eaed !important;
+}
+
+body.dark-mode #caja-resumen-detalle .card-header {
+  color: #e8eaed !important;
+}
