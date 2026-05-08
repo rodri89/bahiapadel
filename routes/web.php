@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\CajaAdminController;
 use App\Http\Controllers\Admin\MenuItemController;
+use App\Http\Controllers\Admin\StockAdminController;
 use App\Http\Controllers\CartaController;
 
 Route::get('/index_new', function () {	
@@ -100,7 +102,22 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('home_admin','HomeController@adminHome')->name('home_admin');
 	Route::resource('admin/menu', MenuItemController::class)->names('admin.menu')->parameters(['menu' => 'menuItem']);
 	Route::get('admin_jugadores','HomeController@adminJugadores')->name('adminjugadores');
-	Route::get('admin_vivo','HomeController@adminVivo')->name('adminvivo');
+	Route::get('admin_stock', [StockAdminController::class, 'index'])->name('adminstock');
+	Route::get('admin_stock/movimientos-data', [StockAdminController::class, 'movimientosData'])->name('adminstock.movimientos.data');
+	Route::post('admin_stock/categoria', [StockAdminController::class, 'storeCategoria'])->name('adminstock.categoria.store');
+	Route::put('admin_stock/categoria/{categoria}', [StockAdminController::class, 'updateCategoria'])->name('adminstock.categoria.update');
+	Route::post('admin_stock/producto', [StockAdminController::class, 'storeProducto'])->name('adminstock.producto.store');
+	Route::post('admin_stock/actualizar', [StockAdminController::class, 'storeActualizacionMasiva'])->name('adminstock.actualizar.store');
+	Route::post('admin_stock/productos-tabla', [StockAdminController::class, 'storeProductosTabla'])->name('adminstock.productos.tabla.store');
+
+	Route::get('admin_caja', [CajaAdminController::class, 'index'])->name('admincaja');
+	Route::post('admin_caja/venta', [CajaAdminController::class, 'storeVenta'])->name('admincaja.venta.store');
+	Route::post('admin_caja/venta/borrador', [CajaAdminController::class, 'storeBorrador'])->name('admincaja.venta.borrador');
+	Route::post('admin_caja/venta/{venta}/linea', [CajaAdminController::class, 'storeLinea'])->name('admincaja.venta.linea');
+	Route::delete('admin_caja/venta/{venta}/linea/{detalle}', [CajaAdminController::class, 'destroyLinea'])->name('admincaja.venta.linea.destroy');
+	Route::patch('admin_caja/venta/{venta}', [CajaAdminController::class, 'updateBorrador'])->name('admincaja.venta.update');
+	Route::get('admin_caja/venta/{venta}', [CajaAdminController::class, 'showVenta'])->name('admincaja.venta.show');
+	Route::post('admin_caja/venta/{venta}/pago', [CajaAdminController::class, 'registrarPago'])->name('admincaja.venta.pago');
 	Route::get('admin_torneos','HomeController@adminTorneos')->name('admintorneos');
 	Route::get('admin_cargar_resultados','HomeController@adminCargarResultados')->name('admincargarresultados');
 	Route::get('admin_fotos','HomeController@adminFotos')->name('adminfotos');

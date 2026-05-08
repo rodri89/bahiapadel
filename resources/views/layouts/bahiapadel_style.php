@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: "Blender Pro";
-  src: url("/bahiapadel/fonts/BlenderPro-Bolditalic.ttf") format("truetype");
+  src: url("<?php echo e(asset('bahiapadel/fonts/BlenderPro-BoldItalic.ttf')); ?>") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
@@ -12,7 +12,8 @@ html, body {
   padding: 0;
 }
 
-.body_admin {
+/* Texto oscuro solo en admin en tema claro; con body.dark-mode debe prevalecer dark-mode.css */
+body.body_admin:not(.dark-mode) {
     color: rgb(0, 0, 0);
 }
 

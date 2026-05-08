@@ -18,7 +18,7 @@
   <!-- Para que funcione el datatable-->
   <link rel="stylesheet" type="text/css" href="{{asset('datatable/jquery.dataTables.min.css')}}">
   <!-- Custom styles for this template-->
-  <link href="css/sb-admin-2.min.css" rel="stylesheet">
+  <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
   <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
 
   <!-- Para que funcione ajax-->
@@ -97,9 +97,15 @@
       </li>  
 
       <li class="nav-item">
-          <a class="nav-link" href="admin_vivo">
-            <i class="fas fa-fw fa-address-card"></i>
-            <span>Vivo</span></a>
+          <a class="nav-link" href="{{ route('adminstock') }}">
+            <i class="fas fa-fw fa-boxes"></i>
+            <span>Stock</span></a>
+      </li>
+
+      <li class="nav-item">
+          <a class="nav-link" href="{{ route('admincaja') }}">
+            <i class="fas fa-fw fa-cash-register"></i>
+            <span>Caja</span></a>
       </li>
       
       <li class="nav-item">
@@ -456,8 +462,8 @@
 
   </script>
   <!-- Bootstrap core JavaScript-->
-  <script src="vendor/jquery/jquery.min.js"></script>
-  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+  <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
   <!-- Core plugin JavaScript-->
   <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
@@ -472,8 +478,8 @@
   <script src="js/demo/chart-area-demo.js"></script>
   <script src="js/demo/chart-pie-demo.js"></script>
    -->
-  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script type="text/javascript" src="{{asset('datatable/jquery.dataTables.min.js')}}"></script>
+  @stack('scripts')
 
   <!-- Snackbar/Toast -->
 <div id="snackbar-toast" style="

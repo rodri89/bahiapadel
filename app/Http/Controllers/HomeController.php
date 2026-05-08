@@ -58,9 +58,6 @@ class HomeController extends Controller
     function adminJugadores() {
         return View('bahia_padel.admin.jugadores.index'); 
     }
-    function adminVivo() {
-        return View('bahia_padel.admin.vivo.index'); 
-    }
     function adminTorneos() {
         return View('bahia_padel.admin.torneo.index'); 
     }
