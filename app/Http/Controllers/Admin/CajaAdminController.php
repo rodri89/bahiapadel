@@ -134,6 +134,23 @@ class CajaAdminController extends Controller
         return $this->normalizarFechaCaja($request->input('caja_fecha'));
     }
 
+    /**
+     * Respuesta JSON con montos y HTML de todas las tablas del panel resumen.
+     * Usado al tocar una tarjeta (efectivo, pendientes, etc.) para evitar datos viejos sin F5.
+     */
+    public function resumenJson(Request $request)
+    {
+        if ($request->filled('fecha')) {
+            $request->validate([
+                'fecha' => 'required|date_format:Y-m-d|before_or_equal:today',
+            ]);
+        }
+
+        return response()->json(
+            $this->cajaResumenAjaxPayload($this->normalizarFechaCaja($request->query('fecha')))
+        );
+    }
+
     private function ventaToArray(StockVenta $venta, callable $fmtMoney): array
     {
         $venta->load(['detalles.producto', 'cancha']);

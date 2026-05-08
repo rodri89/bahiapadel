@@ -272,6 +272,24 @@
     function pagoUrl(ventaId) {
         return adminCajaBasePath() + '/venta/' + ventaId + '/pago';
     }
+    function resumenCajaUrl() {
+        return adminCajaBasePath() + '/resumen';
+    }
+    /** Refresca números y HTML de todas las tablas del panel (misma fecha que el datepicker). */
+    function fetchCajaResumenAplicar() {
+        var fechaEl = document.getElementById('caja-fecha-consulta');
+        var q = '';
+        if (fechaEl && fechaEl.value) q = '?fecha=' + encodeURIComponent(fechaEl.value);
+        fetch(resumenCajaUrl() + q, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(parseFetchResponse).then(function(x) {
+            if (!x.ok || !x.j) return;
+            applyCajaResumen(x.j);
+        }).catch(function() {});
+    }
 
     function parseFetchResponse(r) {
         return r.text().then(function(text) {
@@ -636,6 +654,7 @@
                 tituloEl.textContent = titulo;
                 wrap.classList.remove('d-none');
                 wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                fetchCajaResumenAplicar();
             });
         });
         if (cerrar) {
