@@ -62,7 +62,21 @@ class CajaAdminController extends Controller
     }
 
     /**
-     * Datos del panel superior + HTML de la tabla "pendientes con saldo" (para actualizar vía AJAX tras un cobro).
+     * HTML de la tabla de listado (sin columnas Ver/Cobrar), para actualizar paneles vía AJAX.
+     *
+     * @param  \Illuminate\Support\Collection|\Illuminate\Contracts\Pagination\LengthAwarePaginator  $ventas
+     */
+    private function htmlTablaListadoVentas($ventas, callable $fmtMoney): string
+    {
+        return view('bahia_padel.admin.caja._tabla_listado_ventas', [
+            'ventas' => $ventas,
+            'fmtMoney' => $fmtMoney,
+            'mostrarAccionesVerCobrar' => false,
+        ])->render();
+    }
+
+    /**
+     * Datos del panel superior + HTML de todas las tablas de detalle (tras cobros / líneas / abrir ticket).
      *
      * @return array<string, mixed>
      */
@@ -87,11 +101,15 @@ class CajaAdminController extends Controller
             ->orderBy('fecha_venta')
             ->get();
 
-        $htmlPendientesSaldo = view('bahia_padel.admin.caja._tabla_listado_ventas', [
-            'ventas' => $pendientes,
-            'fmtMoney' => $fmtMoney,
-            'mostrarAccionesVerCobrar' => false,
-        ])->render();
+        $baseListasQuery = fn () => StockVenta::query()->with('cancha')->where('fecha_venta', $dia);
+
+        $listaVentasHoy = $baseListasQuery()->orderByDesc('id')->get();
+        $listaEfectivoHoy = $baseListasQuery()->where('metodo_pago', 'efectivo')->orderByDesc('id')->get();
+        $listaTransferHoy = $baseListasQuery()->where('metodo_pago', 'transferencia')->orderByDesc('id')->get();
+        $listaCobradoHoy = $baseListasQuery()->where('estado_pago', 'pagado')->orderByDesc('id')->get();
+        $listaPendienteHoy = $baseListasQuery()->where('estado_pago', 'pendiente')->orderByDesc('id')->get();
+
+        $htmlVentas = $this->htmlTablaListadoVentas($listaVentasHoy, $fmtMoney);
 
         return [
             'transacciones' => (int) $statsHoy['transacciones'],
@@ -101,7 +119,13 @@ class CajaAdminController extends Controller
             'pagado_fmt' => $fmtMoney($statsHoy['pagado']),
             'pendiente_dia_fmt' => $fmtMoney($statsHoy['pendiente']),
             'pendientes_saldo_count' => $pendientes->count(),
-            'html_pendientes_saldo' => $htmlPendientesSaldo,
+            'html_ventas_hoy' => $htmlVentas,
+            'html_total_hoy' => $htmlVentas,
+            'html_efectivo_hoy' => $this->htmlTablaListadoVentas($listaEfectivoHoy, $fmtMoney),
+            'html_transfer_hoy' => $this->htmlTablaListadoVentas($listaTransferHoy, $fmtMoney),
+            'html_cobrado_hoy' => $this->htmlTablaListadoVentas($listaCobradoHoy, $fmtMoney),
+            'html_pendientes_dia' => $this->htmlTablaListadoVentas($listaPendienteHoy, $fmtMoney),
+            'html_pendientes_saldo' => $this->htmlTablaListadoVentas($pendientes, $fmtMoney),
         ];
     }
 
@@ -176,12 +200,13 @@ class CajaAdminController extends Controller
             'pendiente' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('estado_pago', 'pendiente')->sum('precio_total'),
         ];
 
-        $baseHoy = $this->aplicarFiltroFechaVentas(StockVenta::query()->with('cancha'), $fechaCaja);
-        $listaVentasHoy = (clone $baseHoy)->orderByDesc('id')->get();
-        $listaEfectivoHoy = (clone $baseHoy)->where('metodo_pago', 'efectivo')->orderByDesc('id')->get();
-        $listaTransferHoy = (clone $baseHoy)->where('metodo_pago', 'transferencia')->orderByDesc('id')->get();
-        $listaCobradoHoy = (clone $baseHoy)->where('estado_pago', 'pagado')->orderByDesc('id')->get();
-        $listaPendienteHoy = (clone $baseHoy)->where('estado_pago', 'pendiente')->orderByDesc('id')->get();
+        $baseListasQuery = fn () => StockVenta::query()->with('cancha')->where('fecha_venta', $fechaCaja);
+
+        $listaVentasHoy = $baseListasQuery()->orderByDesc('id')->get();
+        $listaEfectivoHoy = $baseListasQuery()->where('metodo_pago', 'efectivo')->orderByDesc('id')->get();
+        $listaTransferHoy = $baseListasQuery()->where('metodo_pago', 'transferencia')->orderByDesc('id')->get();
+        $listaCobradoHoy = $baseListasQuery()->where('estado_pago', 'pagado')->orderByDesc('id')->get();
+        $listaPendienteHoy = $baseListasQuery()->where('estado_pago', 'pendiente')->orderByDesc('id')->get();
 
         $ticketsAbiertos = StockVenta::query()
             ->with(['cancha', 'detalles.producto'])

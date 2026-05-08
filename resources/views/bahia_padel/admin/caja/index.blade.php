@@ -413,8 +413,22 @@
         if (el) el.textContent = res.pendiente_dia_fmt;
         el = document.getElementById('caja-stat-pendientes-saldo');
         if (el) el.textContent = res.pendientes_saldo_count + ' venta(s)';
-        el = document.getElementById('resumen-data-pendientes-saldo');
-        if (el && res.html_pendientes_saldo) el.innerHTML = res.html_pendientes_saldo;
+        var tablasResumen = [
+            ['ventas-hoy', 'html_ventas_hoy'],
+            ['total-hoy', 'html_total_hoy'],
+            ['efectivo-hoy', 'html_efectivo_hoy'],
+            ['transfer-hoy', 'html_transfer_hoy'],
+            ['cobrado-hoy', 'html_cobrado_hoy'],
+            ['pendientes-dia', 'html_pendientes_dia'],
+            ['pendientes-saldo', 'html_pendientes_saldo'],
+        ];
+        tablasResumen.forEach(function(pair) {
+            var wrap = document.getElementById('resumen-data-' + pair[0]);
+            var k = pair[1];
+            if (wrap && Object.prototype.hasOwnProperty.call(res, k) && typeof res[k] === 'string') {
+                wrap.innerHTML = res[k];
+            }
+        });
     }
 
     function patchNombre(ventaId, nombre, statusEl, cb) {

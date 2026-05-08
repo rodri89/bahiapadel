@@ -23,7 +23,13 @@
                     <td>#{{ $v->id }}</td>
                     <td>{{ $v->nombre_cliente }}</td>
                     <td>{{ $v->cancha ? $v->cancha->nombre : '—' }}</td>
-                    <td>{{ optional($v->fecha_venta)->format('d/m/Y') ?: '—' }}</td>
+                    <td>
+                        @if($v->fecha_venta)
+                            {{ \Illuminate\Support\Carbon::parse($v->fecha_venta)->format('d/m/Y') }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="text-right">{{ $fmtMoney($v->precio_total) }}</td>
                     <td>{{ $v->metodo_pago }}</td>
                     <td>
