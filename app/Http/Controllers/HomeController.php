@@ -234,7 +234,7 @@ class HomeController extends Controller
     
     /**
      * Panel de ranking por categoría (admin).
-     * Usa tablas ranking_totales y ranking_puntos + jugadores.
+     * Incluye torneos puntuables y entradas manuales de ranking.
      */
     function adminRanking(Request $request) {
         $tipos = [
@@ -248,33 +248,50 @@ class HomeController extends Controller
             $tipoSeleccionado = 'masculino';
         }
 
-        // Categorías y temporadas disponibles para este tipo
-        $categorias = DB::table('ranking_totales')
+        // Categorías y temporadas disponibles (ranking_totales + ranking_entradas)
+        $categoriasFromTotales = DB::table('ranking_totales')
             ->where('tipo', $tipoSeleccionado)
-            ->select('categoria')
-            ->distinct()
-            ->orderBy('categoria')
-            ->pluck('categoria');
+            ->distinct()->pluck('categoria');
 
-        $temporadas = DB::table('ranking_totales')
+        $categoriasFromEntradas = DB::table('ranking_entradas')
             ->where('tipo', $tipoSeleccionado)
-            ->select('temporada')
-            ->distinct()
-            ->orderByDesc('temporada')
-            ->pluck('temporada');
+            ->distinct()->pluck('categoria');
+
+        $categorias = $categoriasFromTotales->merge($categoriasFromEntradas)
+            ->unique()->sort()->values();
+
+        $temporadasFromTotales = DB::table('ranking_totales')
+            ->where('tipo', $tipoSeleccionado)
+            ->distinct()->pluck('temporada');
+
+        $temporadasFromEntradas = DB::table('ranking_entradas')
+            ->where('tipo', $tipoSeleccionado)
+            ->distinct()->pluck('temporada');
+
+        $temporadas = $temporadasFromTotales->merge($temporadasFromEntradas)
+            ->unique()->sortDesc()->values();
 
         $categoriaSeleccionada = (int) ($request->get('categoria') ?? ($categorias->first() ?? 6));
         $temporadaSeleccionada = (int) ($request->get('temporada') ?? ($temporadas->first() ?? date('Y')));
 
         $ranking = collect();
-        $torneosRanking = collect();
+        $columnasDesglose = collect(); // columnas unificadas (torneos + entradas manuales)
         $desglosePuntos = [];
         $referenciasPuntuacion = DB::table('puntos_ranking_referencia')
             ->orderBy('orden')
             ->get(['id', 'orden', 'codigo', 'nombre', 'puntos']);
 
-        if (!$categorias->isEmpty() && !$temporadas->isEmpty()) {
-            // Ranking total por jugador (tabla ranking_totales)
+        // Entradas manuales para este tipo/cat/temporada
+        $entradasManuales = DB::table('ranking_entradas')
+            ->where('tipo', $tipoSeleccionado)
+            ->where('categoria', $categoriaSeleccionada)
+            ->where('temporada', $temporadaSeleccionada)
+            ->orderBy('mes')
+            ->orderBy('nombre')
+            ->get();
+
+        if (!$categorias->isEmpty() || !$entradasManuales->isEmpty()) {
+            // Ranking total por jugador
             $ranking = DB::table('ranking_totales')
                 ->join('jugadores', 'jugadores.id', '=', 'ranking_totales.jugador_id')
                 ->where('ranking_totales.tipo', $tipoSeleccionado)
@@ -291,7 +308,9 @@ class HomeController extends Controller
                     'jugadores.foto',
                 ]);
 
-            // Torneos que suman al ranking (para columnas de desglose)
+            // Columnas de torneos puntuables
+            $meses = ['01' => 'Ene', '02' => 'Feb', '03' => 'Mar', '04' => 'Abr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Ago', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dic'];
+
             $torneosRanking = DB::table('ranking_puntos')
                 ->join('torneos', 'torneos.id', '=', 'ranking_puntos.torneo_id')
                 ->where('ranking_puntos.tipo', $tipoSeleccionado)
@@ -300,22 +319,28 @@ class HomeController extends Controller
                 ->select('torneos.id', 'torneos.nombre', 'torneos.fecha_inicio', 'torneos.fecha_fin')
                 ->distinct()
                 ->orderBy('torneos.fecha_inicio')
-                ->get();
+                ->get()
+                ->map(function ($t) use ($meses) {
+                    $fecha = $t->fecha_inicio ?? $t->fecha_fin;
+                    $t->mes_label = $fecha ? ($meses[date('m', strtotime($fecha))] ?? '—') : '—';
+                    $t->tipo_columna = 'torneo';
+                    $t->col_key = 'torneo_' . $t->id;
+                    return $t;
+                });
 
-            // Etiqueta corta de mes para la vista
-            $meses = ['01' => 'Ene', '02' => 'Feb', '03' => 'Mar', '04' => 'Abr', '05' => 'May', '06' => 'Jun', '07' => 'Jul', '08' => 'Ago', '09' => 'Sep', '10' => 'Oct', '11' => 'Nov', '12' => 'Dic'];
-            $torneosRanking = $torneosRanking->map(function ($t) use ($meses) {
-                $fecha = $t->fecha_inicio ?? $t->fecha_fin;
-                if ($fecha) {
-                    $mes = date('m', strtotime($fecha));
-                    $t->mes_label = $meses[$mes] ?? $mes;
-                } else {
-                    $t->mes_label = '—';
-                }
-                return $t;
+            // Columnas de entradas manuales
+            $columnasEntradas = $entradasManuales->map(function ($e) use ($meses) {
+                $mesNum = str_pad((int) $e->mes, 2, '0', STR_PAD_LEFT);
+                $e->mes_label = ($meses[$mesNum] ?? $e->mes) . ' (M)';
+                $e->tipo_columna = 'entrada';
+                $e->col_key = 'entrada_' . $e->id;
+                return $e;
             });
 
-            // Desglose de puntos por torneo (tabla ranking_puntos)
+            // Unificamos columnas: primero torneos (por fecha), luego entradas (por mes)
+            $columnasDesglose = $torneosRanking->merge($columnasEntradas);
+
+            // Desglose de puntos por torneo
             if (!$torneosRanking->isEmpty()) {
                 $puntosPorTorneo = DB::table('ranking_puntos')
                     ->where('tipo', $tipoSeleccionado)
@@ -325,7 +350,18 @@ class HomeController extends Controller
                     ->get(['jugador_id', 'torneo_id', 'puntos']);
 
                 foreach ($puntosPorTorneo as $row) {
-                    $desglosePuntos[$row->jugador_id][$row->torneo_id] = (int) $row->puntos;
+                    $desglosePuntos[$row->jugador_id]['torneo_' . $row->torneo_id] = (int) $row->puntos;
+                }
+            }
+
+            // Desglose de puntos por entrada manual
+            if (!$entradasManuales->isEmpty()) {
+                $puntosPorEntrada = DB::table('ranking_entradas_jugadores')
+                    ->whereIn('entrada_id', $entradasManuales->pluck('id'))
+                    ->get(['jugador_id', 'entrada_id', 'puntos']);
+
+                foreach ($puntosPorEntrada as $row) {
+                    $desglosePuntos[$row->jugador_id]['entrada_' . $row->entrada_id] = (int) $row->puntos;
                 }
             }
         }
@@ -338,9 +374,10 @@ class HomeController extends Controller
             'temporadas' => $temporadas,
             'temporada_seleccionada' => $temporadaSeleccionada,
             'ranking' => $ranking,
-            'torneos_ranking' => $torneosRanking,
+            'torneos_ranking' => $columnasDesglose,
             'desglose_puntos' => $desglosePuntos,
             'referencias_puntuacion' => $referenciasPuntuacion,
+            'entradas_manuales' => $entradasManuales,
         ]);
     }
 
@@ -10708,6 +10745,277 @@ class HomeController extends Controller
                 'success' => false,
                 'message' => 'Error al guardar: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Entradas manuales de ranking
+    // -------------------------------------------------------------------------
+
+    /**
+     * GET: Lista de jugadores activos para los selectores del modal de ranking.
+     */
+    public function getJugadoresParaRanking(Request $request)
+    {
+        try {
+            $jugadores = DB::table('jugadores')
+                ->where('activo', 1)
+                ->orderBy('apellido')
+                ->orderBy('nombre')
+                ->get(['id', 'nombre', 'apellido', 'foto']);
+
+            return response()->json(['success' => true, 'jugadores' => $jugadores]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST: Crear una nueva entrada manual de ranking.
+     */
+    public function crearEntradaRanking(Request $request)
+    {
+        try {
+            $nombre    = trim($request->input('nombre', ''));
+            $tipo      = $request->input('tipo', 'masculino');
+            $categoria = (int) $request->input('categoria', 6);
+            $temporada = (int) $request->input('temporada', (int) date('Y'));
+            $mes       = (int) $request->input('mes', (int) date('n'));
+            $descripcion = trim($request->input('descripcion', ''));
+
+            if ($nombre === '') {
+                return response()->json(['success' => false, 'message' => 'El nombre es obligatorio'], 400);
+            }
+            if (!in_array($tipo, ['masculino', 'femenino', 'mixto'], true)) {
+                return response()->json(['success' => false, 'message' => 'Tipo inválido'], 400);
+            }
+            if ($categoria <= 0 || $categoria > 20) {
+                return response()->json(['success' => false, 'message' => 'Categoría inválida'], 400);
+            }
+            if ($temporada < 2000 || $temporada > 2100) {
+                return response()->json(['success' => false, 'message' => 'Temporada inválida'], 400);
+            }
+            if ($mes < 1 || $mes > 12) {
+                return response()->json(['success' => false, 'message' => 'Mes inválido'], 400);
+            }
+
+            $id = DB::table('ranking_entradas')->insertGetId([
+                'nombre'      => $nombre,
+                'tipo'        => $tipo,
+                'categoria'   => $categoria,
+                'temporada'   => $temporada,
+                'mes'         => $mes,
+                'descripcion' => $descripcion ?: null,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            $entrada = DB::table('ranking_entradas')->where('id', $id)->first();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Entrada de ranking creada correctamente.',
+                'entrada' => $entrada,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('crearEntradaRanking: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * GET: Obtener jugadores y puntos de una entrada manual.
+     */
+    public function obtenerJugadoresEntrada(Request $request)
+    {
+        try {
+            $entradaId = (int) $request->input('entrada_id');
+            if ($entradaId <= 0) {
+                return response()->json(['success' => false, 'message' => 'entrada_id inválido'], 400);
+            }
+
+            $entrada = DB::table('ranking_entradas')->where('id', $entradaId)->first();
+            if (!$entrada) {
+                return response()->json(['success' => false, 'message' => 'Entrada no encontrada'], 404);
+            }
+
+            $jugadores = DB::table('ranking_entradas_jugadores as rej')
+                ->join('jugadores as j', 'j.id', '=', 'rej.jugador_id')
+                ->where('rej.entrada_id', $entradaId)
+                ->orderByDesc('rej.puntos')
+                ->orderBy('j.apellido')
+                ->get([
+                    'rej.id',
+                    'rej.jugador_id',
+                    'rej.puntos',
+                    'rej.referencia_codigo',
+                    'j.nombre',
+                    'j.apellido',
+                    'j.foto',
+                ]);
+
+            $referencias = DB::table('puntos_ranking_referencia')
+                ->orderBy('orden')
+                ->get(['codigo', 'nombre', 'puntos']);
+
+            return response()->json([
+                'success'    => true,
+                'entrada'    => $entrada,
+                'jugadores'  => $jugadores,
+                'referencias' => $referencias,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST: Guardar/actualizar los jugadores y puntos de una entrada manual.
+     * Recalcula ranking_totales después de guardar.
+     */
+    public function guardarJugadoresEntrada(Request $request)
+    {
+        try {
+            $entradaId = (int) $request->input('entrada_id');
+            $items     = $request->input('items', []);
+
+            if ($entradaId <= 0) {
+                return response()->json(['success' => false, 'message' => 'entrada_id inválido'], 400);
+            }
+
+            $entrada = DB::table('ranking_entradas')->where('id', $entradaId)->first();
+            if (!$entrada) {
+                return response()->json(['success' => false, 'message' => 'Entrada no encontrada'], 404);
+            }
+
+            DB::beginTransaction();
+
+            // Guardar/actualizar jugadores de la entrada
+            $jugadoresAfectados = [];
+            foreach ($items as $item) {
+                $jugadorId       = (int) ($item['jugador_id'] ?? 0);
+                $puntos          = (int) ($item['puntos'] ?? 0);
+                $referenciaCodigo = (string) ($item['referencia_codigo'] ?? 'no_clasificados');
+
+                if ($jugadorId <= 0) continue;
+
+                DB::table('ranking_entradas_jugadores')->updateOrInsert(
+                    ['entrada_id' => $entradaId, 'jugador_id' => $jugadorId],
+                    [
+                        'puntos'           => $puntos,
+                        'referencia_codigo' => $referenciaCodigo,
+                        'updated_at'       => now(),
+                        'created_at'       => now(),
+                    ]
+                );
+                $jugadoresAfectados[] = $jugadorId;
+            }
+
+            // Recalcular ranking_totales para cada jugador afectado
+            foreach ($jugadoresAfectados as $jugadorId) {
+                $this->recalcularTotalRankingJugador(
+                    $jugadorId,
+                    (int) $entrada->categoria,
+                    (int) $entrada->temporada,
+                    $entrada->tipo
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Jugadores guardados y ranking actualizado correctamente.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('guardarJugadoresEntrada: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * POST: Eliminar una entrada manual de ranking y recalcular totales.
+     */
+    public function eliminarEntradaRanking(Request $request)
+    {
+        try {
+            $entradaId = (int) $request->input('entrada_id');
+            if ($entradaId <= 0) {
+                return response()->json(['success' => false, 'message' => 'entrada_id inválido'], 400);
+            }
+
+            $entrada = DB::table('ranking_entradas')->where('id', $entradaId)->first();
+            if (!$entrada) {
+                return response()->json(['success' => false, 'message' => 'Entrada no encontrada'], 404);
+            }
+
+            DB::beginTransaction();
+
+            // Jugadores afectados antes de borrar
+            $jugadoresAfectados = DB::table('ranking_entradas_jugadores')
+                ->where('entrada_id', $entradaId)
+                ->pluck('jugador_id');
+
+            // Cascade elimina ranking_entradas_jugadores automáticamente
+            DB::table('ranking_entradas')->where('id', $entradaId)->delete();
+
+            // Recalcular totales
+            foreach ($jugadoresAfectados as $jugadorId) {
+                $this->recalcularTotalRankingJugador(
+                    (int) $jugadorId,
+                    (int) $entrada->categoria,
+                    (int) $entrada->temporada,
+                    $entrada->tipo
+                );
+            }
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Entrada eliminada y ranking actualizado.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('eliminarEntradaRanking: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Recalcula puntos_totales en ranking_totales para un jugador/cat/temporada/tipo
+     * sumando ranking_puntos (torneos) + ranking_entradas_jugadores (manuales).
+     */
+    private function recalcularTotalRankingJugador(int $jugadorId, int $categoria, int $temporada, string $tipo): void
+    {
+        $puntosDesdeT = DB::table('ranking_puntos')
+            ->where('jugador_id', $jugadorId)
+            ->where('categoria', $categoria)
+            ->where('temporada', $temporada)
+            ->where('tipo', $tipo)
+            ->sum('puntos');
+
+        $puntosDesdeE = DB::table('ranking_entradas_jugadores as rej')
+            ->join('ranking_entradas as re', 're.id', '=', 'rej.entrada_id')
+            ->where('rej.jugador_id', $jugadorId)
+            ->where('re.categoria', $categoria)
+            ->where('re.temporada', $temporada)
+            ->where('re.tipo', $tipo)
+            ->sum('rej.puntos');
+
+        $total = (int) $puntosDesdeT + (int) $puntosDesdeE;
+
+        if ($total > 0) {
+            DB::table('ranking_totales')->updateOrInsert(
+                ['jugador_id' => $jugadorId, 'categoria' => $categoria, 'temporada' => $temporada, 'tipo' => $tipo],
+                ['puntos_totales' => $total, 'updated_at' => now(), 'created_at' => now()]
+            );
+        } else {
+            // Si no tiene puntos en ninguna fuente, eliminamos el registro para no contaminar el ranking
+            DB::table('ranking_totales')
+                ->where('jugador_id', $jugadorId)
+                ->where('categoria', $categoria)
+                ->where('temporada', $temporada)
+                ->where('tipo', $tipo)
+                ->delete();
         }
     }
 }

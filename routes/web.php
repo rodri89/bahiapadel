@@ -125,6 +125,12 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_ranking','HomeController@adminRanking')->name('adminranking');
 	Route::post('admin_ranking_mover','HomeController@adminRankingMoverCategoria')->name('adminrankingmover');
 	Route::post('guardar_referencias_puntuacion','HomeController@guardarReferenciasPuntuacion')->name('guardarreferenciaspuntuacion');
+	// Entradas manuales de ranking
+	Route::post('admin_ranking_entrada_crear','HomeController@crearEntradaRanking')->name('adminrankingentradacrear');
+	Route::post('admin_ranking_entrada_eliminar','HomeController@eliminarEntradaRanking')->name('adminrankingentradaeliminar');
+	Route::get('admin_ranking_entrada_jugadores','HomeController@obtenerJugadoresEntrada')->name('adminrankingentradajugadores');
+	Route::post('admin_ranking_entrada_jugadores_guardar','HomeController@guardarJugadoresEntrada')->name('adminrankingentradajugadoresguardar');
+	Route::get('admin_ranking_jugadores_lista','HomeController@getJugadoresParaRanking')->name('adminrankingjugadoreslista');
 	Route::post('generar_datos_prueba_torneo','HomeController@generarDatosPruebaTorneo')->name('generardatospruebatorneo');
 	Route::get('admin_calendario','HomeController@adminCalendario')->name('admincalendario');
 	Route::get('admin_calendario_inscripciones_json/{calendario}','HomeController@adminCalendarioInscripcionesJson')->name('admincalendarioinscripcionesjson');
