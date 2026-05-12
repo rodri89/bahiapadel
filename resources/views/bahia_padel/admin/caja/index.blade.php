@@ -477,7 +477,6 @@
         var statusNombre = inner.querySelector('.ticket-nombre-status');
         var addBtn = inner.querySelector('.btn-ticket-add-linea');
         var sel = inner.querySelector('.ticket-select-producto');
-        var cantInp = inner.querySelector('.ticket-input-cantidad');
         var guardarBtn = inner.querySelector('.btn-ticket-guardar');
 
         if (nombreInput && !nombreInput._wired) {
@@ -502,9 +501,8 @@
             addBtn._wired = true;
             addBtn.addEventListener('click', function() {
                 var pid = sel && sel.value;
-                var qty = cantInp ? parseInt(cantInp.value, 10) : 0;
+                var qty = 1;
                 if (!pid) { alert('Elegí una categoría y un producto.'); return; }
-                if (!qty || qty < 1) { alert('Cantidad inválida.'); return; }
                 addBtn.disabled = true;
                 fetch(lineaUrl(ventaId), {
                     method: 'POST',
@@ -685,12 +683,11 @@
             + categoriasPillsHtml()
             + '</div>'
             + '<div class="form-row align-items-end mt-2">'
-            + '<div class="form-group col-md-8 mb-2 mb-md-0"><label class="small mb-1">Producto</label>'
-            + '<select class="form-control ticket-select-producto" disabled><option value="">— Elegí una categoría —</option></select></div>'
-            + '<div class="form-group col-md-2 mb-2 mb-md-0"><label class="small mb-1">Cant.</label>'
-            + '<input type="number" class="form-control ticket-input-cantidad" value="1" min="1" step="1"></div>'
+            + '<div class="form-group col-md-10 mb-2 mb-md-0"><label class="small mb-1">Producto</label>'
+            + '<select class="form-control ticket-select-producto" disabled><option value="">— Elegí una categoría —</option></select>'
+            + '<input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true"></div>'
             + '<div class="form-group col-md-2 mb-0"><label class="small mb-1 d-none d-md-block">&nbsp;</label>'
-            + '<button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar producto">+</button></div>'
+            + '<button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar 1 unidad">+</button></div>'
             + '</div></div>'
             + '<div class="d-flex flex-wrap align-items-center mb-2">'
             + '<span class="font-weight-bold mr-2">Total:</span>'
@@ -705,7 +702,7 @@
             + '<input type="hidden" name="metodo_pago" value="transferencia">'
             + '<button type="submit" class="btn btn-info btn-ticket-pay" disabled>Transferencia</button></form>'
             + '<button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button></div>'
-            + '<small class="text-muted d-block">Los productos se guardan con <strong>+</strong>. Podés quitar una línea con <strong>−</strong>. El nombre con <strong>Guardar</strong> o al salir del campo cliente.</small>'
+            + '<small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad. Podés quitar una línea con <strong>−</strong>. El nombre con <strong>Guardar</strong> o al salir del campo cliente.</small>'
             + '</div>';
 
         return ''

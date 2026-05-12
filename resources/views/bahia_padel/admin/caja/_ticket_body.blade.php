@@ -39,19 +39,16 @@
             @endforeach
         </div>
         <div class="form-row align-items-end mt-2">
-            <div class="form-group col-md-8 mb-2 mb-md-0">
+            <div class="form-group col-md-10 mb-2 mb-md-0">
                 <label class="small mb-1">Producto</label>
                 <select class="form-control ticket-select-producto" disabled>
                     <option value="">— Elegí una categoría —</option>
                 </select>
-            </div>
-            <div class="form-group col-md-2 mb-2 mb-md-0">
-                <label class="small mb-1">Cant.</label>
-                <input type="number" class="form-control ticket-input-cantidad" value="1" min="1" step="1">
+                <input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true">
             </div>
             <div class="form-group col-md-2 mb-0">
                 <label class="small mb-1 d-none d-md-block">&nbsp;</label>
-                <button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar producto">+</button>
+                <button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar 1 unidad">+</button>
             </div>
         </div>
     </div>
@@ -72,5 +69,5 @@
         </form>
         <button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button>
     </div>
-    <small class="text-muted d-block">Los productos se guardan con <strong>+</strong>. Podés quitar una línea con <strong>−</strong>. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
+    <small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad del producto elegido. Podés quitar una línea con <strong>−</strong>. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
 </div>
