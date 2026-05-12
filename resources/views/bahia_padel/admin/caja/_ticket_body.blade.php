@@ -68,6 +68,7 @@
             <button type="submit" class="btn btn-info btn-ticket-pay" @if((float)$venta->precio_total <= 0) disabled @endif>Transferencia</button>
         </form>
         <button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button>
+        <button type="button" class="btn btn-outline-danger mb-2 ml-md-2 btn-ticket-cancelar" title="Anular ticket y devolver stock">Cancelar ticket</button>
     </div>
-    <small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad del producto elegido. Podés quitar una línea con <strong>−</strong>. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
+    <small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad del producto elegido. Podés quitar una línea con <strong>−</strong>. <strong>Cancelar ticket</strong> elimina la venta y devuelve el stock. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
 </div>

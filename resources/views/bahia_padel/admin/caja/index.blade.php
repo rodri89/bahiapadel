@@ -272,6 +272,9 @@
     function pagoUrl(ventaId) {
         return adminCajaBasePath() + '/venta/' + ventaId + '/pago';
     }
+    function ventaDestroyUrl(ventaId) {
+        return adminCajaBasePath() + '/venta/' + ventaId;
+    }
     function resumenCajaUrl() {
         return adminCajaBasePath() + '/resumen';
     }
@@ -531,6 +534,33 @@
                 });
             });
         }
+        var cancelBtn = inner.querySelector('.btn-ticket-cancelar');
+        if (cancelBtn && !cancelBtn._wired) {
+            cancelBtn._wired = true;
+            cancelBtn.addEventListener('click', function() {
+                if (!confirm('¿Cancelar este ticket? Se eliminará la venta y se devolverá el stock de los productos agregados.')) return;
+                cancelBtn.disabled = true;
+                fetch(ventaDestroyUrl(ventaId), {
+                    method: 'DELETE',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken }))
+                }).then(parseFetchResponse).then(function(x) {
+                    cancelBtn.disabled = false;
+                    if (!x.ok) {
+                        var msg = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors || {}).flat().join(' '));
+                        alert(msg || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                    var col = card.closest('.col-lg-4');
+                    if (col) col.remove();
+                    syncTicketsToggleBtn();
+                }).catch(function(e) {
+                    cancelBtn.disabled = false;
+                    alert((e && e.message) ? e.message : 'Error de red');
+                });
+            });
+        }
         wireProductPicker(inner);
     }
 
@@ -701,8 +731,9 @@
             + '<input type="hidden" name="_token" value="' + escapeHtml(csrfToken) + '">'
             + '<input type="hidden" name="metodo_pago" value="transferencia">'
             + '<button type="submit" class="btn btn-info btn-ticket-pay" disabled>Transferencia</button></form>'
-            + '<button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button></div>'
-            + '<small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad. Podés quitar una línea con <strong>−</strong>. El nombre con <strong>Guardar</strong> o al salir del campo cliente.</small>'
+            + '<button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button>'
+            + '<button type="button" class="btn btn-outline-danger mb-2 ml-md-2 btn-ticket-cancelar" title="Anular ticket y devolver stock">Cancelar ticket</button></div>'
+            + '<small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad. <strong>Cancelar ticket</strong> elimina la venta y devuelve el stock. Podés quitar una línea con <strong>−</strong>. El nombre con <strong>Guardar</strong> o al salir del campo cliente.</small>'
             + '</div>';
 
         return ''

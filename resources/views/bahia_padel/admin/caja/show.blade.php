@@ -115,6 +115,13 @@
                 </div>
                 <button type="submit" class="btn btn-success">Confirmar pago de {{ $fmtMoney($venta->precio_total) }}</button>
             </form>
+            <hr class="my-3">
+            <p class="small text-muted mb-2">Si no se va a cobrar esta venta, podés cancelarla: se borra el ticket y el stock vuelve a los productos.</p>
+            <form method="post" action="{{ route('admincaja.venta.destroy', $venta) }}" class="d-inline" onsubmit="return confirm('¿Cancelar este ticket? Se eliminará la venta y se devolverá el stock de todos los productos.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger">Cancelar ticket</button>
+            </form>
         </div>
     </div>
     @endif

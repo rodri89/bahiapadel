@@ -116,6 +116,7 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::post('admin_caja/venta/borrador', [CajaAdminController::class, 'storeBorrador'])->name('admincaja.venta.borrador');
 	Route::post('admin_caja/venta/{venta}/linea', [CajaAdminController::class, 'storeLinea'])->name('admincaja.venta.linea');
 	Route::delete('admin_caja/venta/{venta}/linea/{detalle}', [CajaAdminController::class, 'destroyLinea'])->name('admincaja.venta.linea.destroy');
+	Route::delete('admin_caja/venta/{venta}', [CajaAdminController::class, 'destroyVenta'])->name('admincaja.venta.destroy');
 	Route::patch('admin_caja/venta/{venta}', [CajaAdminController::class, 'updateBorrador'])->name('admincaja.venta.update');
 	Route::get('admin_caja/venta/{venta}', [CajaAdminController::class, 'showVenta'])->name('admincaja.venta.show');
 	Route::post('admin_caja/venta/{venta}/pago', [CajaAdminController::class, 'registrarPago'])->name('admincaja.venta.pago');

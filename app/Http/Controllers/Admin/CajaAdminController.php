@@ -330,6 +330,37 @@ class CajaAdminController extends Controller
         ]);
     }
 
+    public function destroyVenta(Request $request, StockVenta $venta, StockVentaService $ventaService)
+    {
+        $request->validate([
+            'caja_fecha' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
+        $fechaRedirect = $venta->fecha_venta
+            ? \Carbon\Carbon::parse($venta->fecha_venta)->toDateString()
+            : now()->toDateString();
+
+        try {
+            $ventaService->cancelarVentaBorrador($venta);
+        } catch (\RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Ticket cancelado.',
+                'resumen' => $this->cajaResumenAjaxPayload($this->cajaFechaParaResumenDesdeRequest($request)),
+            ]);
+        }
+
+        return redirect()->route('admincaja', ['fecha' => $fechaRedirect])->with('success', 'Ticket cancelado.');
+    }
+
     public function updateBorrador(Request $request, StockVenta $venta, StockVentaService $ventaService)
     {
         $request->validate([

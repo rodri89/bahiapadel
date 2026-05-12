@@ -256,6 +256,52 @@ class StockVentaService
         });
     }
 
+    /**
+     * Cancela un ticket de caja (borrador): solo ventas pendientes de cobro.
+     * Devuelve el stock de todas las líneas y elimina la venta.
+     */
+    public function cancelarVentaBorrador(StockVenta $venta): void
+    {
+        DB::transaction(function () use ($venta) {
+            $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
+            if ($venta->estado_pago !== 'pendiente') {
+                throw new \RuntimeException('Solo se pueden cancelar ventas pendientes de cobro.');
+            }
+
+            $user = self::responsable();
+            $detalles = StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($detalles as $detalle) {
+                /** @var StockProducto $producto */
+                $producto = StockProducto::query()->lockForUpdate()->findOrFail($detalle->stock_producto_id);
+                $qty = (int) $detalle->cantidad;
+
+                $anterior = $producto->stock_actual;
+                $nueva = $anterior + $qty;
+                $producto->stock_actual = $nueva;
+                $producto->save();
+
+                StockMovimientoStock::query()->create([
+                    'stock_producto_id' => $producto->id,
+                    'tipo_movimiento' => 'entrada',
+                    'cantidad' => $qty,
+                    'cantidad_anterior' => $anterior,
+                    'cantidad_nueva' => $nueva,
+                    'motivo' => 'Cancelación venta #'.$venta->id,
+                    'usuario_responsable' => $user,
+                    'created_at' => now(),
+                ]);
+
+                $detalle->delete();
+            }
+
+            $venta->delete();
+        });
+    }
+
     public function registrarPago(StockVenta $venta, array $data): void
     {
         DB::transaction(function () use ($venta, $data) {
