@@ -114,10 +114,14 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_caja/resumen', [CajaAdminController::class, 'resumenJson'])->name('admincaja.resumen');
 	Route::post('admin_caja/venta', [CajaAdminController::class, 'storeVenta'])->name('admincaja.venta.store');
 	Route::post('admin_caja/venta/borrador', [CajaAdminController::class, 'storeBorrador'])->name('admincaja.venta.borrador');
+	Route::get('admin_caja/jugadores', [CajaAdminController::class, 'jugadoresCajaJson'])->name('admincaja.jugadores');
+	Route::patch('admin_caja/venta/{venta}/participante/{participante}', [CajaAdminController::class, 'updateParticipante'])->name('admincaja.venta.participante.update');
+	Route::post('admin_caja/venta/{venta}/participante/{participante}/pago', [CajaAdminController::class, 'pagoParticipante'])->name('admincaja.venta.participante.pago');
 	Route::post('admin_caja/venta/{venta}/linea', [CajaAdminController::class, 'storeLinea'])->name('admincaja.venta.linea');
 	Route::delete('admin_caja/venta/{venta}/linea/{detalle}', [CajaAdminController::class, 'destroyLinea'])->name('admincaja.venta.linea.destroy');
 	Route::delete('admin_caja/venta/{venta}', [CajaAdminController::class, 'destroyVenta'])->name('admincaja.venta.destroy');
 	Route::patch('admin_caja/venta/{venta}', [CajaAdminController::class, 'updateBorrador'])->name('admincaja.venta.update');
+	Route::get('admin_caja/venta/{venta}/ticket-modal', [CajaAdminController::class, 'ventaTicketModal'])->name('admincaja.venta.ticket-modal');
 	Route::get('admin_caja/venta/{venta}', [CajaAdminController::class, 'showVenta'])->name('admincaja.venta.show');
 	Route::post('admin_caja/venta/{venta}/pago', [CajaAdminController::class, 'registrarPago'])->name('admincaja.venta.pago');
 	Route::get('admin_torneos','HomeController@adminTorneos')->name('admintorneos');

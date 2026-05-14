@@ -130,25 +130,25 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="resumen-tabla d-none" id="resumen-data-ventas-hoy">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaVentasHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaVentasHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                     <div class="resumen-tabla d-none" id="resumen-data-total-hoy">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaVentasHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaVentasHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                     <div class="resumen-tabla d-none" id="resumen-data-efectivo-hoy">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaEfectivoHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaEfectivoHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                     <div class="resumen-tabla d-none" id="resumen-data-transfer-hoy">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaTransferHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaTransferHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                     <div class="resumen-tabla d-none" id="resumen-data-cobrado-hoy">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaCobradoHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaCobradoHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                     <div class="resumen-tabla d-none" id="resumen-data-pendientes-dia">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaPendienteHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $listaPendienteHoy, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                     <div class="resumen-tabla d-none" id="resumen-data-pendientes-saldo">
-                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $pendientes, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false])
+                        @include('bahia_padel.admin.caja._tabla_listado_ventas', ['ventas' => $pendientes, 'fmtMoney' => $fmtMoney, 'mostrarAccionesVerCobrar' => false, 'mostrarVerModal' => true])
                     </div>
                 </div>
             </div>
@@ -228,6 +228,39 @@
     </div>
 </div>
 
+<div class="modal fade" id="modal-buscar-jugador-caja" tabindex="-1" role="dialog" aria-labelledby="modal-buscar-jugador-caja-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modal-buscar-jugador-caja-titulo">Buscar jugador del club</h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body py-2">
+                <input type="text" id="caja-jugador-buscar-input" class="form-control form-control-sm mb-2" placeholder="Filtrar por nombre o apellido…" autocomplete="off">
+                <div id="caja-jugador-lista" class="list-group list-group-flush" style="max-height:50vh;overflow:auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-caja-ver-ticket" tabindex="-1" role="dialog" aria-labelledby="modal-caja-ver-ticket-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title text-primary" id="modal-caja-ver-ticket-titulo">Ticket</h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body py-3" id="modal-caja-ver-ticket-body">
+                <p class="text-muted small mb-0">Cargando…</p>
+            </div>
+            <div class="modal-footer py-2">
+                <a href="#" id="modal-caja-ver-ticket-link-completo" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">Abrir página completa</a>
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @php
     $cajaCategoriasJson = $categoriasVenta->map(function ($c) {
         return [
@@ -274,6 +307,18 @@
     }
     function ventaDestroyUrl(ventaId) {
         return adminCajaBasePath() + '/venta/' + ventaId;
+    }
+    function jugadoresCajaUrl() {
+        return adminCajaBasePath() + '/jugadores';
+    }
+    function ventaTicketModalUrl(ventaId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/ticket-modal';
+    }
+    function participantePatchUrl(ventaId, participanteId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/participante/' + participanteId;
+    }
+    function participantePagoUrl(ventaId, participanteId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/participante/' + participanteId + '/pago';
     }
     function resumenCajaUrl() {
         return adminCajaBasePath() + '/resumen';
@@ -399,7 +444,98 @@
         });
     }
 
-    function applyVentaJson(cardRoot, venta) {
+    function grupoPickDefaultActiveId(venta) {
+        var parts = venta.participantes || [];
+        var id = null;
+        for (var i = 0; i < parts.length; i++) {
+            if (parts[i].estado_pago === 'pendiente') {
+                id = parts[i].id;
+                break;
+            }
+        }
+        if (!id && parts.length) id = parts[0].id;
+        return id;
+    }
+
+    function switchTicketGrupoTab(inner, participanteIdStr) {
+        if (!inner) return;
+        var hid = inner.querySelector('.ticket-active-participante-id');
+        if (hid) hid.value = participanteIdStr;
+        inner.querySelectorAll('.ticket-line-row').forEach(function(tr) {
+            tr.style.display = (String(tr.getAttribute('data-participante-id')) === String(participanteIdStr)) ? '' : 'none';
+        });
+        inner.querySelectorAll('.ticket-tab-slot').forEach(function(btn) {
+            var pid = btn.getAttribute('data-participante-id');
+            var active = String(pid) === String(participanteIdStr);
+            var est = btn.getAttribute('data-estado');
+            btn.classList.remove('btn-primary', 'btn-outline-secondary');
+            if (btn.disabled || est === 'pagado') {
+                btn.classList.add('btn-outline-secondary');
+                return;
+            }
+            btn.classList.add(active ? 'btn-primary' : 'btn-outline-secondary');
+        });
+        var tabSel = inner.querySelector('.ticket-tab-slot[data-participante-id="' + participanteIdStr + '"]');
+        var estTab = tabSel ? tabSel.getAttribute('data-estado') : '';
+        var addBtn = inner.querySelector('.btn-ticket-add-linea');
+        if (addBtn) addBtn.disabled = (estTab === 'pagado');
+        inner.querySelectorAll('.ticket-jugador-panel').forEach(function(panel) {
+            panel.classList.toggle('d-none', String(panel.getAttribute('data-participante-id')) !== String(participanteIdStr));
+        });
+    }
+
+    function htmlTicketGrupoPagoAcciones(p) {
+        if (p.estado_pago === 'pagado') {
+            return '<span class="badge badge-success">Pagado' + (p.metodo_pago ? ' (' + escapeHtml(p.metodo_pago) + ')' : '') + '</span>';
+        }
+        var h = '';
+        if (p.subtotal <= 0) {
+            h += '<button type="button" class="btn btn-sm btn-outline-secondary btn-participante-sin-consumo mr-1" data-participante-id="' + p.id + '">Sin consumo</button>';
+        }
+        var disPay = (p.subtotal <= 0) ? ' disabled' : '';
+        h += '<button type="button" class="btn btn-sm btn-success btn-participante-pago mr-1" data-participante-id="' + p.id + '" data-metodo="efectivo"' + disPay + '>Efectivo</button>';
+        h += '<button type="button" class="btn btn-sm btn-info btn-participante-pago" data-participante-id="' + p.id + '" data-metodo="transferencia"' + disPay + '>Transferencia</button>';
+        return h;
+    }
+
+    var cajaJugadoresCache = null;
+    var cajaModalTarget = null;
+
+    function ensureCajaJugadoresLoaded(cb) {
+        if (cajaJugadoresCache) {
+            cb(cajaJugadoresCache);
+            return;
+        }
+        fetch(jugadoresCajaUrl(), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(parseFetchResponse).then(function(x) {
+            if (x.ok && x.j && x.j.jugadores) {
+                cajaJugadoresCache = x.j.jugadores;
+                cb(cajaJugadoresCache);
+            } else {
+                cb([]);
+            }
+        }).catch(function() { cb([]); });
+    }
+
+    function renderCajaJugadorLista(filter) {
+        var wrap = document.getElementById('caja-jugador-lista');
+        if (!wrap) return;
+        var f = (filter || '').toLowerCase().trim();
+        wrap.innerHTML = '';
+        (cajaJugadoresCache || []).forEach(function(j) {
+            var label = (j.nombre + ' ' + j.apellido).trim();
+            if (f && label.toLowerCase().indexOf(f) < 0) return;
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'list-group-item list-group-item-action btn-elegir-jugador-caja text-left py-2';
+            b.setAttribute('data-id', j.id);
+            b.textContent = label;
+            wrap.appendChild(b);
+        });
+    }
+
+    function applyVentaJsonSimple(cardRoot, venta) {
         var hNombre = cardRoot.querySelector('.ticket-card-nombre');
         var hTot = cardRoot.querySelector('.ticket-card-total');
         var hMeta = cardRoot.querySelector('.ticket-card-cancha-meta');
@@ -415,6 +551,97 @@
         var tbody = inner.querySelector('.ticket-lines-tbody');
         if (tbody) refreshLinesTbody(tbody, venta.detalles || []);
         syncPayButtons(inner, venta.precio_total);
+    }
+
+    function applyVentaJsonGrupo(cardRoot, venta) {
+        var hNombre = cardRoot.querySelector('.ticket-card-nombre');
+        var hTot = cardRoot.querySelector('.ticket-card-total');
+        var hMeta = cardRoot.querySelector('.ticket-card-cancha-meta');
+        if (hNombre) hNombre.textContent = venta.nombre_cliente;
+        if (hTot) hTot.textContent = venta.precio_total_fmt;
+        if (hMeta) hMeta.textContent = venta.cancha_nombre ? String(venta.cancha_nombre) : '';
+        var inner = cardRoot.querySelector('.ticket-body-inner[data-venta-id="' + venta.id + '"]');
+        if (!inner) return;
+        var tTot = inner.querySelector('.ticket-total');
+        if (tTot) tTot.textContent = venta.precio_total_fmt;
+
+        var hid = inner.querySelector('.ticket-active-participante-id');
+        var curActive = hid ? parseInt(hid.value, 10) : 0;
+        var defaultId = grupoPickDefaultActiveId(venta);
+        var parts = venta.participantes || [];
+        var stillValid = parts.some(function(p) { return p.id === curActive && p.estado_pago === 'pendiente'; });
+        var activePid = (curActive && stillValid) ? curActive : defaultId;
+        if (hid) hid.value = activePid;
+
+        inner.querySelectorAll('.ticket-tab-slot').forEach(function(btn) {
+            var pid = parseInt(btn.getAttribute('data-participante-id'), 10);
+            var p = parts.find(function(x) { return x.id === pid; });
+            if (!p) return;
+            btn.setAttribute('data-estado', p.estado_pago);
+            btn.disabled = (p.estado_pago === 'pagado');
+            var badge = btn.querySelector('.badge');
+            if (badge) {
+                badge.textContent = (p.estado_pago === 'pagado') ? 'OK' : (p.subtotal_fmt || '');
+                badge.className = 'badge ml-1 ' + ((p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning');
+            }
+            btn.classList.remove('btn-primary', 'btn-outline-secondary');
+            if (p.estado_pago === 'pagado') {
+                btn.classList.add('btn-outline-secondary');
+            } else if (pid === activePid) {
+                btn.classList.add('btn-primary');
+            } else {
+                btn.classList.add('btn-outline-secondary');
+            }
+        });
+
+        parts.forEach(function(p) {
+            var panel = inner.querySelector('.ticket-jugador-panel[data-participante-id="' + p.id + '"]');
+            if (!panel) return;
+            panel.classList.toggle('d-none', parseInt(p.id, 10) !== parseInt(activePid, 10));
+            var inp = panel.querySelector('.ticket-input-nombre, .ticket-input-participante-nombre');
+            if (inp) {
+                inp.value = p.nombre;
+                inp.readOnly = (p.estado_pago === 'pagado');
+            }
+            var buscar = panel.querySelector('.btn-buscar-jugador-caja');
+            if (buscar) buscar.disabled = (p.estado_pago === 'pagado');
+            panel.dataset.jugadorId = (p.jugador_id != null) ? String(p.jugador_id) : '';
+            var acciones = panel.querySelector('.ticket-jugador-pago-acciones');
+            if (acciones) acciones.innerHTML = htmlTicketGrupoPagoAcciones(p);
+        });
+
+        var tbody = inner.querySelector('.ticket-lines-tbody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            (venta.detalles || []).forEach(function(d) {
+                var tr = document.createElement('tr');
+                tr.className = 'ticket-line-row';
+                tr.setAttribute('data-participante-id', d.stock_venta_participante_id);
+                var show = parseInt(d.stock_venta_participante_id, 10) === parseInt(activePid, 10);
+                tr.style.display = show ? '' : 'none';
+                tr.innerHTML = '<td>' + escapeHtml(d.producto_nombre || '') + '</td>'
+                    + '<td class="text-center">' + d.cantidad + '</td>'
+                    + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
+                    + '<td class="text-center p-1 align-middle">'
+                    + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+                    + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        var addBtn = inner.querySelector('.btn-ticket-add-linea');
+        if (addBtn) {
+            var ap = parts.find(function(x) { return x.id === activePid; });
+            addBtn.disabled = !ap || ap.estado_pago === 'pagado';
+        }
+    }
+
+    function applyVentaJson(cardRoot, venta) {
+        if (venta.modo_grupo) {
+            applyVentaJsonGrupo(cardRoot, venta);
+        } else {
+            applyVentaJsonSimple(cardRoot, venta);
+        }
     }
 
     function applyCajaResumen(res) {
@@ -454,7 +681,7 @@
 
     function patchNombre(ventaId, nombre, statusEl, cb) {
         if (statusEl) statusEl.textContent = 'Guardando…';
-        fetch(updateUrl(ventaId), {
+        return fetch(updateUrl(ventaId), {
             method: 'PATCH',
             headers: jsonHeaders(),
             body: JSON.stringify({ _token: csrfToken, nombre_cliente: nombre })
@@ -462,13 +689,41 @@
             if (!x.ok) {
                 var msg = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && JSON.stringify(x.j.errors));
                 if (statusEl) statusEl.textContent = msg || 'Error';
-                return;
+                return Promise.reject(new Error(msg || 'Error'));
             }
             if (statusEl) statusEl.textContent = 'Guardado';
             if (cb) cb();
             setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
+            return x;
         }).catch(function(e) {
             if (statusEl) statusEl.textContent = (e && e.message) ? e.message : 'Sin conexión';
+            return Promise.reject(e);
+        });
+    }
+
+    function patchParticipante(ventaId, participanteId, nombre, statusEl, cb, jugadorIdOptional) {
+        if (statusEl) statusEl.textContent = 'Guardando…';
+        var payload = { _token: csrfToken, nombre: nombre };
+        if (jugadorIdOptional !== undefined) {
+            payload.jugador_id = jugadorIdOptional;
+        }
+        return fetch(participantePatchUrl(ventaId, participanteId), {
+            method: 'PATCH',
+            headers: jsonHeaders(),
+            body: JSON.stringify(payload)
+        }).then(parseFetchResponse).then(function(x) {
+            if (!x.ok) {
+                var msg = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && JSON.stringify(x.j.errors));
+                if (statusEl) statusEl.textContent = msg || 'Error';
+                return Promise.reject(new Error(msg || 'Error'));
+            }
+            if (statusEl) statusEl.textContent = 'Guardado';
+            if (cb) cb();
+            setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
+            return x;
+        }).catch(function(e) {
+            if (statusEl) statusEl.textContent = (e && e.message) ? e.message : 'Sin conexión';
+            return Promise.reject(e);
         });
     }
 
@@ -476,14 +731,15 @@
         var inner = card.querySelector('.ticket-body-inner');
         if (!inner) return;
         var ventaId = inner.getAttribute('data-venta-id');
+        var modoGrupo = inner.getAttribute('data-modo-grupo') === '1';
         var nombreInput = inner.querySelector('.ticket-input-nombre');
         var statusNombre = inner.querySelector('.ticket-nombre-status');
         var addBtn = inner.querySelector('.btn-ticket-add-linea');
         var sel = inner.querySelector('.ticket-select-producto');
         var guardarBtn = inner.querySelector('.btn-ticket-guardar');
 
-        if (nombreInput && !nombreInput._wired) {
-            nombreInput._wired = true;
+        if (nombreInput && !nombreInput._wiredNombre) {
+            nombreInput._wiredNombre = true;
             nombreInput.addEventListener('blur', function() {
                 patchNombre(ventaId, nombreInput.value.trim() || '(Sin nombre)', statusNombre, function() {
                     var h = card.querySelector('.ticket-card-nombre');
@@ -491,13 +747,46 @@
                 });
             });
         }
+        if (modoGrupo) {
+            inner.querySelectorAll('.ticket-input-participante-nombre').forEach(function(inp) {
+                if (inp._wiredNombre) return;
+                inp._wiredNombre = true;
+                inp.addEventListener('blur', function() {
+                    var row = inp.closest('.ticket-fila-participante');
+                    var pid = row && row.getAttribute('data-participante-id');
+                    if (!pid) return;
+                    patchParticipante(ventaId, pid, inp.value.trim() || '(Sin nombre)', statusNombre, function() {
+                        var h = card.querySelector('.ticket-card-nombre');
+                        var n1 = inner.querySelector('.ticket-input-nombre');
+                        if (h && n1) h.textContent = n1.value.trim() || '(Sin nombre)';
+                    });
+                });
+            });
+        }
         if (guardarBtn && !guardarBtn._wired) {
             guardarBtn._wired = true;
             guardarBtn.addEventListener('click', function() {
-                patchNombre(ventaId, nombreInput ? nombreInput.value.trim() || '(Sin nombre)' : '', statusNombre, function() {
-                    var h = card.querySelector('.ticket-card-nombre');
-                    if (h && nombreInput) h.textContent = nombreInput.value.trim() || '(Sin nombre)';
+                if (!modoGrupo) {
+                    patchNombre(ventaId, nombreInput ? nombreInput.value.trim() || '(Sin nombre)' : '', statusNombre, function() {
+                        var h = card.querySelector('.ticket-card-nombre');
+                        if (h && nombreInput) h.textContent = nombreInput.value.trim() || '(Sin nombre)';
+                    });
+                    return;
+                }
+                var tasks = [];
+                if (nombreInput) {
+                    tasks.push(patchNombre(ventaId, nombreInput.value.trim() || '(Sin nombre)', statusNombre, function() {
+                        var h = card.querySelector('.ticket-card-nombre');
+                        if (h) h.textContent = nombreInput.value.trim() || '(Sin nombre)';
+                    }));
+                }
+                inner.querySelectorAll('.ticket-input-participante-nombre').forEach(function(inp) {
+                    var row = inp.closest('.ticket-fila-participante');
+                    var pid = row && row.getAttribute('data-participante-id');
+                    if (!pid) return;
+                    tasks.push(patchParticipante(ventaId, pid, inp.value.trim() || '(Sin nombre)', statusNombre));
                 });
+                Promise.all(tasks).catch(function() {});
             });
         }
         if (addBtn && !addBtn._wired) {
@@ -506,15 +795,22 @@
                 var pid = sel && sel.value;
                 var qty = 1;
                 if (!pid) { alert('Elegí una categoría y un producto.'); return; }
+                var body = mergeCajaFecha({
+                    _token: csrfToken,
+                    stock_producto_id: parseInt(pid, 10),
+                    cantidad: qty
+                });
+                if (modoGrupo) {
+                    var hid = inner.querySelector('.ticket-active-participante-id');
+                    var partId = hid && hid.value ? parseInt(hid.value, 10) : 0;
+                    if (!partId) { alert('Elegí un jugador (pestaña J1–J4).'); return; }
+                    body.stock_venta_participante_id = partId;
+                }
                 addBtn.disabled = true;
                 fetch(lineaUrl(ventaId), {
                     method: 'POST',
                     headers: jsonHeaders(),
-                    body: JSON.stringify(mergeCajaFecha({
-                        _token: csrfToken,
-                        stock_producto_id: parseInt(pid, 10),
-                        cantidad: qty
-                    }))
+                    body: JSON.stringify(body)
                 }).then(parseFetchResponse).then(function(x) {
                     addBtn.disabled = false;
                     if (!x.ok) {
@@ -622,6 +918,108 @@
     }
     if (listaTicketsEl) {
         listaTicketsEl.addEventListener('click', function(e) {
+            var tabSlot = e.target.closest('.ticket-tab-slot');
+            if (tabSlot && listaTicketsEl.contains(tabSlot) && !tabSlot.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardtab = tabSlot.closest('.ticket-card');
+                var innertab = cardtab && cardtab.querySelector('.ticket-body-inner[data-modo-grupo="1"]');
+                if (!innertab) return;
+                switchTicketGrupoTab(innertab, tabSlot.getAttribute('data-participante-id'));
+                return;
+            }
+            var payPar = e.target.closest('.btn-participante-pago');
+            if (payPar && listaTicketsEl.contains(payPar)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardp = payPar.closest('.ticket-card');
+                var innerp = cardp && cardp.querySelector('.ticket-body-inner');
+                var vid = innerp && innerp.getAttribute('data-venta-id');
+                var pidPay = payPar.getAttribute('data-participante-id');
+                var metodo = payPar.getAttribute('data-metodo');
+                if (!vid || !pidPay) return;
+                payPar.disabled = true;
+                fetch(participantePagoUrl(vid, pidPay), {
+                    method: 'POST',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken, metodo_pago: metodo }))
+                }).then(parseFetchResponse).then(function(x) {
+                    payPar.disabled = false;
+                    if (!x.ok) {
+                        var msgp = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && Object.values(x.j.errors).flat().join(' '));
+                        alert(msgp || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                    if (x.j && x.j.ticket_cerrado) {
+                        var colp = cardp.closest('.col-lg-4');
+                        if (colp) colp.remove();
+                        syncTicketsToggleBtn();
+                        return;
+                    }
+                    if (x.j && x.j.venta && cardp) applyVentaJson(cardp, x.j.venta);
+                }).catch(function(errp) {
+                    payPar.disabled = false;
+                    alert((errp && errp.message) ? errp.message : 'Error de red');
+                });
+                return;
+            }
+            var sinPar = e.target.closest('.btn-participante-sin-consumo');
+            if (sinPar && listaTicketsEl.contains(sinPar)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cards = sinPar.closest('.ticket-card');
+                var inners = cards && cards.querySelector('.ticket-body-inner');
+                var vids = inners && inners.getAttribute('data-venta-id');
+                var pidSin = sinPar.getAttribute('data-participante-id');
+                if (!vids || !pidSin) return;
+                sinPar.disabled = true;
+                fetch(participantePagoUrl(vids, pidSin), {
+                    method: 'POST',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken }))
+                }).then(parseFetchResponse).then(function(x) {
+                    sinPar.disabled = false;
+                    if (!x.ok) {
+                        var msgs = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors || {}).flat().join(' '));
+                        alert(msgs || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                    if (x.j && x.j.ticket_cerrado) {
+                        var cols = cards.closest('.col-lg-4');
+                        if (cols) cols.remove();
+                        syncTicketsToggleBtn();
+                        return;
+                    }
+                    if (x.j && x.j.venta && cards) applyVentaJson(cards, x.j.venta);
+                }).catch(function(errs) {
+                    sinPar.disabled = false;
+                    alert((errs && errs.message) ? errs.message : 'Error de red');
+                });
+                return;
+            }
+            var busBtn = e.target.closest('.btn-buscar-jugador-caja');
+            if (busBtn && listaTicketsEl.contains(busBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardb = busBtn.closest('.ticket-card');
+                var innerb = cardb && cardb.querySelector('.ticket-body-inner');
+                var vidb = innerb && innerb.getAttribute('data-venta-id');
+                var pidb = busBtn.getAttribute('data-participante-id');
+                var solo = busBtn.classList.contains('btn-buscar-jugador-solo');
+                cajaModalTarget = { ventaId: vidb, participanteId: solo ? null : pidb, solo: !!solo, card: cardb, inner: innerb };
+                ensureCajaJugadoresLoaded(function() {
+                    renderCajaJugadorLista('');
+                    var sin = document.getElementById('caja-jugador-buscar-input');
+                    if (sin) {
+                        sin.value = '';
+                        sin.focus();
+                    }
+                    if (window.jQuery) window.jQuery('#modal-buscar-jugador-caja').modal('show');
+                });
+                return;
+            }
             var rm = e.target.closest('.btn-ticket-remove-linea');
             if (rm) {
                 e.preventDefault();
@@ -691,16 +1089,53 @@
                 document.querySelectorAll('.resumen-tabla').forEach(function(el) { el.classList.add('d-none'); });
             });
         }
+        wrap.addEventListener('click', function(e) {
+            var btnV = e.target.closest('.btn-caja-ver-ticket-modal');
+            if (!btnV) return;
+            e.preventDefault();
+            var vid = btnV.getAttribute('data-venta-id');
+            if (!vid) return;
+            var modalTicket = document.getElementById('modal-caja-ver-ticket');
+            var bodyTicket = document.getElementById('modal-caja-ver-ticket-body');
+            var tituloTicket = document.getElementById('modal-caja-ver-ticket-titulo');
+            var linkTicket = document.getElementById('modal-caja-ver-ticket-link-completo');
+            if (!bodyTicket || !modalTicket) return;
+            bodyTicket.innerHTML = '<p class="text-muted small mb-0">Cargando…</p>';
+            if (tituloTicket) tituloTicket.textContent = 'Ticket';
+            if (linkTicket) linkTicket.setAttribute('href', '#');
+            if (window.jQuery) window.jQuery(modalTicket).modal('show');
+            fetch(ventaTicketModalUrl(vid), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(parseFetchResponse).then(function(x) {
+                if (!x.ok || !x.j || !x.j.ok) {
+                    var errTxt = (x.j && x.j.message) ? String(x.j.message) : ('Error HTTP ' + x.status);
+                    bodyTicket.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(errTxt) + '</p>';
+                    return;
+                }
+                if (tituloTicket && x.j.titulo) tituloTicket.textContent = x.j.titulo;
+                bodyTicket.innerHTML = x.j.html || '';
+                if (linkTicket && x.j.url_ver_completo) linkTicket.setAttribute('href', x.j.url_ver_completo);
+            }).catch(function() {
+                bodyTicket.innerHTML = '<p class="text-danger small mb-0">Error de red.</p>';
+            });
+        });
     })();
 
-    function buildTicketCardHtml(venta) {
+    function buildTicketCardHtmlSimple(venta) {
         var id = venta.id;
         var collapseId = 'ticket-collapse-' + id;
         var body = ''
-            + '<div class="ticket-body-inner" data-venta-id="' + id + '">'
+            + '<div class="ticket-body-inner" data-venta-id="' + id + '" data-modo-grupo="0">'
             + '<div class="form-group">'
             + '<label class="small font-weight-bold mb-1">Cliente</label>'
+            + '<div class="input-group">'
             + '<input type="text" class="form-control ticket-input-nombre" value="' + escapeHtml(venta.nombre_cliente) + '" autocomplete="off">'
+            + '<div class="input-group-append">'
+            + '<button type="button" class="btn btn-outline-secondary btn-buscar-jugador-caja btn-buscar-jugador-solo" title="Buscar jugador (solo rellena nombre)"><i class="fas fa-search"></i></button>'
+            + '</div></div>'
             + '<small class="text-muted ticket-nombre-status"></small>'
             + '</div>'
             + '<div class="table-responsive mb-2">'
@@ -746,6 +1181,100 @@
             + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
             + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
             + '<div class="card-body text-dark pt-3">' + body + '</div></div></div></div>';
+    }
+
+    function buildTicketCardHtmlGrupo(venta) {
+        var id = venta.id;
+        var collapseId = 'ticket-collapse-' + id;
+        var parts = venta.participantes || [];
+        var activeId = grupoPickDefaultActiveId(venta);
+        var detalles = venta.detalles || [];
+
+        var tabs = '<div class="btn-group btn-group-sm mb-3 flex-wrap ticket-grupo-tabs" role="group">';
+        parts.forEach(function(p) {
+            var dis = (p.estado_pago === 'pagado') ? ' disabled title="Ya pagó"' : '';
+            var cls = 'btn-outline-secondary';
+            if (p.estado_pago !== 'pagado') cls = (p.id === activeId) ? 'btn-primary' : 'btn-outline-secondary';
+            var badgeClass = (p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning';
+            var badgeTxt = (p.estado_pago === 'pagado') ? 'OK' : escapeHtml(p.subtotal_fmt);
+            tabs += '<button type="button" class="btn ticket-tab-slot ' + cls + '" data-participante-id="' + p.id + '" data-slot="' + p.slot + '" data-estado="' + escapeHtml(p.estado_pago) + '"' + dis + '>J' + p.slot + ' <span class="badge ' + badgeClass + ' ml-1">' + badgeTxt + '</span></button>';
+        });
+        tabs += '</div>';
+
+        var paneles = '<div class="ticket-grupo-paneles-jugador mb-3">';
+        parts.forEach(function(p) {
+            var visible = (parseInt(p.id, 10) === parseInt(activeId, 10)) ? '' : ' d-none';
+            var lab = (p.slot === 1) ? 'Cliente / Jugador 1' : ('Jugador ' + p.slot);
+            var readonly = (p.estado_pago === 'pagado') ? ' readonly' : '';
+            var inpCls = (p.slot === 1) ? 'ticket-input-nombre' : 'ticket-input-participante-nombre';
+            var busDis = (p.estado_pago === 'pagado') ? ' disabled' : '';
+            var jid = (p.jugador_id != null) ? String(p.jugador_id) : '';
+            paneles += '<div class="ticket-jugador-panel ticket-fila-participante border rounded p-2 mb-2' + visible + '" data-participante-id="' + p.id + '" data-slot="' + p.slot + '" data-jugador-id="' + jid + '">';
+            paneles += '<label class="small font-weight-bold mb-1 d-block">' + escapeHtml(lab) + '</label>';
+            paneles += '<div class="input-group input-group-sm">';
+            paneles += '<input type="text" class="form-control ' + inpCls + '" value="' + escapeHtml(p.nombre) + '" autocomplete="off" data-participante-id="' + p.id + '"' + readonly + '>';
+            paneles += '<div class="input-group-append"><button type="button" class="btn btn-outline-secondary btn-buscar-jugador-caja" data-participante-id="' + p.id + '"' + busDis + '><i class="fas fa-search"></i></button></div>';
+            paneles += '</div>';
+            paneles += '<div class="mt-2 pt-2 border-top">';
+            paneles += '<div class="d-flex flex-wrap align-items-center justify-content-between mb-2">';
+            paneles += '<span class="small text-muted">Consumo este jugador: <strong>' + escapeHtml(p.subtotal_fmt) + '</strong></span></div>';
+            paneles += '<div class="ticket-jugador-pago-acciones d-flex flex-wrap align-items-center justify-content-end">';
+            paneles += htmlTicketGrupoPagoAcciones(p);
+            paneles += '</div></div></div>';
+        });
+        paneles += '<small class="text-muted ticket-nombre-status d-block"></small></div>';
+
+        var lines = '';
+        detalles.forEach(function(d) {
+            var show = parseInt(d.stock_venta_participante_id, 10) === parseInt(activeId, 10);
+            lines += '<tr class="ticket-line-row" data-participante-id="' + d.stock_venta_participante_id + '" style="' + (show ? '' : 'display:none;') + '">';
+            lines += '<td>' + escapeHtml(d.producto_nombre || '') + '</td>';
+            lines += '<td class="text-center">' + d.cantidad + '</td>';
+            lines += '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>';
+            lines += '<td class="text-center p-1 align-middle"><button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button></td></tr>';
+        });
+
+        var body = ''
+            + '<div class="ticket-body-inner" data-venta-id="' + id + '" data-modo-grupo="1">'
+            + '<div class="mb-2"><span class="small font-weight-bold text-primary">Total del ticket:</span> '
+            + '<span class="h5 mb-0 text-primary ticket-total ml-2">' + escapeHtml(venta.precio_total_fmt) + '</span></div>'
+            + tabs
+            + paneles
+            + '<div class="table-responsive mb-2"><table class="table table-sm table-bordered mb-0">'
+            + '<thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center p-1" style="width:44px"></th></tr></thead>'
+            + '<tbody class="ticket-lines-tbody">' + lines + '</tbody></table></div>'
+            + '<div class="mb-3 ticket-add-product-block">'
+            + '<label class="small mb-1 d-block">Categoría — <span class="text-muted ticket-add-para-label">cargá para el jugador seleccionado arriba</span></label>'
+            + '<div class="d-flex flex-wrap ticket-cat-pills align-items-center" style="gap:6px;">' + categoriasPillsHtml() + '</div>'
+            + '<div class="form-row align-items-end mt-2">'
+            + '<div class="form-group col-md-10 mb-2 mb-md-0"><label class="small mb-1">Producto</label>'
+            + '<select class="form-control ticket-select-producto" disabled><option value="">— Elegí una categoría —</option></select>'
+            + '<input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true">'
+            + '<input type="hidden" class="ticket-active-participante-id" value="' + activeId + '"></div>'
+            + '<div class="form-group col-md-2 mb-0"><label class="small mb-1 d-none d-md-block">&nbsp;</label>'
+            + '<button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar 1 unidad">+</button></div>'
+            + '</div></div>'
+            + '<div class="d-flex flex-wrap">'
+            + '<button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar nombres</button>'
+            + '<button type="button" class="btn btn-outline-danger mb-2 ml-md-2 btn-ticket-cancelar" title="Anular ticket y devolver stock">Cancelar ticket</button></div>'
+            + '<small class="text-muted d-block">Tocá <strong>J1–J4</strong> para ver el nombre, la búsqueda y el cobro de ese jugador. Cargá productos con <strong>+</strong>. El ticket se cierra cuando los cuatro estén pagados (o “Sin consumo”).</small>'
+            + '</div>';
+
+        return ''
+            + '<div class="col-lg-4 col-md-6 mb-3 d-flex">'
+            + '<div class="card mb-0 ticket-card shadow flex-fill w-100" data-venta-id="' + id + '">'
+            + '<div class="card-header py-2 d-flex justify-content-between align-items-center ticket-card-header-toggle" style="cursor:pointer">'
+            + '<div><strong class="ticket-card-nombre">' + escapeHtml(venta.nombre_cliente) + '</strong> '
+            + '<span class="text-muted small ml-2 ticket-card-cancha-meta">' + escapeHtml(venta.cancha_nombre || '') + '</span></div>'
+            + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(venta.precio_total_fmt) + '</span> '
+            + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
+            + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
+            + '<div class="card-body text-dark pt-3">' + body + '</div></div></div></div>';
+    }
+
+    function buildTicketCardHtml(venta) {
+        if (venta.modo_grupo) return buildTicketCardHtmlGrupo(venta);
+        return buildTicketCardHtmlSimple(venta);
     }
 
     var selectedCanchaId = '';
@@ -828,6 +1357,50 @@
                 btnAbrir.disabled = false;
                 alert((e && e.message) ? e.message : 'Error de red');
             });
+        });
+    }
+
+    var listaJugModalEl = document.getElementById('caja-jugador-lista');
+    if (listaJugModalEl) {
+        listaJugModalEl.addEventListener('click', function(ev) {
+            var eb = ev.target.closest('.btn-elegir-jugador-caja');
+            if (!eb) return;
+            var jid = parseInt(eb.getAttribute('data-id'), 10);
+            var nombreCompleto = eb.textContent.trim();
+            var tgt = cajaModalTarget;
+            if (!tgt || !tgt.ventaId) return;
+            var stModal = tgt.inner ? tgt.inner.querySelector('.ticket-nombre-status') : null;
+            function cerrarModal() {
+                if (window.jQuery) window.jQuery('#modal-buscar-jugador-caja').modal('hide');
+            }
+            if (tgt.solo) {
+                patchNombre(tgt.ventaId, nombreCompleto, stModal, function() {
+                    var inpS = tgt.inner && tgt.inner.querySelector('.ticket-input-nombre');
+                    var hdrS = tgt.card && tgt.card.querySelector('.ticket-card-nombre');
+                    if (inpS) inpS.value = nombreCompleto;
+                    if (hdrS) hdrS.textContent = nombreCompleto;
+                }).then(cerrarModal).catch(cerrarModal);
+                return;
+            }
+            if (!tgt.participanteId) return;
+            patchParticipante(tgt.ventaId, tgt.participanteId, nombreCompleto, stModal, function() {
+                var rowM = tgt.inner && tgt.inner.querySelector('.ticket-fila-participante[data-participante-id="' + tgt.participanteId + '"]');
+                if (rowM) {
+                    rowM.dataset.jugadorId = String(jid);
+                    var inpM = rowM.querySelector('.ticket-input-nombre, .ticket-input-participante-nombre');
+                    if (inpM) inpM.value = nombreCompleto;
+                }
+                var hdrM = tgt.card && tgt.card.querySelector('.ticket-card-nombre');
+                var n1m = tgt.inner && tgt.inner.querySelector('.ticket-input-nombre');
+                if (hdrM && n1m) hdrM.textContent = n1m.value.trim() || nombreCompleto;
+            }, jid).then(cerrarModal).catch(cerrarModal);
+        });
+    }
+    var jBuscarInp = document.getElementById('caja-jugador-buscar-input');
+    if (jBuscarInp && !jBuscarInp._wiredModalSearch) {
+        jBuscarInp._wiredModalSearch = true;
+        jBuscarInp.addEventListener('keyup', function() {
+            renderCajaJugadorLista(jBuscarInp.value);
         });
     }
 })();

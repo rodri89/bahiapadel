@@ -5,6 +5,8 @@
 @section('contenedor')
 @php
     $fmtMoney = fn ($n) => '$' . number_format((float) $n, 2, ',', '.');
+    $modoGrupo = $venta->participantes && $venta->participantes->isNotEmpty();
+    $partsSorted = $modoGrupo ? $venta->participantes->sortBy('slot')->values() : collect();
 @endphp
 
 @if(session('success'))
@@ -28,7 +30,7 @@
             </div>
             <div class="col-md-6">
                 <p><strong>Total:</strong> {{ $fmtMoney($venta->precio_total) }}</p>
-                <p><strong>Método:</strong> {{ $venta->metodo_pago }}</p>
+                <p><strong>Método:</strong> {{ $venta->metodo_pago ?: '—' }}</p>
                 <p><strong>Estado:</strong>
                     <span class="badge badge-{{ $venta->estado_pago === 'pagado' ? 'success' : 'warning' }}">{{ $venta->estado_pago }}</span>
                 </p>
@@ -41,18 +43,57 @@
                 @if($venta->notas)
                     <p><strong>Notas:</strong> {{ $venta->notas }}</p>
                 @endif
+                @if($modoGrupo)
+                    <p class="small text-muted mb-0">Ticket <strong>multi-jugador</strong>: el cobro es por jugador; la venta queda pendiente hasta que los cuatro estén pagados (o “sin consumo”).</p>
+                @endif
             </div>
         </div>
     </div>
+
+    @if($modoGrupo)
+    <div class="card shadow mb-4">
+        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Jugadores</h6></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Slot</th><th>Nombre</th><th>Consumido</th><th>Estado</th></tr></thead>
+                <tbody>
+                    @foreach($partsSorted as $p)
+                        @php $subPart = $venta->detalles->where('stock_venta_participante_id', $p->id)->sum('subtotal'); @endphp
+                        <tr>
+                            <td>J{{ $p->slot }}</td>
+                            <td>{{ $p->nombre }}</td>
+                            <td>{{ $fmtMoney($subPart) }}</td>
+                            <td>
+                                @if($p->estado_pago === 'pagado')
+                                    <span class="badge badge-success">Pagado{{ $p->metodo_pago ? ' ('.$p->metodo_pago.')' : '' }}</span>
+                                @else
+                                    <span class="badge badge-warning">Pendiente</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     <div class="card shadow mb-4">
         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Productos</h6></div>
         <div class="card-body p-0">
             <table class="table mb-0">
-                <thead><tr><th>Producto</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th></tr></thead>
+                <thead>
+                    <tr>
+                        @if($modoGrupo)<th>Jug.</th>@endif
+                        <th>Producto</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach($venta->detalles as $d)
                         <tr>
+                            @if($modoGrupo)
+                                <td>{{ $d->participante ? 'J'.$d->participante->slot : '—' }}</td>
+                            @endif
                             <td>{{ $d->producto?->nombre }}</td>
                             <td>{{ $d->cantidad }}</td>
                             <td>{{ $fmtMoney($d->precio_unitario) }}</td>
@@ -69,11 +110,20 @@
         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Historial de pagos</h6></div>
         <div class="card-body p-0">
             <table class="table table-sm mb-0">
-                <thead><tr><th>Fecha</th><th>Monto</th><th>Método</th><th>Ref.</th><th>Usuario</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        @if($modoGrupo)<th>Jug.</th>@endif
+                        <th>Monto</th><th>Método</th><th>Ref.</th><th>Usuario</th>
+                    </tr>
+                </thead>
                 <tbody>
                     @foreach($venta->pagos as $p)
                         <tr>
                             <td>{{ $p->fecha_pago?->format('d/m/Y H:i') }}</td>
+                            @if($modoGrupo)
+                                <td>{{ $p->participante ? 'J'.$p->participante->slot : '—' }}</td>
+                            @endif
                             <td>{{ $fmtMoney($p->monto_pagado) }}</td>
                             <td>{{ $p->metodo_pago }}</td>
                             <td>{{ $p->referencia_pago }}</td>
@@ -90,31 +140,78 @@
     <div class="card shadow border-success">
         <div class="card-header bg-light font-weight-bold">Registrar cobro</div>
         <div class="card-body">
-            <form method="post" action="{{ route('admincaja.venta.pago', $venta) }}">
-                @csrf
-                <div class="form-row">
-                    <div class="form-group col-md-4">
-                        <label>Método de pago</label>
-                        <select name="metodo_pago" class="form-control">
-                            <option value="efectivo" @selected($venta->metodo_pago === 'efectivo')>Efectivo</option>
-                            <option value="transferencia" @selected($venta->metodo_pago === 'transferencia')>Transferencia</option>
-                        </select>
+            @if($modoGrupo)
+                @foreach($partsSorted as $p)
+                    @php $subPart = $venta->detalles->where('stock_venta_participante_id', $p->id)->sum('subtotal'); @endphp
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>J{{ $p->slot }}</strong> {{ $p->nombre }}
+                                <span class="text-muted small ml-2">{{ $fmtMoney($subPart) }}</span>
+                            </div>
+                            @if($p->estado_pago === 'pagado')
+                                <span class="badge badge-success">Ya cobrado{{ $p->metodo_pago ? ' ('.$p->metodo_pago.')' : '' }}</span>
+                            @endif
+                        </div>
+                        @if($p->estado_pago !== 'pagado')
+                            @if((float) $subPart <= 0)
+                                <form method="post" action="{{ route('admincaja.venta.participante.pago', [$venta, $p]) }}" class="d-inline" onsubmit="return confirm('¿Marcar a este jugador como sin consumo?');">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Sin consumo</button>
+                                </form>
+                            @else
+                                <form method="post" action="{{ route('admincaja.venta.participante.pago', [$venta, $p]) }}" class="mb-0">
+                                    @csrf
+                                    <div class="form-row align-items-end">
+                                        <div class="form-group col-md-4 mb-2">
+                                            <label class="small mb-0">Método</label>
+                                            <select name="metodo_pago" class="form-control form-control-sm" required>
+                                                <option value="efectivo">Efectivo</option>
+                                                <option value="transferencia">Transferencia</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-4 mb-2">
+                                            <label class="small mb-0">Fecha de pago</label>
+                                            <input type="date" name="fecha_pago" class="form-control form-control-sm" value="{{ now()->toDateString() }}">
+                                        </div>
+                                        <div class="form-group col-md-4 mb-2">
+                                            <label class="small mb-0">Referencia</label>
+                                            <input type="text" name="referencia_pago" class="form-control form-control-sm" placeholder="Opcional">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-sm">Cobrar {{ $fmtMoney($subPart) }}</button>
+                                </form>
+                            @endif
+                        @endif
                     </div>
-                    <div class="form-group col-md-4">
-                        <label>Fecha de pago</label>
-                        <input type="date" name="fecha_pago" class="form-control" value="{{ now()->toDateString() }}">
+                @endforeach
+            @else
+                <form method="post" action="{{ route('admincaja.venta.pago', $venta) }}">
+                    @csrf
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Método de pago</label>
+                            <select name="metodo_pago" class="form-control">
+                                <option value="efectivo" @selected($venta->metodo_pago === 'efectivo')>Efectivo</option>
+                                <option value="transferencia" @selected($venta->metodo_pago === 'transferencia')>Transferencia</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Fecha de pago</label>
+                            <input type="date" name="fecha_pago" class="form-control" value="{{ now()->toDateString() }}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Referencia / comprobante</label>
+                            <input type="text" name="referencia_pago" class="form-control" value="{{ $venta->referencia_pago }}">
+                        </div>
                     </div>
-                    <div class="form-group col-md-4">
-                        <label>Referencia / comprobante</label>
-                        <input type="text" name="referencia_pago" class="form-control" value="{{ $venta->referencia_pago }}">
+                    <div class="form-group">
+                        <label>Notas</label>
+                        <input type="text" name="notas" class="form-control">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Notas</label>
-                    <input type="text" name="notas" class="form-control">
-                </div>
-                <button type="submit" class="btn btn-success">Confirmar pago de {{ $fmtMoney($venta->precio_total) }}</button>
-            </form>
+                    <button type="submit" class="btn btn-success">Confirmar pago de {{ $fmtMoney($venta->precio_total) }}</button>
+                </form>
+            @endif
             <hr class="my-3">
             <p class="small text-muted mb-2">Si no se va a cobrar esta venta, podés cancelarla: se borra el ticket y el stock vuelve a los productos.</p>
             <form method="post" action="{{ route('admincaja.venta.destroy', $venta) }}" class="d-inline" onsubmit="return confirm('¿Cancelar este ticket? Se eliminará la venta y se devolverá el stock de todos los productos.');">

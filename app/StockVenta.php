@@ -36,4 +36,9 @@ class StockVenta extends Model
     {
         return $this->hasMany(StockHistorialPago::class, 'stock_venta_id');
     }
+
+    public function participantes(): HasMany
+    {
+        return $this->hasMany(StockVentaParticipante::class, 'stock_venta_id')->orderBy('slot');
+    }
 }

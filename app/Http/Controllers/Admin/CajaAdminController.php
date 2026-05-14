@@ -8,6 +8,8 @@ use App\StockCancha;
 use App\StockDetalleVenta;
 use App\StockProducto;
 use App\StockVenta;
+use App\StockVentaParticipante;
+use App\Jugadore;
 use Illuminate\Http\Request;
 
 class CajaAdminController extends Controller
@@ -72,6 +74,7 @@ class CajaAdminController extends Controller
             'ventas' => $ventas,
             'fmtMoney' => $fmtMoney,
             'mostrarAccionesVerCobrar' => false,
+            'mostrarVerModal' => true,
         ])->render();
     }
 
@@ -153,23 +156,139 @@ class CajaAdminController extends Controller
 
     private function ventaToArray(StockVenta $venta, callable $fmtMoney): array
     {
-        $venta->load(['detalles.producto', 'cancha']);
+        $venta->load(['detalles.producto', 'detalles.participante', 'cancha', 'participantes']);
+
+        $modoGrupo = $venta->participantes->isNotEmpty();
+
+        $detallesPayload = $venta->detalles->map(function ($d) use ($fmtMoney) {
+            return [
+                'id' => $d->id,
+                'stock_venta_participante_id' => $d->stock_venta_participante_id !== null ? (int) $d->stock_venta_participante_id : null,
+                'slot' => $d->participante ? (int) $d->participante->slot : null,
+                'producto_nombre' => $d->producto ? $d->producto->nombre : null,
+                'cantidad' => (int) $d->cantidad,
+                'subtotal_fmt' => $fmtMoney($d->subtotal),
+            ];
+        })->values()->all();
+
+        $participantesPayload = [];
+        if ($modoGrupo) {
+            foreach ($venta->participantes->sortBy('slot')->values() as $p) {
+                $sub = (float) $venta->detalles
+                    ->where('stock_venta_participante_id', $p->id)
+                    ->sum('subtotal');
+                $participantesPayload[] = [
+                    'id' => $p->id,
+                    'slot' => (int) $p->slot,
+                    'nombre' => $p->nombre,
+                    'jugador_id' => $p->jugador_id !== null ? (int) $p->jugador_id : null,
+                    'estado_pago' => $p->estado_pago,
+                    'metodo_pago' => $p->metodo_pago,
+                    'subtotal' => $sub,
+                    'subtotal_fmt' => $fmtMoney($sub),
+                ];
+            }
+        }
 
         return [
             'id' => $venta->id,
             'nombre_cliente' => $venta->nombre_cliente,
             'precio_total' => (float) $venta->precio_total,
             'precio_total_fmt' => $fmtMoney($venta->precio_total),
+            'estado_pago' => $venta->estado_pago,
             'cancha_nombre' => $venta->cancha ? $venta->cancha->nombre : null,
-            'detalles' => $venta->detalles->map(function ($d) use ($fmtMoney) {
-                return [
-                    'id' => $d->id,
-                    'producto_nombre' => $d->producto ? $d->producto->nombre : null,
-                    'cantidad' => (int) $d->cantidad,
-                    'subtotal_fmt' => $fmtMoney($d->subtotal),
-                ];
-            })->values()->all(),
+            'modo_grupo' => $modoGrupo,
+            'participantes' => $participantesPayload,
+            'detalles' => $detallesPayload,
         ];
+    }
+
+    public function jugadoresCajaJson()
+    {
+        $jugadores = Jugadore::query()
+            ->where('activo', 1)
+            ->orderBy('apellido')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'apellido']);
+
+        return response()->json(['success' => true, 'jugadores' => $jugadores]);
+    }
+
+    public function updateParticipante(Request $request, StockVenta $venta, StockVentaParticipante $participante, StockVentaService $ventaService)
+    {
+        if ((int) $participante->stock_venta_id !== (int) $venta->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'jugador_id' => 'sometimes|nullable|integer|exists:jugadores,id',
+        ]);
+
+        $actualizarJugadorId = array_key_exists('jugador_id', $validated);
+        $jugadorId = $actualizarJugadorId ? ($validated['jugador_id'] ?? null) : null;
+
+        try {
+            $ventaService->actualizarParticipante(
+                $venta,
+                (int) $participante->id,
+                $validated['nombre'],
+                $jugadorId,
+                $actualizarJugadorId
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function pagoParticipante(Request $request, StockVenta $venta, StockVentaParticipante $participante, StockVentaService $ventaService)
+    {
+        if ((int) $participante->stock_venta_id !== (int) $venta->id) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'metodo_pago' => 'nullable|in:efectivo,transferencia',
+            'referencia_pago' => 'nullable|string|max:100',
+            'fecha_pago' => 'nullable|date',
+            'notas' => 'nullable|string|max:255',
+            'caja_fecha' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
+        $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+        $resumenFecha = $this->normalizarFechaCaja($data['caja_fecha'] ?? null);
+
+        try {
+            $venta = $ventaService->registrarPagoParticipante(
+                $venta,
+                (int) $participante->id,
+                \Illuminate\Support\Arr::only($data, ['metodo_pago', 'referencia_pago', 'fecha_pago', 'notas'])
+            );
+        } catch (\RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        $msg = $venta->estado_pago === 'pagado'
+            ? 'Ticket cerrado: todos los jugadores pagaron.'
+            : 'Pago del jugador registrado.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => $msg,
+                'venta' => $this->ventaToArray($venta, $fmtMoney),
+                'ticket_cerrado' => $venta->estado_pago === 'pagado',
+                'resumen' => $this->cajaResumenAjaxPayload($resumenFecha),
+            ]);
+        }
+
+        return redirect()->route('admincaja.venta.show', $venta)->with('success', $msg);
     }
 
     public function index(Request $request)
@@ -226,7 +345,7 @@ class CajaAdminController extends Controller
         $listaPendienteHoy = $baseListasQuery()->where('estado_pago', 'pendiente')->orderByDesc('id')->get();
 
         $ticketsAbiertos = StockVenta::query()
-            ->with(['cancha', 'detalles.producto'])
+            ->with(['cancha', 'detalles.producto', 'detalles.participante', 'participantes'])
             ->where('estado_pago', 'pendiente')
             ->where('fecha_venta', $fechaCaja)
             ->orderByDesc('updated_at')
@@ -285,16 +404,29 @@ class CajaAdminController extends Controller
         $request->validate([
             'stock_producto_id' => 'required|exists:stock_productos,id',
             'cantidad' => 'required|integer|min:1',
+            'stock_venta_participante_id' => 'nullable|integer',
             'caja_fecha' => 'nullable|date_format:Y-m-d|before_or_equal:today',
         ]);
 
         $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
 
+        $venta->load('participantes');
+        $participanteLineaId = $request->input('stock_venta_participante_id');
+        if ($venta->participantes->isNotEmpty()) {
+            $request->validate([
+                'stock_venta_participante_id' => 'required|integer',
+            ]);
+            $participanteLineaId = (int) $participanteLineaId;
+        } else {
+            $participanteLineaId = null;
+        }
+
         try {
             $venta = $ventaService->agregarLineaVenta(
                 $venta,
                 (int) $request->stock_producto_id,
-                (int) $request->cantidad
+                (int) $request->cantidad,
+                $participanteLineaId
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -423,9 +555,23 @@ class CajaAdminController extends Controller
 
     public function showVenta(StockVenta $venta)
     {
-        $venta->load(['cancha', 'detalles.producto.categoria', 'pagos']);
+        $venta->load(['cancha', 'detalles.producto.categoria', 'detalles.participante', 'participantes', 'pagos.participante']);
 
         return view('bahia_padel.admin.caja.show', compact('venta'));
+    }
+
+    public function ventaTicketModal(StockVenta $venta)
+    {
+        $venta->load(['cancha', 'detalles.producto.categoria', 'detalles.participante', 'participantes', 'pagos.participante']);
+
+        $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+
+        return response()->json([
+            'ok' => true,
+            'titulo' => 'Venta #'.$venta->id,
+            'html' => view('bahia_padel.admin.caja._ticket_modal_body', compact('venta', 'fmtMoney'))->render(),
+            'url_ver_completo' => route('admincaja.venta.show', $venta),
+        ]);
     }
 
     public function registrarPago(Request $request, StockVenta $venta, StockVentaService $ventaService)

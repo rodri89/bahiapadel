@@ -1,10 +1,20 @@
 @php
     $vid = $venta->id;
 @endphp
-<div class="ticket-body-inner" data-venta-id="{{ $vid }}">
+@if($venta->participantes && $venta->participantes->isNotEmpty())
+    @include('bahia_padel.admin.caja._ticket_body_grupo', ['venta' => $venta, 'fmtMoney' => $fmtMoney, 'categoriasVenta' => $categoriasVenta])
+@else
+<div class="ticket-body-inner" data-venta-id="{{ $vid }}" data-modo-grupo="0">
     <div class="form-group">
         <label class="small font-weight-bold mb-1">Cliente</label>
-        <input type="text" class="form-control ticket-input-nombre" value="{{ $venta->nombre_cliente }}" autocomplete="off">
+        <div class="input-group">
+            <input type="text" class="form-control ticket-input-nombre" value="{{ $venta->nombre_cliente }}" autocomplete="off">
+            <div class="input-group-append">
+                <button type="button" class="btn btn-outline-secondary btn-buscar-jugador-caja btn-buscar-jugador-solo" title="Buscar jugador (solo rellena nombre)">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
         <small class="text-muted ticket-nombre-status"></small>
     </div>
     <div class="table-responsive mb-2">
@@ -72,3 +82,4 @@
     </div>
     <small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad del producto elegido. Podés quitar una línea con <strong>−</strong>. <strong>Cancelar ticket</strong> elimina la venta y devuelve el stock. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
 </div>
+@endif

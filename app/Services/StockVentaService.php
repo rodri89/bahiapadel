@@ -6,6 +6,8 @@ use App\StockDetalleVenta;
 use App\StockHistorialPago;
 use App\StockMovimientoStock;
 use App\StockProducto;
+use App\StockCancha;
+use App\StockVentaParticipante;
 use App\StockVenta;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,49 @@ class StockVentaService
         $u = Auth::user();
 
         return $u ? (string) ($u->name ?? $u->email ?? 'admin') : 'sistema';
+    }
+
+    /** Canchas que abren ticket con 4 jugadores independientes (caja). */
+    public static function esCanchaMultiJugador(?StockCancha $cancha): bool
+    {
+        if ($cancha === null) {
+            return false;
+        }
+
+        return in_array($cancha->nombre, ['Cancha 1', 'Cancha 2', 'Cancha 3'], true);
+    }
+
+    /**
+     * Producto "Turno" en categoría Accesorio(s), para cargar 1 unidad por jugador al abrir ticket de cancha.
+     */
+    public static function resolverProductoTurnoCancha(): ?StockProducto
+    {
+        $porCat = StockProducto::query()
+            ->where('activo', true)
+            ->whereRaw('LOWER(TRIM(nombre)) = ?', ['turno'])
+            ->whereHas('categoria', function ($q) {
+                $q->where('activa', true)
+                    ->whereRaw('LOWER(nombre) LIKE ?', ['%accesorio%']);
+            })
+            ->first();
+
+        if ($porCat !== null) {
+            return $porCat;
+        }
+
+        return StockProducto::query()
+            ->where('activo', true)
+            ->whereRaw('LOWER(TRIM(nombre)) = ?', ['turno'])
+            ->first();
+    }
+
+    public static function ventaEsModoGrupo(StockVenta $venta): bool
+    {
+        if ($venta->relationLoaded('participantes')) {
+            return $venta->participantes->isNotEmpty();
+        }
+
+        return StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists();
     }
 
     /**
@@ -120,7 +165,7 @@ class StockVentaService
                 $hora .= ':00';
             }
 
-            return StockVenta::query()->create([
+            $venta = StockVenta::query()->create([
                 'nombre_cliente' => $ventaData['nombre_cliente'],
                 'nombre_turno' => $ventaData['nombre_turno'] ?? null,
                 'stock_cancha_id' => (int) $ventaData['stock_cancha_id'],
@@ -133,6 +178,44 @@ class StockVentaService
                 'referencia_pago' => null,
                 'notas' => $ventaData['notas'] ?? null,
             ]);
+
+            $cancha = StockCancha::query()->find((int) $ventaData['stock_cancha_id']);
+            if (self::esCanchaMultiJugador($cancha)) {
+                $nombreCliente = (string) $ventaData['nombre_cliente'];
+                $now = now();
+                for ($slot = 1; $slot <= 4; $slot++) {
+                    StockVentaParticipante::query()->create([
+                        'stock_venta_id' => $venta->id,
+                        'slot' => $slot,
+                        'nombre' => $slot === 1 ? $nombreCliente : 'Jugador '.$slot,
+                        'jugador_id' => null,
+                        'estado_pago' => 'pendiente',
+                        'metodo_pago' => null,
+                        'fecha_pago' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
+
+                $productoTurno = self::resolverProductoTurnoCancha();
+                if ($productoTurno === null) {
+                    throw new \RuntimeException(
+                        'No se encontró el producto activo "Turno" (categoría Accesorios). Crealo en Stock para usar tickets de cancha.'
+                    );
+                }
+
+                $venta = $venta->fresh(['participantes']);
+                foreach ($venta->participantes->sortBy('slot')->values() as $participante) {
+                    $venta = $this->agregarLineaVenta(
+                        $venta,
+                        (int) $productoTurno->id,
+                        1,
+                        (int) $participante->id
+                    );
+                }
+            }
+
+            return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);
         });
     }
 
@@ -145,19 +228,91 @@ class StockVentaService
             }
             $venta->nombre_cliente = $nombreCliente;
             $venta->save();
+
+            $p1 = StockVentaParticipante::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('slot', 1)
+                ->first();
+            if ($p1 !== null && $p1->estado_pago === 'pendiente') {
+                $p1->nombre = $nombreCliente;
+                $p1->save();
+            }
         });
     }
 
-    public function agregarLineaVenta(StockVenta $venta, int $productoId, int $cantidad): StockVenta
+    public function actualizarParticipante(StockVenta $venta, int $participanteId, string $nombre, ?int $jugadorId, bool $actualizarJugadorId = false): void
+    {
+        $nombre = trim($nombre);
+        if ($nombre === '') {
+            throw new \RuntimeException('El nombre no puede estar vacío.');
+        }
+
+        DB::transaction(function () use ($venta, $participanteId, $nombre, $jugadorId, $actualizarJugadorId) {
+            $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
+            if ($venta->estado_pago !== 'pendiente') {
+                throw new \RuntimeException('No se puede editar una venta ya cobrada.');
+            }
+
+            /** @var StockVentaParticipante $p */
+            $p = StockVentaParticipante::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('id', $participanteId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($p->estado_pago !== 'pendiente') {
+                throw new \RuntimeException('Este jugador ya pagó; no se puede editar.');
+            }
+
+            $p->nombre = mb_substr($nombre, 0, 100);
+            if ($actualizarJugadorId) {
+                $p->jugador_id = $jugadorId;
+            }
+            $p->save();
+
+            if ($p->slot === 1) {
+                $venta->nombre_cliente = $p->nombre;
+                $venta->save();
+            }
+        });
+    }
+
+    public function agregarLineaVenta(StockVenta $venta, int $productoId, int $cantidad, ?int $stockVentaParticipanteId = null): StockVenta
     {
         if ($cantidad < 1) {
             throw new \RuntimeException('La cantidad debe ser al menos 1.');
         }
 
-        return DB::transaction(function () use ($venta, $productoId, $cantidad) {
+        return DB::transaction(function () use ($venta, $productoId, $cantidad, $stockVentaParticipanteId) {
             $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
             if ($venta->estado_pago !== 'pendiente') {
                 throw new \RuntimeException('La venta ya no admite productos.');
+            }
+
+            $esGrupo = StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists();
+            $participanteFk = null;
+
+            if ($esGrupo) {
+                if ($stockVentaParticipanteId === null || $stockVentaParticipanteId < 1) {
+                    throw new \RuntimeException('Elegí el jugador para cargar el producto.');
+                }
+
+                /** @var StockVentaParticipante $participante */
+                $participante = StockVentaParticipante::query()
+                    ->where('stock_venta_id', $venta->id)
+                    ->where('id', $stockVentaParticipanteId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($participante === null) {
+                    throw new \RuntimeException('Participante inválido.');
+                }
+                if ($participante->estado_pago !== 'pendiente') {
+                    throw new \RuntimeException('Ese jugador ya pagó; no se pueden agregar productos.');
+                }
+                $participanteFk = $participante->id;
+            } elseif ($stockVentaParticipanteId !== null) {
+                throw new \RuntimeException('Este ticket no usa reparto por jugador.');
             }
 
             /** @var StockProducto $producto */
@@ -177,6 +332,7 @@ class StockVentaService
 
             StockDetalleVenta::query()->create([
                 'stock_venta_id' => $venta->id,
+                'stock_venta_participante_id' => $participanteFk,
                 'stock_producto_id' => $producto->id,
                 'cantidad' => $cantidad,
                 'precio_unitario' => $precio,
@@ -203,7 +359,7 @@ class StockVentaService
             $venta->precio_total = round((float) $venta->precio_total + $subtotal, 2);
             $venta->save();
 
-            return $venta->fresh(['detalles.producto', 'cancha']);
+            return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);
         });
     }
 
@@ -224,6 +380,17 @@ class StockVentaService
 
             if (! $detalle) {
                 throw new \RuntimeException('Línea no encontrada.');
+            }
+
+            if ($detalle->stock_venta_participante_id !== null) {
+                /** @var StockVentaParticipante|null $part */
+                $part = StockVentaParticipante::query()
+                    ->where('id', $detalle->stock_venta_participante_id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($part !== null && $part->estado_pago === 'pagado') {
+                    throw new \RuntimeException('No se puede quitar una línea de un jugador que ya pagó.');
+                }
             }
 
             $user = self::responsable();
@@ -252,7 +419,7 @@ class StockVentaService
             $venta->precio_total = max(0, round((float) $venta->precio_total - $subtotal, 2));
             $venta->save();
 
-            return $venta->fresh(['detalles.producto', 'cancha']);
+            return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);
         });
     }
 
@@ -266,6 +433,10 @@ class StockVentaService
             $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
             if ($venta->estado_pago !== 'pendiente') {
                 throw new \RuntimeException('Solo se pueden cancelar ventas pendientes de cobro.');
+            }
+
+            if (StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->where('estado_pago', 'pagado')->exists()) {
+                throw new \RuntimeException('No se puede cancelar: ya hay jugadores que pagaron.');
             }
 
             $user = self::responsable();
@@ -302,12 +473,84 @@ class StockVentaService
         });
     }
 
+    public function registrarPagoParticipante(StockVenta $venta, int $participanteId, array $data): StockVenta
+    {
+        return DB::transaction(function () use ($venta, $participanteId, $data) {
+            $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
+            if ($venta->estado_pago === 'pagado') {
+                throw new \RuntimeException('La venta ya está cerrada.');
+            }
+
+            /** @var StockVentaParticipante $participante */
+            $participante = StockVentaParticipante::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('id', $participanteId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($participante->estado_pago === 'pagado') {
+                throw new \RuntimeException('Este jugador ya figura como pagado.');
+            }
+
+            $subtotal = (float) StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('stock_venta_participante_id', $participante->id)
+                ->sum('subtotal');
+
+            $metodo = $data['metodo_pago'] ?? $venta->metodo_pago;
+            if (! in_array($metodo, ['efectivo', 'transferencia'], true)) {
+                $metodo = 'efectivo';
+            }
+
+            $fechaPago = isset($data['fecha_pago']) ? \Carbon\Carbon::parse($data['fecha_pago']) : now();
+
+            if ($subtotal > 0) {
+                StockHistorialPago::query()->create([
+                    'stock_venta_id' => $venta->id,
+                    'stock_venta_participante_id' => $participante->id,
+                    'monto_pagado' => round($subtotal, 2),
+                    'metodo_pago' => $metodo,
+                    'fecha_pago' => $fechaPago,
+                    'referencia_pago' => $data['referencia_pago'] ?? null,
+                    'usuario_responsable' => self::responsable(),
+                    'notas' => $data['notas'] ?? null,
+                    'created_at' => now(),
+                ]);
+            }
+
+            $participante->estado_pago = 'pagado';
+            $participante->metodo_pago = $metodo;
+            $participante->fecha_pago = $fechaPago->toDateString();
+            $participante->save();
+
+            $pendientes = (int) StockVentaParticipante::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('estado_pago', 'pendiente')
+                ->count();
+
+            if ($pendientes === 0) {
+                $venta->estado_pago = 'pagado';
+                $venta->fecha_pago = now()->toDateString();
+                $venta->metodo_pago = $metodo;
+                if (! empty($data['referencia_pago'])) {
+                    $venta->referencia_pago = $data['referencia_pago'];
+                }
+                $venta->save();
+            }
+
+            return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);
+        });
+    }
+
     public function registrarPago(StockVenta $venta, array $data): void
     {
         DB::transaction(function () use ($venta, $data) {
             $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
             if ($venta->estado_pago === 'pagado') {
                 throw new \RuntimeException('La venta ya está marcada como pagada.');
+            }
+            if (StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists()) {
+                throw new \RuntimeException('Esta venta se cobra por jugador (efectivo / transferencia en cada uno).');
             }
             if ((float) $venta->precio_total <= 0) {
                 throw new \RuntimeException('Agregá al menos un producto antes de cobrar.');

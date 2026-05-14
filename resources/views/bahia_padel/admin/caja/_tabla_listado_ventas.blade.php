@@ -1,6 +1,8 @@
 <div class="table-responsive">
     @php
         $mostrarAccionesVerCobrar = $mostrarAccionesVerCobrar ?? true;
+        $mostrarVerModal = $mostrarVerModal ?? false;
+        $colAcciones = ($mostrarAccionesVerCobrar || $mostrarVerModal);
     @endphp
     <table class="table table-sm mb-0">
         <thead class="thead-light">
@@ -12,8 +14,8 @@
                 <th class="text-right">Total</th>
                 <th>Método</th>
                 <th>Estado</th>
-                @if($mostrarAccionesVerCobrar)
-                <th class="text-center" style="width:1%"></th>
+                @if($colAcciones)
+                <th class="text-center" style="width:1%">Acciones</th>
                 @endif
             </tr>
         </thead>
@@ -42,11 +44,15 @@
                             <a href="{{ route('admincaja.venta.show', $v) }}" class="btn btn-sm btn-primary ml-1">Cobrar</a>
                         @endif
                     </td>
+                    @elseif($mostrarVerModal)
+                    <td class="text-center text-nowrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-caja-ver-ticket-modal" data-venta-id="{{ $v->id }}">Ver</button>
+                    </td>
                     @endif
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $mostrarAccionesVerCobrar ? 8 : 7 }}" class="text-center text-muted small py-4">No hay registros para este listado.</td>
+                    <td colspan="{{ $colAcciones ? 8 : 7 }}" class="text-center text-muted small py-4">No hay registros para este listado.</td>
                 </tr>
             @endforelse
         </tbody>
