@@ -168,6 +168,7 @@ class CajaAdminController extends Controller
                 'producto_nombre' => $d->producto ? $d->producto->nombre : null,
                 'cantidad' => (int) $d->cantidad,
                 'subtotal_fmt' => $fmtMoney($d->subtotal),
+                'es_division' => (bool) $d->es_division,
             ];
         })->values()->all();
 
@@ -190,6 +191,23 @@ class CajaAdminController extends Controller
             }
         }
 
+        $padrePayload = null;
+        if ($venta->padre) {
+            $padrePayload = [
+                'id' => $venta->padre->id,
+                'precio_total_fmt' => $fmtMoney($venta->padre->precio_total),
+                'detalles' => $venta->padre->detalles->map(function ($d) use ($fmtMoney) {
+                    return [
+                        'id' => $d->id,
+                        'producto_nombre' => $d->producto ? $d->producto->nombre : null,
+                        'cantidad' => (int) $d->cantidad,
+                        'subtotal_fmt' => $fmtMoney($d->subtotal),
+                        'slot' => $d->participante ? (int) $d->participante->slot : null,
+                    ];
+                })->values()->all(),
+            ];
+        }
+
         return [
             'id' => $venta->id,
             'nombre_cliente' => $venta->nombre_cliente,
@@ -200,6 +218,7 @@ class CajaAdminController extends Controller
             'modo_grupo' => $modoGrupo,
             'participantes' => $participantesPayload,
             'detalles' => $detallesPayload,
+            'padre' => $padrePayload,
         ];
     }
 
@@ -345,7 +364,7 @@ class CajaAdminController extends Controller
         $listaPendienteHoy = $baseListasQuery()->where('estado_pago', 'pendiente')->orderByDesc('id')->get();
 
         $ticketsAbiertos = StockVenta::query()
-            ->with(['cancha', 'detalles.producto', 'detalles.participante', 'participantes'])
+            ->with(['cancha', 'detalles.producto', 'detalles.participante', 'participantes', 'padre.detalles.producto', 'padre.participantes'])
             ->where('estado_pago', 'pendiente')
             ->where('fecha_venta', $fechaCaja)
             ->orderByDesc('updated_at')
@@ -399,6 +418,39 @@ class CajaAdminController extends Controller
         ]);
     }
 
+    public function continuarVenta(Request $request, StockVenta $venta, StockVentaService $ventaService)
+    {
+        if ($venta->estado_pago !== 'pagado') {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Solo se pueden continuar ventas cerradas.'], 422);
+            }
+            return redirect()->back()->with('error', 'Solo se pueden continuar ventas cerradas.');
+        }
+
+        $request->validate([
+            'caja_fecha' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
+        try {
+            $nueva = $ventaService->crearContinuacionBorrador($venta);
+        } catch (\RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+            return response()->json([
+                'venta' => $this->ventaToArray($nueva, $fmtMoney),
+                'resumen' => $this->cajaResumenAjaxPayload($this->cajaFechaParaResumenDesdeRequest($request)),
+            ]);
+        }
+
+        return redirect()->route('admincaja')->with('success', 'Ticket de continuación #'.$nueva->id.' creado.');
+    }
+
     public function storeLinea(Request $request, StockVenta $venta, StockVentaService $ventaService)
     {
         $request->validate([
@@ -427,6 +479,36 @@ class CajaAdminController extends Controller
                 (int) $request->stock_producto_id,
                 (int) $request->cantidad,
                 $participanteLineaId
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'venta' => $this->ventaToArray($venta, $fmtMoney),
+            'resumen' => $this->cajaResumenAjaxPayload($this->cajaFechaParaResumenDesdeRequest($request)),
+        ]);
+    }
+
+    public function dividirLinea(Request $request, StockVenta $venta, StockDetalleVenta $detalle, StockVentaService $ventaService)
+    {
+        if ((int) $detalle->stock_venta_id !== (int) $venta->id) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'participantes_ids' => 'required|array|min:1',
+            'participantes_ids.*' => 'required|integer',
+            'caja_fecha' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
+        $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+
+        try {
+            $venta = $ventaService->dividirLineaVenta(
+                $venta,
+                (int) $detalle->id,
+                array_map('intval', $data['participantes_ids'])
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

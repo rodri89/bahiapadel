@@ -14,7 +14,7 @@ class StockDetalleVenta extends Model
     protected $fillable = [
         'stock_venta_id', 'stock_producto_id', 'cantidad',
         'precio_unitario', 'subtotal', 'created_at',
-        'stock_venta_participante_id',
+        'stock_venta_participante_id', 'es_division',
     ];
 
     protected $casts = [

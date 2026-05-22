@@ -5,6 +5,22 @@
     @include('bahia_padel.admin.caja._ticket_body_grupo', ['venta' => $venta, 'fmtMoney' => $fmtMoney, 'categoriasVenta' => $categoriasVenta])
 @else
 <div class="ticket-body-inner" data-venta-id="{{ $vid }}" data-modo-grupo="0">
+    @if($venta->padre)
+    <div class="mb-3 p-2 border rounded bg-light">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small font-weight-bold text-muted">Ticket original #{{ $venta->padre->id }}</span>
+            <span class="small text-success font-weight-bold">{{ $fmtMoney($venta->padre->precio_total) }} (pagado)</span>
+        </div>
+        <table class="table table-sm table-bordered mb-0">
+            <thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th></tr></thead>
+            <tbody>
+                @foreach($venta->padre->detalles as $d)
+                <tr><td>{{ $d->producto?->nombre }}</td><td class="text-center">{{ $d->cantidad }}</td><td class="text-right">{{ $fmtMoney($d->subtotal) }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
     <div class="form-group">
         <label class="small font-weight-bold mb-1">Cliente</label>
         <div class="input-group">
@@ -51,9 +67,11 @@
         <div class="form-row align-items-end mt-2">
             <div class="form-group col-md-10 mb-2 mb-md-0">
                 <label class="small mb-1">Producto</label>
-                <select class="form-control ticket-select-producto" disabled>
-                    <option value="">— Elegí una categoría —</option>
-                </select>
+                <div class="position-relative ticket-producto-autocomplete">
+                    <input type="text" class="form-control ticket-producto-search" placeholder="Elegí una categoría…" autocomplete="off" disabled>
+                    <input type="hidden" class="ticket-producto-id">
+                    <div class="ticket-producto-dropdown d-none position-absolute w-100 bg-white border rounded shadow-sm" style="z-index:1050;max-height:220px;overflow:auto;"></div>
+                </div>
                 <input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true">
             </div>
             <div class="form-group col-md-2 mb-0">

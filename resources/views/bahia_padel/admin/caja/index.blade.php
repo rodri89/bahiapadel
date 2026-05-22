@@ -11,6 +11,10 @@
 .ticket-card-panel.is-open { display: block; }
 .caja-stat-trigger { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
 .caja-stat-trigger:hover { transform: translateY(-1px); box-shadow: 0 0.35rem 0.75rem rgba(0,0,0,.12) !important; }
+.badge-caja-jugador { font-size: 0.85rem; padding: 0.35em 0.55em; min-width: 3.8em; display: inline-block; text-align: center; }
+.ticket-grupo-tabs .btn { padding: 0.45rem 0.65rem; font-size: 0.95rem; }
+.ticket-producto-dropdown .px-3:hover { background-color: #f8f9fa; }
+.ticket-producto-autocomplete input[disabled] { background-color: #e9ecef; }
 </style>
 @php
     $fmtMoney = fn ($n) => '$' . number_format((float) $n, 2, ',', '.');
@@ -209,6 +213,9 @@
                         <div>
                             <strong class="ticket-card-nombre">{{ $venta->nombre_cliente }}</strong>
                             <span class="text-muted small ml-2 ticket-card-cancha-meta">{{ $venta->cancha?->nombre }}</span>
+                            @if($venta->padre)
+                                <span class="badge badge-secondary ml-1">continuación #{{ $venta->padre->id }}</span>
+                            @endif
                         </div>
                         <div>
                             <span class="badge badge-primary ticket-card-total">{{ $fmtMoney($venta->precio_total) }}</span>
@@ -261,6 +268,28 @@
     </div>
 </div>
 
+<div class="modal fade" id="modal-dividir-linea" tabindex="-1" role="dialog" aria-labelledby="modal-dividir-linea-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modal-dividir-linea-titulo">Dividir producto</h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="small text-muted">Seleccioná con quién querés dividir este producto. El costo se repartirá en partes iguales.</p>
+                <div id="dividir-linea-opciones"></div>
+                <input type="hidden" id="dividir-linea-detalle-id">
+                <input type="hidden" id="dividir-linea-venta-id">
+                <input type="hidden" id="dividir-linea-card-id">
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-confirmar-dividir">Confirmar división</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @php
     $cajaCategoriasJson = $categoriasVenta->map(function ($c) {
         return [
@@ -298,6 +327,9 @@
     }
     function lineaDestroyUrl(ventaId, detalleId) {
         return adminCajaBasePath() + '/venta/' + ventaId + '/linea/' + detalleId;
+    }
+    function dividirLineaUrl(ventaId, detalleId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/linea/' + detalleId + '/dividir';
     }
     function updateUrl(ventaId) {
         return adminCajaBasePath() + '/venta/' + ventaId;
@@ -364,16 +396,55 @@
         return d.innerHTML;
     }
 
-    function fillProductSelectForCategory(sel, categoriaId) {
-        if (!sel) return;
-        var opts = '<option value="">— Elegir producto —</option>';
-        (window.CAJA_PRODUCTOS || []).filter(function(p) {
+    function productosPorCategoria(categoriaId) {
+        return (window.CAJA_PRODUCTOS || []).filter(function(p) {
             return String(p.categoria_id) === String(categoriaId);
-        }).forEach(function(p) {
-            opts += '<option value="' + p.id + '">' + escapeHtml(p.label) + '</option>';
         });
-        sel.innerHTML = opts;
-        sel.disabled = false;
+    }
+
+    function renderProductoDropdown(dropdown, productos, onPick) {
+        if (!dropdown) return;
+        dropdown.innerHTML = '';
+        if (!productos || !productos.length) {
+            dropdown.innerHTML = '<div class="px-3 py-2 text-muted small">Sin productos</div>';
+            dropdown.classList.remove('d-none');
+            return;
+        }
+        productos.forEach(function(p) {
+            var div = document.createElement('div');
+            div.className = 'px-3 py-2 cursor-pointer small text-dark hover-bg-light';
+            div.style.cursor = 'pointer';
+            div.textContent = p.label;
+            div.addEventListener('click', function() {
+                onPick(p);
+                dropdown.classList.add('d-none');
+            });
+            dropdown.appendChild(div);
+        });
+        dropdown.classList.remove('d-none');
+    }
+
+    function fillProductoAutocomplete(inner, categoriaId) {
+        var search = inner.querySelector('.ticket-producto-search');
+        var hidden = inner.querySelector('.ticket-producto-id');
+        var dropdown = inner.querySelector('.ticket-producto-dropdown');
+        if (!search || !hidden || !dropdown) return;
+        search.value = '';
+        hidden.value = '';
+        search.disabled = !categoriaId;
+        if (!categoriaId) {
+            search.placeholder = 'Elegí una categoría…';
+            dropdown.classList.add('d-none');
+            return;
+        }
+        search.placeholder = 'Buscá producto…';
+        search.dataset.categoriaId = categoriaId;
+        var productos = productosPorCategoria(categoriaId);
+        renderProductoDropdown(dropdown, productos, function(p) {
+            search.value = p.label;
+            hidden.value = p.id;
+        });
+        search.focus();
     }
 
     function categoriasPillsHtml() {
@@ -391,8 +462,10 @@
         if (!inner || inner._pickerWired) return;
         inner._pickerWired = true;
         var pills = inner.querySelectorAll('.ticket-cat-btn');
-        var sel = inner.querySelector('.ticket-select-producto');
-        if (!pills.length || !sel) return;
+        var search = inner.querySelector('.ticket-producto-search');
+        var hidden = inner.querySelector('.ticket-producto-id');
+        var dropdown = inner.querySelector('.ticket-producto-dropdown');
+        if (!pills.length || !search || !hidden || !dropdown) return;
         pills.forEach(function(btn) {
             btn.addEventListener('click', function() {
                 pills.forEach(function(b) {
@@ -402,9 +475,40 @@
                 btn.classList.add('active', 'btn-primary');
                 btn.classList.remove('btn-outline-secondary');
                 var cid = btn.getAttribute('data-categoria-id');
-                fillProductSelectForCategory(sel, cid);
+                fillProductoAutocomplete(inner, cid);
             });
         });
+        if (search && !search._wiredSearch) {
+            search._wiredSearch = true;
+            search.addEventListener('input', function() {
+                var cid = search.dataset.categoriaId;
+                var q = (search.value || '').toLowerCase().trim();
+                var productos = productosPorCategoria(cid).filter(function(p) {
+                    return !q || p.label.toLowerCase().indexOf(q) >= 0;
+                });
+                renderProductoDropdown(dropdown, productos, function(p) {
+                    search.value = p.label;
+                    hidden.value = p.id;
+                });
+            });
+            search.addEventListener('focus', function() {
+                var cid = search.dataset.categoriaId;
+                if (!cid) return;
+                var q = (search.value || '').toLowerCase().trim();
+                var productos = productosPorCategoria(cid).filter(function(p) {
+                    return !q || p.label.toLowerCase().indexOf(q) >= 0;
+                });
+                renderProductoDropdown(dropdown, productos, function(p) {
+                    search.value = p.label;
+                    hidden.value = p.id;
+                });
+            });
+            document.addEventListener('click', function(e) {
+                if (!search.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('d-none');
+                }
+            });
+        }
     }
 
     function jsonHeaders() {
@@ -582,7 +686,7 @@
             var badge = btn.querySelector('.badge');
             if (badge) {
                 badge.textContent = (p.estado_pago === 'pagado') ? 'OK' : (p.subtotal_fmt || '');
-                badge.className = 'badge ml-1 ' + ((p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning');
+                badge.className = 'badge ml-1 badge-caja-jugador ' + ((p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning');
             }
             btn.classList.remove('btn-primary', 'btn-outline-secondary');
             if (p.estado_pago === 'pagado') {
@@ -624,6 +728,7 @@
                     + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
                     + '<td class="text-center p-1 align-middle">'
                     + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+                    + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
                     + '</td>';
                 tbody.appendChild(tr);
             });
@@ -735,7 +840,6 @@
         var nombreInput = inner.querySelector('.ticket-input-nombre');
         var statusNombre = inner.querySelector('.ticket-nombre-status');
         var addBtn = inner.querySelector('.btn-ticket-add-linea');
-        var sel = inner.querySelector('.ticket-select-producto');
         var guardarBtn = inner.querySelector('.btn-ticket-guardar');
 
         if (nombreInput && !nombreInput._wiredNombre) {
@@ -792,7 +896,8 @@
         if (addBtn && !addBtn._wired) {
             addBtn._wired = true;
             addBtn.addEventListener('click', function() {
-                var pid = sel && sel.value;
+                var pidEl = inner.querySelector('.ticket-producto-id');
+                var pid = pidEl && pidEl.value;
                 var qty = 1;
                 if (!pid) { alert('Elegí una categoría y un producto.'); return; }
                 var body = mergeCajaFecha({
@@ -1020,6 +1125,42 @@
                 });
                 return;
             }
+            var divBtn = e.target.closest('.btn-ticket-dividir-linea');
+            if (divBtn && listaTicketsEl.contains(divBtn)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardDiv = divBtn.closest('.ticket-card');
+                var innerDiv = cardDiv && cardDiv.querySelector('.ticket-body-inner');
+                var vidDiv = innerDiv && innerDiv.getAttribute('data-venta-id');
+                var didDiv = divBtn.getAttribute('data-detalle-id');
+                var pidDiv = divBtn.getAttribute('data-participante-id');
+                if (!vidDiv || !didDiv) return;
+                var wrapOpc = document.getElementById('dividir-linea-opciones');
+                var inpDet = document.getElementById('dividir-linea-detalle-id');
+                var inpVen = document.getElementById('dividir-linea-venta-id');
+                var inpCard = document.getElementById('dividir-linea-card-id');
+                if (wrapOpc) {
+                    wrapOpc.innerHTML = '';
+                    wrapOpc.dataset.dueñoPid = pidDiv;
+                    var partsDiv = innerDiv ? innerDiv.querySelectorAll('.ticket-jugador-panel') : [];
+                    partsDiv.forEach(function(panel) {
+                        var pId = panel.getAttribute('data-participante-id');
+                        var slot = panel.getAttribute('data-slot');
+                        var nombre = panel.querySelector('input[type="text"]');
+                        var nombreTxt = nombre ? nombre.value : ('Jugador ' + slot);
+                        if (String(pId) === String(pidDiv)) return; // no mostrar al dueño actual
+                        var row = document.createElement('div');
+                        row.className = 'form-check mb-1';
+                        row.innerHTML = '<input class="form-check-input" type="checkbox" value="' + pId + '" id="chk-div-' + pId + '"><label class="form-check-label small" for="chk-div-' + pId + '">' + escapeHtml(nombreTxt) + ' (J' + slot + ')</label>';
+                        wrapOpc.appendChild(row);
+                    });
+                }
+                if (inpDet) inpDet.value = didDiv;
+                if (inpVen) inpVen.value = vidDiv;
+                if (inpCard) inpCard.value = cardDiv ? cardDiv.getAttribute('data-venta-id') : '';
+                if (window.jQuery) window.jQuery('#modal-dividir-linea').modal('show');
+                return;
+            }
             var rm = e.target.closest('.btn-ticket-remove-linea');
             if (rm) {
                 e.preventDefault();
@@ -1124,11 +1265,28 @@
         });
     })();
 
+    function htmlBloquePadre(padre) {
+        if (!padre) return '';
+        var h = '<div class="mb-3 p-2 border rounded bg-light">'
+            + '<div class="d-flex justify-content-between align-items-center mb-1">'
+            + '<span class="small font-weight-bold text-muted">Ticket original #' + padre.id + '</span>'
+            + '<span class="small text-success font-weight-bold">' + escapeHtml(padre.precio_total_fmt) + ' (pagado)</span></div>'
+            + '<table class="table table-sm table-bordered mb-0"><thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
+        (padre.detalles || []).forEach(function(d) {
+            h += '<tr><td>' + escapeHtml(d.producto_nombre || '') + '</td>'
+                + '<td class="text-center">' + d.cantidad + '</td>'
+                + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td></tr>';
+        });
+        h += '</tbody></table></div>';
+        return h;
+    }
+
     function buildTicketCardHtmlSimple(venta) {
         var id = venta.id;
         var collapseId = 'ticket-collapse-' + id;
         var body = ''
             + '<div class="ticket-body-inner" data-venta-id="' + id + '" data-modo-grupo="0">'
+            + htmlBloquePadre(venta.padre)
             + '<div class="form-group">'
             + '<label class="small font-weight-bold mb-1">Cliente</label>'
             + '<div class="input-group">'
@@ -1149,7 +1307,11 @@
             + '</div>'
             + '<div class="form-row align-items-end mt-2">'
             + '<div class="form-group col-md-10 mb-2 mb-md-0"><label class="small mb-1">Producto</label>'
-            + '<select class="form-control ticket-select-producto" disabled><option value="">— Elegí una categoría —</option></select>'
+            + '<div class="position-relative ticket-producto-autocomplete">'
+            + '<input type="text" class="form-control ticket-producto-search" placeholder="Elegí una categoría…" autocomplete="off" disabled>'
+            + '<input type="hidden" class="ticket-producto-id">'
+            + '<div class="ticket-producto-dropdown d-none position-absolute w-100 bg-white border rounded shadow-sm" style="z-index:1050;max-height:220px;overflow:auto;"></div>'
+            + '</div>'
             + '<input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true"></div>'
             + '<div class="form-group col-md-2 mb-0"><label class="small mb-1 d-none d-md-block">&nbsp;</label>'
             + '<button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar 1 unidad">+</button></div>'
@@ -1176,7 +1338,9 @@
             + '<div class="card mb-0 ticket-card shadow flex-fill w-100" data-venta-id="' + id + '">'
             + '<div class="card-header py-2 d-flex justify-content-between align-items-center ticket-card-header-toggle" style="cursor:pointer">'
             + '<div><strong class="ticket-card-nombre">' + escapeHtml(venta.nombre_cliente) + '</strong> '
-            + '<span class="text-muted small ml-2 ticket-card-cancha-meta">' + escapeHtml(venta.cancha_nombre || '') + '</span></div>'
+            + '<span class="text-muted small ml-2 ticket-card-cancha-meta">' + escapeHtml(venta.cancha_nombre || '') + '</span>'
+            + (venta.padre ? '<span class="badge badge-secondary ml-1">continuación #' + venta.padre.id + '</span>' : '')
+            + '</div>'
             + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(venta.precio_total_fmt) + '</span> '
             + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
             + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
@@ -1195,7 +1359,7 @@
             var dis = (p.estado_pago === 'pagado') ? ' disabled title="Ya pagó"' : '';
             var cls = 'btn-outline-secondary';
             if (p.estado_pago !== 'pagado') cls = (p.id === activeId) ? 'btn-primary' : 'btn-outline-secondary';
-            var badgeClass = (p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning';
+            var badgeClass = 'badge-caja-jugador ' + ((p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning');
             var badgeTxt = (p.estado_pago === 'pagado') ? 'OK' : escapeHtml(p.subtotal_fmt);
             tabs += '<button type="button" class="btn ticket-tab-slot ' + cls + '" data-participante-id="' + p.id + '" data-slot="' + p.slot + '" data-estado="' + escapeHtml(p.estado_pago) + '"' + dis + '>J' + p.slot + ' <span class="badge ' + badgeClass + ' ml-1">' + badgeTxt + '</span></button>';
         });
@@ -1231,11 +1395,15 @@
             lines += '<td>' + escapeHtml(d.producto_nombre || '') + '</td>';
             lines += '<td class="text-center">' + d.cantidad + '</td>';
             lines += '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>';
-            lines += '<td class="text-center p-1 align-middle"><button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button></td></tr>';
+            lines += '<td class="text-center p-1 align-middle">'
+                + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+                + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
+                + '</td></tr>';
         });
 
         var body = ''
             + '<div class="ticket-body-inner" data-venta-id="' + id + '" data-modo-grupo="1">'
+            + htmlBloquePadre(venta.padre)
             + '<div class="mb-2"><span class="small font-weight-bold text-primary">Total del ticket:</span> '
             + '<span class="h5 mb-0 text-primary ticket-total ml-2">' + escapeHtml(venta.precio_total_fmt) + '</span></div>'
             + tabs
@@ -1248,7 +1416,11 @@
             + '<div class="d-flex flex-wrap ticket-cat-pills align-items-center" style="gap:6px;">' + categoriasPillsHtml() + '</div>'
             + '<div class="form-row align-items-end mt-2">'
             + '<div class="form-group col-md-10 mb-2 mb-md-0"><label class="small mb-1">Producto</label>'
-            + '<select class="form-control ticket-select-producto" disabled><option value="">— Elegí una categoría —</option></select>'
+            + '<div class="position-relative ticket-producto-autocomplete">'
+            + '<input type="text" class="form-control ticket-producto-search" placeholder="Elegí una categoría…" autocomplete="off" disabled>'
+            + '<input type="hidden" class="ticket-producto-id">'
+            + '<div class="ticket-producto-dropdown d-none position-absolute w-100 bg-white border rounded shadow-sm" style="z-index:1050;max-height:220px;overflow:auto;"></div>'
+            + '</div>'
             + '<input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true">'
             + '<input type="hidden" class="ticket-active-participante-id" value="' + activeId + '"></div>'
             + '<div class="form-group col-md-2 mb-0"><label class="small mb-1 d-none d-md-block">&nbsp;</label>'
@@ -1265,7 +1437,9 @@
             + '<div class="card mb-0 ticket-card shadow flex-fill w-100" data-venta-id="' + id + '">'
             + '<div class="card-header py-2 d-flex justify-content-between align-items-center ticket-card-header-toggle" style="cursor:pointer">'
             + '<div><strong class="ticket-card-nombre">' + escapeHtml(venta.nombre_cliente) + '</strong> '
-            + '<span class="text-muted small ml-2 ticket-card-cancha-meta">' + escapeHtml(venta.cancha_nombre || '') + '</span></div>'
+            + '<span class="text-muted small ml-2 ticket-card-cancha-meta">' + escapeHtml(venta.cancha_nombre || '') + '</span>'
+            + (venta.padre ? '<span class="badge badge-secondary ml-1">continuación #' + venta.padre.id + '</span>' : '')
+            + '</div>'
             + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(venta.precio_total_fmt) + '</span> '
             + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
             + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
@@ -1396,6 +1570,45 @@
             }, jid).then(cerrarModal).catch(cerrarModal);
         });
     }
+    var btnConfirmarDividir = document.getElementById('btn-confirmar-dividir');
+    if (btnConfirmarDividir && !btnConfirmarDividir._wired) {
+        btnConfirmarDividir._wired = true;
+        btnConfirmarDividir.addEventListener('click', function() {
+            var did = document.getElementById('dividir-linea-detalle-id').value;
+            var vid = document.getElementById('dividir-linea-venta-id').value;
+            var cardId = document.getElementById('dividir-linea-card-id').value;
+            if (!did || !vid) return;
+            var checks = document.querySelectorAll('#dividir-linea-opciones input[type="checkbox"]:checked');
+            if (!checks.length) { alert('Seleccioná al menos un jugador para dividir.'); return; }
+            var pids = [];
+            checks.forEach(function(c) { pids.push(parseInt(c.value, 10)); });
+            // Incluir siempre al jugador dueño original
+            var wrapDiv = document.getElementById('dividir-linea-opciones');
+            var dueñoPid = wrapDiv && wrapDiv.dataset.dueñoPid ? parseInt(wrapDiv.dataset.dueñoPid, 10) : null;
+            if (dueñoPid && pids.indexOf(dueñoPid) < 0) pids.push(dueñoPid);
+            btnConfirmarDividir.disabled = true;
+            fetch(dividirLineaUrl(vid, did), {
+                method: 'POST',
+                headers: jsonHeaders(),
+                body: JSON.stringify(mergeCajaFecha({ _token: csrfToken, participantes_ids: pids }))
+            }).then(parseFetchResponse).then(function(x) {
+                btnConfirmarDividir.disabled = false;
+                if (!x.ok) {
+                    var msg = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors).flat().join(' '));
+                    alert(msg || ('Error HTTP ' + x.status));
+                    return;
+                }
+                if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                var card = document.querySelector('.ticket-card[data-venta-id="' + cardId + '"]');
+                if (x.j && x.j.venta && card) applyVentaJson(card, x.j.venta);
+                if (window.jQuery) window.jQuery('#modal-dividir-linea').modal('hide');
+            }).catch(function(err) {
+                btnConfirmarDividir.disabled = false;
+                alert((err && err.message) ? err.message : 'Error de red');
+            });
+        });
+    }
+
     var jBuscarInp = document.getElementById('caja-jugador-buscar-input');
     if (jBuscarInp && !jBuscarInp._wiredModalSearch) {
         jBuscarInp._wiredModalSearch = true;

@@ -14,6 +14,7 @@ class StockVenta extends Model
         'nombre_cliente', 'nombre_turno', 'stock_cancha_id',
         'fecha_venta', 'hora_venta', 'precio_total',
         'metodo_pago', 'estado_pago', 'fecha_pago', 'referencia_pago', 'notas',
+        'stock_venta_id_padre',
     ];
 
     protected $casts = [
@@ -40,5 +41,15 @@ class StockVenta extends Model
     public function participantes(): HasMany
     {
         return $this->hasMany(StockVentaParticipante::class, 'stock_venta_id')->orderBy('slot');
+    }
+
+    public function padre(): BelongsTo
+    {
+        return $this->belongsTo(StockVenta::class, 'stock_venta_id_padre');
+    }
+
+    public function hijos(): HasMany
+    {
+        return $this->hasMany(StockVenta::class, 'stock_venta_id_padre');
     }
 }

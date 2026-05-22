@@ -47,6 +47,14 @@
                     <p class="small text-muted mb-0">Ticket <strong>multi-jugador</strong>: el cobro es por jugador; la venta queda pendiente hasta que los cuatro estén pagados (o “sin consumo”).</p>
                 @endif
             </div>
+            <div class="col-md-12 mt-2">
+                @if($venta->estado_pago === 'pagado')
+                    <form method="post" action="{{ route('admincaja.venta.continuar', $venta) }}" class="d-inline" onsubmit="return confirm('Se creará un nuevo ticket vinculado a este. ¿Continuar?');">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Agregar más productos</button>
+                    </form>
+                @endif
+            </div>
         </div>
     </div>
 

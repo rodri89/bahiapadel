@@ -219,6 +219,52 @@ class StockVentaService
         });
     }
 
+    public function crearContinuacionBorrador(StockVenta $ventaPadre): StockVenta
+    {
+        return DB::transaction(function () use ($ventaPadre) {
+            $ventaPadre = StockVenta::query()->lockForUpdate()->findOrFail($ventaPadre->id);
+            if ($ventaPadre->estado_pago !== 'pagado') {
+                throw new \RuntimeException('Solo se pueden continuar ventas cerradas.');
+            }
+
+            $nueva = StockVenta::query()->create([
+                'stock_venta_id_padre' => $ventaPadre->id,
+                'nombre_cliente' => $ventaPadre->nombre_cliente,
+                'nombre_turno' => $ventaPadre->nombre_turno,
+                'stock_cancha_id' => $ventaPadre->stock_cancha_id,
+                'fecha_venta' => now()->toDateString(),
+                'hora_venta' => now()->format('H:i:s'),
+                'precio_total' => 0,
+                'metodo_pago' => 'efectivo',
+                'estado_pago' => 'pendiente',
+                'fecha_pago' => null,
+                'referencia_pago' => null,
+                'notas' => null,
+            ]);
+
+            $cancha = StockCancha::query()->find((int) $ventaPadre->stock_cancha_id);
+            if (self::esCanchaMultiJugador($cancha)) {
+                $now = now();
+                $participantesPadre = $ventaPadre->participantes->sortBy('slot')->values();
+                foreach ($participantesPadre as $pPadre) {
+                    StockVentaParticipante::query()->create([
+                        'stock_venta_id' => $nueva->id,
+                        'slot' => $pPadre->slot,
+                        'nombre' => $pPadre->nombre,
+                        'jugador_id' => $pPadre->jugador_id,
+                        'estado_pago' => 'pendiente',
+                        'metodo_pago' => null,
+                        'fecha_pago' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
+            }
+
+            return $nueva->fresh(['detalles.producto', 'cancha', 'participantes']);
+        });
+    }
+
     public function actualizarNombreBorrador(StockVenta $venta, string $nombreCliente): void
     {
         DB::transaction(function () use ($venta, $nombreCliente) {
@@ -363,6 +409,90 @@ class StockVentaService
         });
     }
 
+    public function dividirLineaVenta(StockVenta $venta, int $detalleId, array $participantesIds): StockVenta
+    {
+        if (empty($participantesIds)) {
+            throw new \RuntimeException('Elegí al menos un jugador para dividir.');
+        }
+
+        return DB::transaction(function () use ($venta, $detalleId, $participantesIds) {
+            $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
+            if ($venta->estado_pago !== 'pendiente') {
+                throw new \RuntimeException('La venta ya no admite cambios.');
+            }
+
+            /** @var StockDetalleVenta|null $detalle */
+            $detalle = StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('id', $detalleId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $detalle) {
+                throw new \RuntimeException('Línea no encontrada.');
+            }
+
+            $cantidadParticipantes = count($participantesIds);
+
+            $participantes = StockVentaParticipante::query()
+                ->where('stock_venta_id', $venta->id)
+                ->whereIn('id', $participantesIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($participantes->count() !== $cantidadParticipantes) {
+                throw new \RuntimeException('Uno o más participantes no pertenecen a esta venta.');
+            }
+
+            foreach ($participantes as $part) {
+                if ($part->estado_pago === 'pagado') {
+                    throw new \RuntimeException('No se puede dividir con un jugador que ya pagó.');
+                }
+            }
+
+            $subtotalOriginal = (float) $detalle->subtotal;
+            $precioUnitario = (float) $detalle->precio_unitario;
+            $cantidadOriginal = (int) $detalle->cantidad;
+            $productoId = (int) $detalle->stock_producto_id;
+
+            // Eliminar detalle original sin devolver stock (ya salió físicamente)
+            $detalle->delete();
+
+            $baseSubtotal = round($subtotalOriginal / $cantidadParticipantes, 2);
+            $sumaSubtotales = 0.0;
+            $now = now();
+
+            foreach ($participantesIds as $idx => $participanteId) {
+                $esUltimo = ($idx === $cantidadParticipantes - 1);
+                $sub = $esUltimo
+                    ? round($subtotalOriginal - $sumaSubtotales, 2)
+                    : $baseSubtotal;
+                $sumaSubtotales += $sub;
+
+                StockDetalleVenta::query()->create([
+                    'stock_venta_id' => $venta->id,
+                    'stock_venta_participante_id' => (int) $participanteId,
+                    'stock_producto_id' => $productoId,
+                    'cantidad' => $cantidadOriginal, // cada uno ve la cantidad original (representa la porción)
+                    'precio_unitario' => $precioUnitario,
+                    'subtotal' => $sub,
+                    'es_division' => true,
+                    'created_at' => $now,
+                ]);
+            }
+
+            // Asegurar que el total de la venta siga siendo consistente
+            $nuevoTotal = (float) StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->sum('subtotal');
+            $venta->precio_total = round($nuevoTotal, 2);
+            $venta->save();
+
+            return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);
+        });
+    }
+
     public function eliminarLineaVenta(StockVenta $venta, int $detalleId): StockVenta
     {
         return DB::transaction(function () use ($venta, $detalleId) {
@@ -393,27 +523,31 @@ class StockVentaService
                 }
             }
 
-            $user = self::responsable();
-            /** @var StockProducto $producto */
-            $producto = StockProducto::query()->lockForUpdate()->findOrFail($detalle->stock_producto_id);
-            $qty = (int) $detalle->cantidad;
             $subtotal = (float) $detalle->subtotal;
 
-            $anterior = $producto->stock_actual;
-            $nueva = $anterior + $qty;
-            $producto->stock_actual = $nueva;
-            $producto->save();
+            // Solo devolver stock si NO es una línea de división (el stock ya se manejó al dividir)
+            if (! $detalle->es_division) {
+                $user = self::responsable();
+                /** @var StockProducto $producto */
+                $producto = StockProducto::query()->lockForUpdate()->findOrFail($detalle->stock_producto_id);
+                $qty = (int) $detalle->cantidad;
 
-            StockMovimientoStock::query()->create([
-                'stock_producto_id' => $producto->id,
-                'tipo_movimiento' => 'entrada',
-                'cantidad' => $qty,
-                'cantidad_anterior' => $anterior,
-                'cantidad_nueva' => $nueva,
-                'motivo' => 'Anula línea venta #'.$venta->id,
-                'usuario_responsable' => $user,
-                'created_at' => now(),
-            ]);
+                $anterior = $producto->stock_actual;
+                $nueva = $anterior + $qty;
+                $producto->stock_actual = $nueva;
+                $producto->save();
+
+                StockMovimientoStock::query()->create([
+                    'stock_producto_id' => $producto->id,
+                    'tipo_movimiento' => 'entrada',
+                    'cantidad' => $qty,
+                    'cantidad_anterior' => $anterior,
+                    'cantidad_nueva' => $nueva,
+                    'motivo' => 'Anula línea venta #'.$venta->id,
+                    'usuario_responsable' => $user,
+                    'created_at' => now(),
+                ]);
+            }
 
             $detalle->delete();
             $venta->precio_total = max(0, round((float) $venta->precio_total - $subtotal, 2));
@@ -446,25 +580,28 @@ class StockVentaService
                 ->get();
 
             foreach ($detalles as $detalle) {
-                /** @var StockProducto $producto */
-                $producto = StockProducto::query()->lockForUpdate()->findOrFail($detalle->stock_producto_id);
-                $qty = (int) $detalle->cantidad;
+                // Solo devolver stock si NO es línea de división
+                if (! $detalle->es_division) {
+                    /** @var StockProducto $producto */
+                    $producto = StockProducto::query()->lockForUpdate()->findOrFail($detalle->stock_producto_id);
+                    $qty = (int) $detalle->cantidad;
 
-                $anterior = $producto->stock_actual;
-                $nueva = $anterior + $qty;
-                $producto->stock_actual = $nueva;
-                $producto->save();
+                    $anterior = $producto->stock_actual;
+                    $nueva = $anterior + $qty;
+                    $producto->stock_actual = $nueva;
+                    $producto->save();
 
-                StockMovimientoStock::query()->create([
-                    'stock_producto_id' => $producto->id,
-                    'tipo_movimiento' => 'entrada',
-                    'cantidad' => $qty,
-                    'cantidad_anterior' => $anterior,
-                    'cantidad_nueva' => $nueva,
-                    'motivo' => 'Cancelación venta #'.$venta->id,
-                    'usuario_responsable' => $user,
-                    'created_at' => now(),
-                ]);
+                    StockMovimientoStock::query()->create([
+                        'stock_producto_id' => $producto->id,
+                        'tipo_movimiento' => 'entrada',
+                        'cantidad' => $qty,
+                        'cantidad_anterior' => $anterior,
+                        'cantidad_nueva' => $nueva,
+                        'motivo' => 'Cancelación venta #'.$venta->id,
+                        'usuario_responsable' => $user,
+                        'created_at' => now(),
+                    ]);
+                }
 
                 $detalle->delete();
             }

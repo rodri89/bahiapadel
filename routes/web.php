@@ -114,10 +114,12 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_caja/resumen', [CajaAdminController::class, 'resumenJson'])->name('admincaja.resumen');
 	Route::post('admin_caja/venta', [CajaAdminController::class, 'storeVenta'])->name('admincaja.venta.store');
 	Route::post('admin_caja/venta/borrador', [CajaAdminController::class, 'storeBorrador'])->name('admincaja.venta.borrador');
+	Route::post('admin_caja/venta/{venta}/continuar', [CajaAdminController::class, 'continuarVenta'])->name('admincaja.venta.continuar');
 	Route::get('admin_caja/jugadores', [CajaAdminController::class, 'jugadoresCajaJson'])->name('admincaja.jugadores');
 	Route::patch('admin_caja/venta/{venta}/participante/{participante}', [CajaAdminController::class, 'updateParticipante'])->name('admincaja.venta.participante.update');
 	Route::post('admin_caja/venta/{venta}/participante/{participante}/pago', [CajaAdminController::class, 'pagoParticipante'])->name('admincaja.venta.participante.pago');
 	Route::post('admin_caja/venta/{venta}/linea', [CajaAdminController::class, 'storeLinea'])->name('admincaja.venta.linea');
+	Route::post('admin_caja/venta/{venta}/linea/{detalle}/dividir', [CajaAdminController::class, 'dividirLinea'])->name('admincaja.venta.linea.dividir');
 	Route::delete('admin_caja/venta/{venta}/linea/{detalle}', [CajaAdminController::class, 'destroyLinea'])->name('admincaja.venta.linea.destroy');
 	Route::delete('admin_caja/venta/{venta}', [CajaAdminController::class, 'destroyVenta'])->name('admincaja.venta.destroy');
 	Route::patch('admin_caja/venta/{venta}', [CajaAdminController::class, 'updateBorrador'])->name('admincaja.venta.update');

@@ -3,12 +3,28 @@
     $parts = $venta->participantes->sortBy('slot')->values();
 @endphp
 <div class="ticket-body-inner" data-venta-id="{{ $vid }}" data-modo-grupo="1">
+    @if($venta->padre)
+    <div class="mb-3 p-2 border rounded bg-light">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small font-weight-bold text-muted">Ticket original #{{ $venta->padre->id }}</span>
+            <span class="small text-success font-weight-bold">{{ $fmtMoney($venta->padre->precio_total) }} (pagado)</span>
+        </div>
+        <table class="table table-sm table-bordered mb-0">
+            <thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th></tr></thead>
+            <tbody>
+                @foreach($venta->padre->detalles as $d)
+                <tr><td>{{ $d->producto?->nombre }}</td><td class="text-center">{{ $d->cantidad }}</td><td class="text-right">{{ $fmtMoney($d->subtotal) }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endif
     <div class="mb-2">
         <span class="small font-weight-bold text-primary">Total del ticket:</span>
         <span class="h5 mb-0 text-primary ticket-total ml-2">{{ $fmtMoney($venta->precio_total) }}</span>
     </div>
 
-    <div class="btn-group btn-group-sm mb-3 flex-wrap ticket-grupo-tabs" role="group">
+    <div class="btn-group mb-3 flex-wrap ticket-grupo-tabs" role="group">
         @php
             $firstPendienteTab = $parts->firstWhere('estado_pago', 'pendiente');
             $defaultActiveTabId = $firstPendienteTab ? $firstPendienteTab->id : $parts->first()->id;
@@ -27,9 +43,9 @@
             >
                 J{{ $p->slot }}
                 @if($p->estado_pago === 'pagado')
-                    <span class="badge badge-light ml-1">OK</span>
+                    <span class="badge badge-light badge-caja-jugador ml-1">OK</span>
                 @else
-                    <span class="badge badge-warning ml-1">{{ $fmtMoney($subPart) }}</span>
+                    <span class="badge badge-warning badge-caja-jugador ml-1">{{ $fmtMoney($subPart) }}</span>
                 @endif
             </button>
         @endforeach
@@ -94,6 +110,7 @@
                         <td class="text-right">{{ $fmtMoney($d->subtotal) }}</td>
                         <td class="text-center p-1 align-middle">
                             <button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="{{ $d->id }}" title="Quitar línea">−</button>
+                            <button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="{{ $d->id }}" data-participante-id="{{ $d->stock_venta_participante_id }}" title="Dividir con otros jugadores">÷</button>
                         </td>
                     </tr>
                 @endforeach
@@ -118,9 +135,11 @@
         <div class="form-row align-items-end mt-2">
             <div class="form-group col-md-10 mb-2 mb-md-0">
                 <label class="small mb-1">Producto</label>
-                <select class="form-control ticket-select-producto" disabled>
-                    <option value="">— Elegí una categoría —</option>
-                </select>
+                <div class="position-relative ticket-producto-autocomplete">
+                    <input type="text" class="form-control ticket-producto-search" placeholder="Elegí una categoría…" autocomplete="off" disabled>
+                    <input type="hidden" class="ticket-producto-id">
+                    <div class="ticket-producto-dropdown d-none position-absolute w-100 bg-white border rounded shadow-sm" style="z-index:1050;max-height:220px;overflow:auto;"></div>
+                </div>
                 <input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true">
                 <input type="hidden" class="ticket-active-participante-id" value="{{ $defaultActiveTabId }}">
             </div>
