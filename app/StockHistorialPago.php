@@ -12,7 +12,8 @@ class StockHistorialPago extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'stock_venta_id', 'stock_venta_participante_id', 'monto_pagado', 'metodo_pago', 'fecha_pago',
+        'stock_venta_id', 'stock_venta_participante_id', 'stock_detalle_venta_id',
+        'monto_pagado', 'metodo_pago', 'fecha_pago',
         'referencia_pago', 'usuario_responsable', 'notas', 'created_at',
     ];
 
@@ -30,5 +31,10 @@ class StockHistorialPago extends Model
     public function participante(): BelongsTo
     {
         return $this->belongsTo(StockVentaParticipante::class, 'stock_venta_participante_id');
+    }
+
+    public function detalle(): BelongsTo
+    {
+        return $this->belongsTo(StockDetalleVenta::class, 'stock_detalle_venta_id');
     }
 }

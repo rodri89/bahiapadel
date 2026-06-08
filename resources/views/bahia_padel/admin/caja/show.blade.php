@@ -4,9 +4,11 @@
 
 @section('contenedor')
 @php
+    use App\Services\StockVentaService;
     $fmtMoney = fn ($n) => '$' . number_format((float) $n, 2, ',', '.');
     $modoGrupo = $venta->participantes && $venta->participantes->isNotEmpty();
     $partsSorted = $modoGrupo ? $venta->participantes->sortBy('slot')->values() : collect();
+    $saldoPendiente = StockVentaService::saldoPendienteVenta($venta);
 @endphp
 
 @if(session('success'))
@@ -29,7 +31,10 @@
                 <p><strong>Fecha:</strong> {{ $venta->fecha_venta?->format('d/m/Y') }} <strong>Hora:</strong> {{ is_string($venta->hora_venta) ? substr($venta->hora_venta, 0, 5) : $venta->hora_venta }}</p>
             </div>
             <div class="col-md-6">
-                <p><strong>Total:</strong> {{ $fmtMoney($venta->precio_total) }}</p>
+                <p><strong>Total ticket:</strong> {{ $fmtMoney($venta->precio_total) }}</p>
+                @if(!$modoGrupo && $venta->estado_pago === 'pendiente')
+                    <p><strong>Saldo pendiente:</strong> <span class="text-danger font-weight-bold">{{ $fmtMoney($saldoPendiente) }}</span></p>
+                @endif
                 <p><strong>Método:</strong> {{ $venta->metodo_pago ?: '—' }}</p>
                 <p><strong>Estado:</strong>
                     <span class="badge badge-{{ $venta->estado_pago === 'pagado' ? 'success' : 'warning' }}">{{ $venta->estado_pago }}</span>
@@ -94,10 +99,13 @@
                     <tr>
                         @if($modoGrupo)<th>Jug.</th>@endif
                         <th>Producto</th><th>Cant.</th><th>P. unit.</th><th>Subtotal</th>
+                        @if(!$modoGrupo && $venta->estado_pago === 'pendiente')<th class="text-center">Cobro</th>@endif
+                        @if(!$modoGrupo)<th>Estado</th>@endif
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($venta->detalles as $d)
+                        @php $lineaPagada = ($d->estado_pago ?? 'pendiente') === 'pagado'; @endphp
                         <tr>
                             @if($modoGrupo)
                                 <td>{{ $d->participante ? 'J'.$d->participante->slot : '—' }}</td>
@@ -106,6 +114,33 @@
                             <td>{{ $d->cantidad }}</td>
                             <td>{{ $fmtMoney($d->precio_unitario) }}</td>
                             <td>{{ $fmtMoney($d->subtotal) }}</td>
+                            @if(!$modoGrupo && $venta->estado_pago === 'pendiente')
+                                <td class="text-center text-nowrap">
+                                    @if($lineaPagada)
+                                        —
+                                    @else
+                                        <form method="post" action="{{ route('admincaja.venta.linea.pago', [$venta, $d]) }}" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="metodo_pago" value="efectivo">
+                                            <button type="submit" class="btn btn-sm btn-success px-2 py-0" title="Cobrar efectivo">E</button>
+                                        </form>
+                                        <form method="post" action="{{ route('admincaja.venta.linea.pago', [$venta, $d]) }}" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="metodo_pago" value="transferencia">
+                                            <button type="submit" class="btn btn-sm btn-info px-2 py-0" title="Cobrar transferencia">T</button>
+                                        </form>
+                                    @endif
+                                </td>
+                            @endif
+                            @if(!$modoGrupo)
+                                <td>
+                                    @if($lineaPagada)
+                                        <span class="badge badge-success">Pagado</span>
+                                    @else
+                                        <span class="badge badge-warning">Pendiente</span>
+                                    @endif
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>
@@ -122,6 +157,7 @@
                     <tr>
                         <th>Fecha</th>
                         @if($modoGrupo)<th>Jug.</th>@endif
+                        @if(!$modoGrupo)<th>Producto</th>@endif
                         <th>Monto</th><th>Método</th><th>Ref.</th><th>Usuario</th>
                     </tr>
                 </thead>
@@ -131,6 +167,9 @@
                             <td>{{ $p->fecha_pago?->format('d/m/Y H:i') }}</td>
                             @if($modoGrupo)
                                 <td>{{ $p->participante ? 'J'.$p->participante->slot : '—' }}</td>
+                            @endif
+                            @if(!$modoGrupo)
+                                <td>{{ $p->detalle?->producto?->nombre ?? '—' }}</td>
                             @endif
                             <td>{{ $fmtMoney($p->monto_pagado) }}</td>
                             <td>{{ $p->metodo_pago }}</td>
@@ -194,6 +233,7 @@
                     </div>
                 @endforeach
             @else
+                @if((float) $saldoPendiente > 0)
                 <form method="post" action="{{ route('admincaja.venta.pago', $venta) }}">
                     @csrf
                     <div class="form-row">
@@ -217,11 +257,14 @@
                         <label>Notas</label>
                         <input type="text" name="notas" class="form-control">
                     </div>
-                    <button type="submit" class="btn btn-success">Confirmar pago de {{ $fmtMoney($venta->precio_total) }}</button>
+                    <button type="submit" class="btn btn-success">Cobrar resto ({{ $fmtMoney($saldoPendiente) }})</button>
                 </form>
+                @else
+                    <p class="text-muted mb-0">No hay saldo pendiente.</p>
+                @endif
             @endif
             <hr class="my-3">
-            <p class="small text-muted mb-2">Si no se va a cobrar esta venta, podés cancelarla: se borra el ticket y el stock vuelve a los productos.</p>
+            <p class="small text-muted mb-2">Si no se va a cobrar esta venta, podés cancelarla: se borra el ticket y el stock vuelve a los productos (solo si no hay productos cobrados).</p>
             <form method="post" action="{{ route('admincaja.venta.destroy', $venta) }}" class="d-inline" onsubmit="return confirm('¿Cancelar este ticket? Se eliminará la venta y se devolverá el stock de todos los productos.');">
                 @csrf
                 @method('DELETE')
@@ -231,4 +274,6 @@
     </div>
     @endif
 </div>
+
+@include('bahia_padel.admin.caja._font_size_control')
 @endsection

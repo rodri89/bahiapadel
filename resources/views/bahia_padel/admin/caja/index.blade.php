@@ -12,6 +12,8 @@
 .caja-stat-trigger { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
 .caja-stat-trigger:hover { transform: translateY(-1px); box-shadow: 0 0.35rem 0.75rem rgba(0,0,0,.12) !important; }
 .badge-caja-jugador { font-size: 0.85rem; padding: 0.35em 0.55em; min-width: 3.8em; display: inline-block; text-align: center; }
+.badge-caja-jugador-ok { background-color: #28a745 !important; color: #fff !important; }
+body.dark-mode .badge-caja-jugador-ok { background-color: #10b981 !important; color: #fff !important; }
 .ticket-grupo-tabs .btn { padding: 0.45rem 0.65rem; font-size: 0.95rem; }
 .ticket-producto-dropdown .px-3:hover { background-color: #f8f9fa; }
 .ticket-producto-autocomplete input[disabled] { background-color: #e9ecef; }
@@ -207,6 +209,12 @@
             </div>
             <div class="row" id="lista-tickets-abiertos">
                 @foreach($ticketsAbiertos as $venta)
+                @php
+                    $saldoCard = \App\Services\StockVentaService::saldoPendienteVenta($venta);
+                    $cardTotalLabel = ($saldoCard > 0 && $saldoCard < (float)$venta->precio_total)
+                        ? $fmtMoney($saldoCard).' / '.$fmtMoney($venta->precio_total)
+                        : $fmtMoney($venta->precio_total);
+                @endphp
                 <div class="col-lg-4 col-md-6 mb-3 d-flex">
                 <div class="card mb-0 ticket-card shadow flex-fill w-100" data-venta-id="{{ $venta->id }}">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center ticket-card-header-toggle" style="cursor:pointer">
@@ -218,7 +226,7 @@
                             @endif
                         </div>
                         <div>
-                            <span class="badge badge-primary ticket-card-total">{{ $fmtMoney($venta->precio_total) }}</span>
+                            <span class="badge badge-primary ticket-card-total">{{ $cardTotalLabel }}</span>
                             <span class="small text-muted ml-1">#{{ $venta->id }}</span>
                         </div>
                     </div>
@@ -327,6 +335,9 @@
     }
     function lineaDestroyUrl(ventaId, detalleId) {
         return adminCajaBasePath() + '/venta/' + ventaId + '/linea/' + detalleId;
+    }
+    function lineaPagoUrl(ventaId, detalleId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/linea/' + detalleId + '/pago';
     }
     function dividirLineaUrl(ventaId, detalleId) {
         return adminCajaBasePath() + '/venta/' + ventaId + '/linea/' + detalleId + '/dividir';
@@ -527,22 +538,45 @@
         return body;
     }
 
+    function htmlLineaAccionesSimple(d) {
+        if (d.estado_pago === 'pagado') {
+            return '<span class="small text-success">—</span>';
+        }
+        return '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+            + '<button type="button" class="btn btn-sm btn-success btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="efectivo" title="Cobrar efectivo">E</button>'
+            + '<button type="button" class="btn btn-sm btn-info btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="transferencia" title="Cobrar transferencia">T</button>';
+    }
+
+    function htmlLineaRowSimple(d) {
+        var pagada = d.estado_pago === 'pagado';
+        var badge = pagada ? ' <span class="badge badge-success ml-1">Pagado</span>' : '';
+        return '<tr data-detalle-id="' + d.id + '" data-estado-pago="' + escapeHtml(d.estado_pago || 'pendiente') + '">'
+            + '<td>' + escapeHtml(d.producto_nombre || '') + badge + '</td>'
+            + '<td class="text-center">' + d.cantidad + '</td>'
+            + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
+            + '<td class="text-center p-1 align-middle text-nowrap">' + htmlLineaAccionesSimple(d) + '</td>'
+            + '</tr>';
+    }
+
+    function ticketCardTotalText(venta) {
+        var total = venta.precio_total_fmt || '';
+        var saldo = venta.saldo_pendiente != null ? parseFloat(venta.saldo_pendiente) : null;
+        var precio = venta.precio_total != null ? parseFloat(venta.precio_total) : null;
+        if (saldo != null && precio != null && saldo < precio && saldo > 0) {
+            return (venta.saldo_pendiente_fmt || '') + ' / ' + total;
+        }
+        return total;
+    }
+
     function refreshLinesTbody(tbody, detalles) {
         tbody.innerHTML = '';
         detalles.forEach(function(d) {
-            var tr = document.createElement('tr');
-            tr.innerHTML = '<td>' + escapeHtml(d.producto_nombre || '') + '</td>'
-                + '<td class="text-center">' + d.cantidad + '</td>'
-                + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
-                + '<td class="text-center p-1 align-middle">'
-                + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
-                + '</td>';
-            tbody.appendChild(tr);
+            tbody.insertAdjacentHTML('beforeend', htmlLineaRowSimple(d));
         });
     }
 
-    function syncPayButtons(cardRoot, precioTotal) {
-        var ok = precioTotal > 0;
+    function syncPayButtons(cardRoot, saldoPendiente) {
+        var ok = saldoPendiente > 0;
         cardRoot.querySelectorAll('.btn-ticket-pay').forEach(function(b) {
             b.disabled = !ok;
         });
@@ -588,18 +622,42 @@
         });
     }
 
-    function htmlTicketGrupoPagoAcciones(p) {
+    function htmlTicketGrupoPanelResumen(p) {
         if (p.estado_pago === 'pagado') {
             return '<span class="badge badge-success">Pagado' + (p.metodo_pago ? ' (' + escapeHtml(p.metodo_pago) + ')' : '') + '</span>';
         }
-        var h = '';
+        var h = '<span class="small text-muted">Saldo pendiente: <strong class="text-danger">' + escapeHtml(p.subtotal_fmt || '') + '</strong></span>';
+        h += '<div class="ticket-jugador-pago-acciones d-flex flex-wrap align-items-center justify-content-end">';
         if (p.subtotal <= 0) {
             h += '<button type="button" class="btn btn-sm btn-outline-secondary btn-participante-sin-consumo mr-1" data-participante-id="' + p.id + '">Sin consumo</button>';
         }
         var disPay = (p.subtotal <= 0) ? ' disabled' : '';
         h += '<button type="button" class="btn btn-sm btn-success btn-participante-pago mr-1" data-participante-id="' + p.id + '" data-metodo="efectivo"' + disPay + '>Efectivo</button>';
         h += '<button type="button" class="btn btn-sm btn-info btn-participante-pago" data-participante-id="' + p.id + '" data-metodo="transferencia"' + disPay + '>Transferencia</button>';
+        h += '</div>';
         return h;
+    }
+
+    function htmlLineaAccionesGrupo(d) {
+        if (d.estado_pago === 'pagado') {
+            return '<span class="small text-success">—</span>';
+        }
+        return '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
+            + '<button type="button" class="btn btn-sm btn-success btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="efectivo" title="Cobrar efectivo">E</button>'
+            + '<button type="button" class="btn btn-sm btn-info btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="transferencia" title="Cobrar transferencia">T</button>';
+    }
+
+    function htmlLineaRowGrupo(d, activePid) {
+        var pagada = d.estado_pago === 'pagado';
+        var badge = pagada ? ' <span class="badge badge-success ml-1">Pagado</span>' : '';
+        var show = parseInt(d.stock_venta_participante_id, 10) === parseInt(activePid, 10);
+        return '<tr class="ticket-line-row" data-participante-id="' + d.stock_venta_participante_id + '" data-detalle-id="' + d.id + '" data-estado-pago="' + escapeHtml(d.estado_pago || 'pendiente') + '" style="' + (show ? '' : 'display:none;') + '">'
+            + '<td>' + escapeHtml(d.producto_nombre || '') + badge + '</td>'
+            + '<td class="text-center">' + d.cantidad + '</td>'
+            + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
+            + '<td class="text-center p-1 align-middle text-nowrap">' + htmlLineaAccionesGrupo(d) + '</td>'
+            + '</tr>';
     }
 
     var cajaJugadoresCache = null;
@@ -644,7 +702,7 @@
         var hTot = cardRoot.querySelector('.ticket-card-total');
         var hMeta = cardRoot.querySelector('.ticket-card-cancha-meta');
         if (hNombre) hNombre.textContent = venta.nombre_cliente;
-        if (hTot) hTot.textContent = venta.precio_total_fmt;
+        if (hTot) hTot.textContent = ticketCardTotalText(venta);
         if (hMeta) hMeta.textContent = venta.cancha_nombre ? String(venta.cancha_nombre) : '';
         var inner = cardRoot.querySelector('.ticket-body-inner[data-venta-id="' + venta.id + '"]');
         if (!inner) return;
@@ -652,9 +710,12 @@
         if (inpNombre) inpNombre.value = venta.nombre_cliente;
         var tTot = inner.querySelector('.ticket-total');
         if (tTot) tTot.textContent = venta.precio_total_fmt;
+        var tSaldo = inner.querySelector('.ticket-saldo-pendiente');
+        if (tSaldo) tSaldo.textContent = venta.saldo_pendiente_fmt || venta.precio_total_fmt;
         var tbody = inner.querySelector('.ticket-lines-tbody');
         if (tbody) refreshLinesTbody(tbody, venta.detalles || []);
-        syncPayButtons(inner, venta.precio_total);
+        var saldo = venta.saldo_pendiente != null ? venta.saldo_pendiente : venta.precio_total;
+        syncPayButtons(inner, saldo);
     }
 
     function applyVentaJsonGrupo(cardRoot, venta) {
@@ -686,7 +747,7 @@
             var badge = btn.querySelector('.badge');
             if (badge) {
                 badge.textContent = (p.estado_pago === 'pagado') ? 'OK' : (p.subtotal_fmt || '');
-                badge.className = 'badge ml-1 badge-caja-jugador ' + ((p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning');
+                badge.className = 'badge ml-1 badge-caja-jugador ' + ((p.estado_pago === 'pagado') ? 'badge-caja-jugador-ok' : 'badge-warning');
             }
             btn.classList.remove('btn-primary', 'btn-outline-secondary');
             if (p.estado_pago === 'pagado') {
@@ -710,27 +771,15 @@
             var buscar = panel.querySelector('.btn-buscar-jugador-caja');
             if (buscar) buscar.disabled = (p.estado_pago === 'pagado');
             panel.dataset.jugadorId = (p.jugador_id != null) ? String(p.jugador_id) : '';
-            var acciones = panel.querySelector('.ticket-jugador-pago-acciones');
-            if (acciones) acciones.innerHTML = htmlTicketGrupoPagoAcciones(p);
+            var resumenRow = panel.querySelector('.mt-2.pt-2.border-top .d-flex.flex-wrap.align-items-center.justify-content-between.mb-2');
+            if (resumenRow) resumenRow.innerHTML = htmlTicketGrupoPanelResumen(p);
         });
 
         var tbody = inner.querySelector('.ticket-lines-tbody');
         if (tbody) {
             tbody.innerHTML = '';
             (venta.detalles || []).forEach(function(d) {
-                var tr = document.createElement('tr');
-                tr.className = 'ticket-line-row';
-                tr.setAttribute('data-participante-id', d.stock_venta_participante_id);
-                var show = parseInt(d.stock_venta_participante_id, 10) === parseInt(activePid, 10);
-                tr.style.display = show ? '' : 'none';
-                tr.innerHTML = '<td>' + escapeHtml(d.producto_nombre || '') + '</td>'
-                    + '<td class="text-center">' + d.cantidad + '</td>'
-                    + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
-                    + '<td class="text-center p-1 align-middle">'
-                    + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
-                    + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
-                    + '</td>';
-                tbody.appendChild(tr);
+                tbody.insertAdjacentHTML('beforeend', htmlLineaRowGrupo(d, activePid));
             });
         }
 
@@ -1033,6 +1082,42 @@
                 switchTicketGrupoTab(innertab, tabSlot.getAttribute('data-participante-id'));
                 return;
             }
+            var payLinea = e.target.closest('.btn-linea-pago');
+            if (payLinea && listaTicketsEl.contains(payLinea)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardL = payLinea.closest('.ticket-card');
+                var innerL = cardL && cardL.querySelector('.ticket-body-inner');
+                var vidL = innerL && innerL.getAttribute('data-venta-id');
+                var didL = payLinea.getAttribute('data-detalle-id');
+                var metodoL = payLinea.getAttribute('data-metodo');
+                if (!vidL || !didL) return;
+                payLinea.disabled = true;
+                fetch(lineaPagoUrl(vidL, didL), {
+                    method: 'POST',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken, metodo_pago: metodoL }))
+                }).then(parseFetchResponse).then(function(x) {
+                    payLinea.disabled = false;
+                    if (!x.ok) {
+                        var msgL = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && Object.values(x.j.errors).flat().join(' '));
+                        alert(msgL || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                    if (x.j && x.j.ticket_cerrado) {
+                        var colL = cardL.closest('.col-lg-4');
+                        if (colL) colL.remove();
+                        syncTicketsToggleBtn();
+                        return;
+                    }
+                    if (x.j && x.j.venta && cardL) applyVentaJson(cardL, x.j.venta);
+                }).catch(function(errL) {
+                    payLinea.disabled = false;
+                    alert((errL && errL.message) ? errL.message : 'Error de red');
+                });
+                return;
+            }
             var payPar = e.target.closest('.btn-participante-pago');
             if (payPar && listaTicketsEl.contains(payPar)) {
                 e.preventDefault();
@@ -1298,7 +1383,7 @@
             + '</div>'
             + '<div class="table-responsive mb-2">'
             + '<table class="table table-sm table-bordered mb-0">'
-            + '<thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center p-1" style="width:44px"></th></tr></thead>'
+            + '<thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center p-1" style="min-width:100px">Acciones</th></tr></thead>'
             + '<tbody class="ticket-lines-tbody"></tbody></table></div>'
             + '<div class="mb-3 ticket-add-product-block">'
             + '<label class="small mb-1 d-block">Categoría</label>'
@@ -1316,18 +1401,21 @@
             + '<div class="form-group col-md-2 mb-0"><label class="small mb-1 d-none d-md-block">&nbsp;</label>'
             + '<button type="button" class="btn btn-outline-primary btn-block btn-ticket-add-linea font-weight-bold" style="font-size:1.15rem;line-height:1.2;" title="Agregar 1 unidad">+</button></div>'
             + '</div></div>'
-            + '<div class="d-flex flex-wrap align-items-center mb-2">'
-            + '<span class="font-weight-bold mr-2">Total:</span>'
+            + '<div class="d-flex flex-wrap align-items-center mb-1">'
+            + '<span class="font-weight-bold mr-2">Total ticket:</span>'
             + '<span class="h5 mb-0 text-primary ticket-total">' + escapeHtml(venta.precio_total_fmt) + '</span></div>'
+            + '<div class="d-flex flex-wrap align-items-center mb-2">'
+            + '<span class="font-weight-bold mr-2">Saldo pendiente:</span>'
+            + '<span class="h5 mb-0 text-danger ticket-saldo-pendiente">' + escapeHtml(venta.saldo_pendiente_fmt || venta.precio_total_fmt) + '</span></div>'
             + '<div class="d-flex flex-wrap">'
             + '<form method="post" action="' + escapeHtml(pagoUrl(id)) + '" class="mr-2 mb-2 form-ticket-pago" data-venta-id="' + id + '">'
             + '<input type="hidden" name="_token" value="' + escapeHtml(csrfToken) + '">'
             + '<input type="hidden" name="metodo_pago" value="efectivo">'
-            + '<button type="submit" class="btn btn-success btn-ticket-pay" disabled>Efectivo</button></form>'
+            + '<button type="submit" class="btn btn-success btn-ticket-pay" disabled>Cobrar resto (Efectivo)</button></form>'
             + '<form method="post" action="' + escapeHtml(pagoUrl(id)) + '" class="mr-2 mb-2 form-ticket-pago" data-venta-id="' + id + '">'
             + '<input type="hidden" name="_token" value="' + escapeHtml(csrfToken) + '">'
             + '<input type="hidden" name="metodo_pago" value="transferencia">'
-            + '<button type="submit" class="btn btn-info btn-ticket-pay" disabled>Transferencia</button></form>'
+            + '<button type="submit" class="btn btn-info btn-ticket-pay" disabled>Cobrar resto (Transferencia)</button></form>'
             + '<button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button>'
             + '<button type="button" class="btn btn-outline-danger mb-2 ml-md-2 btn-ticket-cancelar" title="Anular ticket y devolver stock">Cancelar ticket</button></div>'
             + '<small class="text-muted d-block">Cada clic en <strong>+</strong> agrega 1 unidad. <strong>Cancelar ticket</strong> elimina la venta y devuelve el stock. Podés quitar una línea con <strong>−</strong>. El nombre con <strong>Guardar</strong> o al salir del campo cliente.</small>'
@@ -1341,7 +1429,7 @@
             + '<span class="text-muted small ml-2 ticket-card-cancha-meta">' + escapeHtml(venta.cancha_nombre || '') + '</span>'
             + (venta.padre ? '<span class="badge badge-secondary ml-1">continuación #' + venta.padre.id + '</span>' : '')
             + '</div>'
-            + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(venta.precio_total_fmt) + '</span> '
+            + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(ticketCardTotalText(venta)) + '</span> '
             + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
             + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
             + '<div class="card-body text-dark pt-3">' + body + '</div></div></div></div>';
@@ -1359,7 +1447,7 @@
             var dis = (p.estado_pago === 'pagado') ? ' disabled title="Ya pagó"' : '';
             var cls = 'btn-outline-secondary';
             if (p.estado_pago !== 'pagado') cls = (p.id === activeId) ? 'btn-primary' : 'btn-outline-secondary';
-            var badgeClass = 'badge-caja-jugador ' + ((p.estado_pago === 'pagado') ? 'badge-light' : 'badge-warning');
+            var badgeClass = 'badge-caja-jugador ' + ((p.estado_pago === 'pagado') ? 'badge-caja-jugador-ok' : 'badge-warning');
             var badgeTxt = (p.estado_pago === 'pagado') ? 'OK' : escapeHtml(p.subtotal_fmt);
             tabs += '<button type="button" class="btn ticket-tab-slot ' + cls + '" data-participante-id="' + p.id + '" data-slot="' + p.slot + '" data-estado="' + escapeHtml(p.estado_pago) + '"' + dis + '>J' + p.slot + ' <span class="badge ' + badgeClass + ' ml-1">' + badgeTxt + '</span></button>';
         });
@@ -1380,25 +1468,15 @@
             paneles += '<div class="input-group-append"><button type="button" class="btn btn-outline-secondary btn-buscar-jugador-caja" data-participante-id="' + p.id + '"' + busDis + '><i class="fas fa-search"></i></button></div>';
             paneles += '</div>';
             paneles += '<div class="mt-2 pt-2 border-top">';
-            paneles += '<div class="d-flex flex-wrap align-items-center justify-content-between mb-2">';
-            paneles += '<span class="small text-muted">Consumo este jugador: <strong>' + escapeHtml(p.subtotal_fmt) + '</strong></span></div>';
-            paneles += '<div class="ticket-jugador-pago-acciones d-flex flex-wrap align-items-center justify-content-end">';
-            paneles += htmlTicketGrupoPagoAcciones(p);
+            paneles += '<div class="d-flex flex-wrap align-items-center justify-content-between mb-2 w-100">';
+            paneles += htmlTicketGrupoPanelResumen(p);
             paneles += '</div></div></div>';
         });
         paneles += '<small class="text-muted ticket-nombre-status d-block"></small></div>';
 
         var lines = '';
         detalles.forEach(function(d) {
-            var show = parseInt(d.stock_venta_participante_id, 10) === parseInt(activeId, 10);
-            lines += '<tr class="ticket-line-row" data-participante-id="' + d.stock_venta_participante_id + '" style="' + (show ? '' : 'display:none;') + '">';
-            lines += '<td>' + escapeHtml(d.producto_nombre || '') + '</td>';
-            lines += '<td class="text-center">' + d.cantidad + '</td>';
-            lines += '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>';
-            lines += '<td class="text-center p-1 align-middle">'
-                + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
-                + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
-                + '</td></tr>';
+            lines += htmlLineaRowGrupo(d, activeId);
         });
 
         var body = ''
@@ -1409,7 +1487,7 @@
             + tabs
             + paneles
             + '<div class="table-responsive mb-2"><table class="table table-sm table-bordered mb-0">'
-            + '<thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center p-1" style="width:44px"></th></tr></thead>'
+            + '<thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center p-1" style="min-width:120px">Acciones</th></tr></thead>'
             + '<tbody class="ticket-lines-tbody">' + lines + '</tbody></table></div>'
             + '<div class="mb-3 ticket-add-product-block">'
             + '<label class="small mb-1 d-block">Categoría — <span class="text-muted ticket-add-para-label">cargá para el jugador seleccionado arriba</span></label>'
@@ -1429,7 +1507,7 @@
             + '<div class="d-flex flex-wrap">'
             + '<button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar nombres</button>'
             + '<button type="button" class="btn btn-outline-danger mb-2 ml-md-2 btn-ticket-cancelar" title="Anular ticket y devolver stock">Cancelar ticket</button></div>'
-            + '<small class="text-muted d-block">Tocá <strong>J1–J4</strong> para ver el nombre, la búsqueda y el cobro de ese jugador. Cargá productos con <strong>+</strong>. El ticket se cierra cuando los cuatro estén pagados (o “Sin consumo”).</small>'
+            + '<small class="text-muted d-block">Tocá <strong>J1–J4</strong> para ver los productos de cada jugador. Cobrá con <strong>E</strong> / <strong>T</strong> en cada línea. El ticket se cierra cuando los cuatro estén pagados (o “Sin consumo”).</small>'
             + '</div>';
 
         return ''
@@ -1618,4 +1696,7 @@
     }
 })();
 </script>
+
+@include('bahia_padel.admin.caja._caja_apertura_control')
+@include('bahia_padel.admin.caja._font_size_control')
 @endsection

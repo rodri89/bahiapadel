@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\StockVentaService;
+use App\StockCajaApertura;
 use App\StockCancha;
 use App\StockDetalleVenta;
+use App\StockHistorialPago;
 use App\StockProducto;
 use App\StockVenta;
 use App\StockVentaParticipante;
@@ -83,19 +85,47 @@ class CajaAdminController extends Controller
      *
      * @return array<string, mixed>
      */
+    private function sumSaldoPendienteVentasDelDia(string $dia): float
+    {
+        return (float) StockDetalleVenta::query()
+            ->where('estado_pago', 'pendiente')
+            ->whereHas('venta', function ($q) use ($dia) {
+                $q->where('fecha_venta', $dia)->where('estado_pago', 'pendiente');
+            })
+            ->sum('subtotal');
+    }
+
+    /**
+     * @return array<string, float|int>
+     */
+    private function statsCajaDelDia(string $dia): array
+    {
+        $ventaIdsDelDia = $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->pluck('id');
+
+        return [
+            'transacciones' => $ventaIdsDelDia->count(),
+            'monto_total' => (float) StockVenta::query()->whereIn('id', $ventaIdsDelDia)->sum('precio_total'),
+            'efectivo' => (float) StockHistorialPago::query()
+                ->whereIn('stock_venta_id', $ventaIdsDelDia)
+                ->where('metodo_pago', 'efectivo')
+                ->sum('monto_pagado'),
+            'transferencia' => (float) StockHistorialPago::query()
+                ->whereIn('stock_venta_id', $ventaIdsDelDia)
+                ->where('metodo_pago', 'transferencia')
+                ->sum('monto_pagado'),
+            'pagado' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)
+                ->where('estado_pago', 'pagado')
+                ->sum('precio_total'),
+            'pendiente' => $this->sumSaldoPendienteVentasDelDia($dia),
+        ];
+    }
+
     private function cajaResumenAjaxPayload(?string $fechaCaja = null): array
     {
         $dia = $this->normalizarFechaCaja($fechaCaja);
         $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
 
-        $statsHoy = [
-            'transacciones' => $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->count(),
-            'monto_total' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->sum('precio_total'),
-            'efectivo' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('metodo_pago', 'efectivo')->sum('precio_total'),
-            'transferencia' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('metodo_pago', 'transferencia')->sum('precio_total'),
-            'pagado' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('estado_pago', 'pagado')->sum('precio_total'),
-            'pendiente' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $dia)->where('estado_pago', 'pendiente')->sum('precio_total'),
-        ];
+        $statsHoy = $this->statsCajaDelDia($dia);
 
         $pendientes = StockVenta::query()
             ->with('cancha')
@@ -167,7 +197,9 @@ class CajaAdminController extends Controller
                 'slot' => $d->participante ? (int) $d->participante->slot : null,
                 'producto_nombre' => $d->producto ? $d->producto->nombre : null,
                 'cantidad' => (int) $d->cantidad,
+                'subtotal' => (float) $d->subtotal,
                 'subtotal_fmt' => $fmtMoney($d->subtotal),
+                'estado_pago' => $d->estado_pago ?? 'pendiente',
                 'es_division' => (bool) $d->es_division,
             ];
         })->values()->all();
@@ -177,6 +209,7 @@ class CajaAdminController extends Controller
             foreach ($venta->participantes->sortBy('slot')->values() as $p) {
                 $sub = (float) $venta->detalles
                     ->where('stock_venta_participante_id', $p->id)
+                    ->where('estado_pago', 'pendiente')
                     ->sum('subtotal');
                 $participantesPayload[] = [
                     'id' => $p->id,
@@ -208,11 +241,15 @@ class CajaAdminController extends Controller
             ];
         }
 
+        $saldoPendiente = StockVentaService::saldoPendienteVenta($venta);
+
         return [
             'id' => $venta->id,
             'nombre_cliente' => $venta->nombre_cliente,
             'precio_total' => (float) $venta->precio_total,
             'precio_total_fmt' => $fmtMoney($venta->precio_total),
+            'saldo_pendiente' => $saldoPendiente,
+            'saldo_pendiente_fmt' => $fmtMoney($saldoPendiente),
             'estado_pago' => $venta->estado_pago,
             'cancha_nombre' => $venta->cancha ? $venta->cancha->nombre : null,
             'modo_grupo' => $modoGrupo,
@@ -346,14 +383,7 @@ class CajaAdminController extends Controller
             ->orderBy('fecha_venta')
             ->get();
 
-        $statsHoy = [
-            'transacciones' => $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->count(),
-            'monto_total' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->sum('precio_total'),
-            'efectivo' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('metodo_pago', 'efectivo')->sum('precio_total'),
-            'transferencia' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('metodo_pago', 'transferencia')->sum('precio_total'),
-            'pagado' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('estado_pago', 'pagado')->sum('precio_total'),
-            'pendiente' => (float) $this->aplicarFiltroFechaVentas(StockVenta::query(), $fechaCaja)->where('estado_pago', 'pendiente')->sum('precio_total'),
-        ];
+        $statsHoy = $this->statsCajaDelDia($fechaCaja);
 
         $baseListasQuery = fn () => StockVenta::query()->with('cancha')->where('fecha_venta', $fechaCaja);
 
@@ -370,6 +400,9 @@ class CajaAdminController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        $cajaApertura = StockCajaApertura::query()->where('fecha', $fechaCaja)->first();
+        $puedeEditarAperturaCaja = $this->puedeEditarAperturaCaja();
+
         return view('bahia_padel.admin.caja.index', compact(
             'pendientes',
             'statsHoy',
@@ -384,8 +417,47 @@ class CajaAdminController extends Controller
             'ticketsAbiertos',
             'fechaCaja',
             'fechaCajaEsHoy',
-            'fechaCajaLabel'
+            'fechaCajaLabel',
+            'cajaApertura',
+            'puedeEditarAperturaCaja'
         ));
+    }
+
+    private function puedeEditarAperturaCaja(): bool
+    {
+        $user = auth()->user();
+
+        return $user && (int) $user->perfil === 2;
+    }
+
+    public function storeApertura(Request $request)
+    {
+        $data = $request->validate([
+            'fecha' => 'required|date_format:Y-m-d|before_or_equal:today',
+            'monto_efectivo_inicial' => 'required|numeric|min:0',
+        ]);
+
+        $fecha = $this->normalizarFechaCaja($data['fecha']);
+        $existente = StockCajaApertura::query()->where('fecha', $fecha)->first();
+
+        if ($existente && ! $this->puedeEditarAperturaCaja()) {
+            return response()->json([
+                'message' => 'Solo usuarios con perfil 2 pueden modificar el efectivo inicial de caja.',
+            ], 403);
+        }
+
+        $apertura = StockCajaApertura::query()->updateOrCreate(
+            ['fecha' => $fecha],
+            ['monto_efectivo_inicial' => round((float) $data['monto_efectivo_inicial'], 2)]
+        );
+
+        $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+
+        return response()->json([
+            'fecha' => $fecha,
+            'monto_efectivo_inicial' => (float) $apertura->monto_efectivo_inicial,
+            'monto_fmt' => $fmtMoney($apertura->monto_efectivo_inicial),
+        ]);
     }
 
     public function storeBorrador(Request $request, StockVentaService $ventaService)
@@ -637,7 +709,7 @@ class CajaAdminController extends Controller
 
     public function showVenta(StockVenta $venta)
     {
-        $venta->load(['cancha', 'detalles.producto.categoria', 'detalles.participante', 'participantes', 'pagos.participante']);
+        $venta->load(['cancha', 'detalles.producto.categoria', 'detalles.participante', 'participantes', 'pagos.participante', 'pagos.detalle.producto']);
 
         return view('bahia_padel.admin.caja.show', compact('venta'));
     }
@@ -654,6 +726,54 @@ class CajaAdminController extends Controller
             'html' => view('bahia_padel.admin.caja._ticket_modal_body', compact('venta', 'fmtMoney'))->render(),
             'url_ver_completo' => route('admincaja.venta.show', $venta),
         ]);
+    }
+
+    public function pagoLinea(Request $request, StockVenta $venta, StockDetalleVenta $detalle, StockVentaService $ventaService)
+    {
+        if ((int) $detalle->stock_venta_id !== (int) $venta->id) {
+            abort(404);
+        }
+
+        $data = $request->validate([
+            'metodo_pago' => 'nullable|in:efectivo,transferencia',
+            'referencia_pago' => 'nullable|string|max:100',
+            'fecha_pago' => 'nullable|date',
+            'notas' => 'nullable|string|max:255',
+            'caja_fecha' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
+        $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+        $resumenFecha = $this->normalizarFechaCaja($data['caja_fecha'] ?? null);
+
+        try {
+            $venta = $ventaService->registrarPagoLinea(
+                $venta,
+                (int) $detalle->id,
+                \Illuminate\Support\Arr::only($data, ['metodo_pago', 'referencia_pago', 'fecha_pago', 'notas'])
+            );
+        } catch (\RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        $msg = $venta->estado_pago === 'pagado'
+            ? 'Ticket cerrado: todos los productos fueron cobrados.'
+            : 'Pago del producto registrado.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => $msg,
+                'venta' => $this->ventaToArray($venta, $fmtMoney),
+                'ticket_cerrado' => $venta->estado_pago === 'pagado',
+                'resumen' => $this->cajaResumenAjaxPayload($resumenFecha),
+            ]);
+        }
+
+        return redirect()->route('admincaja.venta.show', $venta)->with('success', $msg);
     }
 
     public function registrarPago(Request $request, StockVenta $venta, StockVentaService $ventaService)

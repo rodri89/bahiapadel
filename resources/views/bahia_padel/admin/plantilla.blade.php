@@ -21,11 +21,8 @@
   <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
   <link href="{{ asset('css/dark-mode.css') }}" rel="stylesheet">
 
-  <!-- Para que funcione ajax-->
-  <script src = "https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <script src="{{asset('js/jquery.min.js')}}"> </script>
-  <!-- Para que funcione ajax fin-->    
+  @stack('head')
 </head>
 
 @include('layouts.bahiapadel_style')
@@ -222,6 +219,7 @@
                   <span class="sr-only">Dark Mode</span>
                 </a>
               </li>
+              @stack('topbar_nav')
               <li class="nav-item">
                 <a class="nav-link" href="#" onclick="event.preventDefault(); $('#modalDatosPruebaTorneo').modal('show'); cargarTorneosModalPrueba();" title="Cargar parejas y zonas de prueba">
                   <i class="fas fa-flask"></i>
@@ -336,6 +334,18 @@
   <script type="text/javascript">
 
     // Toggle sidebar (menú izquierda)
+    function getSidebarHidden() {
+      try {
+        return localStorage.getItem('sidebarHidden');
+      } catch (e) {
+        return null;
+      }
+    }
+    function setSidebarHidden(hidden) {
+      try {
+        localStorage.setItem('sidebarHidden', hidden);
+      } catch (e) {}
+    }
     function toggleSidebar() {
       var sidebar = document.getElementById('accordionSidebar');
       var icon = document.getElementById('sidebarToggleIcon');
@@ -346,20 +356,17 @@
         sidebar.classList.add('toggled');
         if (icon) icon.className = 'fa fa-bars';
       }
-      localStorage.setItem('sidebarHidden', sidebar.classList.contains('toggled'));
+      setSidebarHidden(sidebar.classList.contains('toggled'));
     }
     document.addEventListener('DOMContentLoaded', function() {
-      var btn = document.getElementById('sidebarToggleTop');
-      var btnSidebar = document.getElementById('sidebarToggle');
       var sidebar = document.getElementById('accordionSidebar');
       var icon = document.getElementById('sidebarToggleIcon');
-      if (btn) btn.addEventListener('click', toggleSidebar);
-      if (btnSidebar) btnSidebar.addEventListener('click', function(e) { e.preventDefault(); toggleSidebar(); });
+      var sidebarHidden = getSidebarHidden();
       // Restaurar estado guardado
-      if (localStorage.getItem('sidebarHidden') === 'true' && sidebar && !sidebar.classList.contains('toggled')) {
+      if (sidebarHidden === 'true' && sidebar && !sidebar.classList.contains('toggled')) {
         sidebar.classList.add('toggled');
         if (icon) icon.className = 'fa fa-bars';
-      } else if (localStorage.getItem('sidebarHidden') === 'false' && sidebar && sidebar.classList.contains('toggled')) {
+      } else if (sidebarHidden === 'false' && sidebar && sidebar.classList.contains('toggled')) {
         sidebar.classList.remove('toggled');
         if (icon) icon.className = 'fa fa-times';
       } else if (sidebar && sidebar.classList.contains('toggled') && icon) {
@@ -398,6 +405,43 @@
         });
       }).fail(function() { $sel.html('<option value="">Error al cargar</option>'); });
     }
+
+    
+  function mostrarSnackbar(texto) {    
+      var x = document.getElementById("snackbar");
+      x.className = "show";
+      document.getElementById("snackbar_text").innerHtml = texto;
+      setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+  }
+
+  function showSnackbar(text, duration = 3000) {
+    var snackbar = document.getElementById("snackbar-toast");
+    var snackbarText = document.getElementById("snackbar-toast-text");
+    snackbarText.textContent = text;
+    snackbar.style.visibility = "visible";
+    snackbar.style.opacity = "1";
+    // Oculta después de X milisegundos
+    setTimeout(function(){
+        snackbar.style.opacity = "0";
+        snackbar.style.visibility = "hidden";
+    }, duration);
+}
+
+  </script>
+  <!-- Bootstrap core JavaScript-->
+  <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+  <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+  <!-- Core plugin JavaScript-->
+  <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
+
+  <!-- Custom scripts for all pages-->
+  <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
+  <script type="text/javascript">
+    $('#sidebarToggle, #sidebarToggleTop').off('click').on('click', function (e) {
+      e.preventDefault();
+      toggleSidebar();
+    });
 
     $(function() {
       $('#btnGenerarDatosPrueba').on('click', function() {
@@ -439,37 +483,7 @@
         });
       });
     });
-    
-  function mostrarSnackbar(texto) {    
-      var x = document.getElementById("snackbar");
-      x.className = "show";
-      document.getElementById("snackbar_text").innerHtml = texto;
-      setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
-  }
-
-  function showSnackbar(text, duration = 3000) {
-    var snackbar = document.getElementById("snackbar-toast");
-    var snackbarText = document.getElementById("snackbar-toast-text");
-    snackbarText.textContent = text;
-    snackbar.style.visibility = "visible";
-    snackbar.style.opacity = "1";
-    // Oculta después de X milisegundos
-    setTimeout(function(){
-        snackbar.style.opacity = "0";
-        snackbar.style.visibility = "hidden";
-    }, duration);
-}
-
   </script>
-  <!-- Bootstrap core JavaScript-->
-  <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
-  <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-
-  <!-- Core plugin JavaScript-->
-  <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
-
-  <!-- Custom scripts for all pages-->
-  <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
 
   <!-- Page level plugins 
   <script src="vendor/chart.js/Chart.min.js"></script>

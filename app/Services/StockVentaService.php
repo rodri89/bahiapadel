@@ -64,6 +64,123 @@ class StockVentaService
         return StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists();
     }
 
+    public static function saldoPendienteVenta(StockVenta $venta): float
+    {
+        return round((float) StockDetalleVenta::query()
+            ->where('stock_venta_id', $venta->id)
+            ->where('estado_pago', 'pendiente')
+            ->sum('subtotal'), 2);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function registrarPagoDetalleInterno(
+        StockVenta $venta,
+        StockDetalleVenta $detalle,
+        string $metodo,
+        \Carbon\Carbon $fechaPago,
+        array $data
+    ): void {
+        $detalle->estado_pago = 'pagado';
+        $detalle->save();
+
+        StockHistorialPago::query()->create([
+            'stock_venta_id' => $venta->id,
+            'stock_venta_participante_id' => $detalle->stock_venta_participante_id,
+            'stock_detalle_venta_id' => $detalle->id,
+            'monto_pagado' => round((float) $detalle->subtotal, 2),
+            'metodo_pago' => $metodo,
+            'fecha_pago' => $fechaPago,
+            'referencia_pago' => $data['referencia_pago'] ?? null,
+            'usuario_responsable' => self::responsable(),
+            'notas' => $data['notas'] ?? null,
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function cerrarVentaSiSaldoCero(StockVenta $venta, array $data, string $metodo): void
+    {
+        $pendientes = (int) StockDetalleVenta::query()
+            ->where('stock_venta_id', $venta->id)
+            ->where('estado_pago', 'pendiente')
+            ->count();
+
+        if ($pendientes > 0) {
+            return;
+        }
+
+        $venta->estado_pago = 'pagado';
+        $venta->fecha_pago = isset($data['fecha_pago'])
+            ? \Carbon\Carbon::parse($data['fecha_pago'])->toDateString()
+            : now()->toDateString();
+        $venta->metodo_pago = $metodo;
+        if (! empty($data['referencia_pago'])) {
+            $venta->referencia_pago = $data['referencia_pago'];
+        }
+        $venta->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function cerrarVentaSiParticipantesPagados(StockVenta $venta, array $data, string $metodo): void
+    {
+        $pendientes = (int) StockVentaParticipante::query()
+            ->where('stock_venta_id', $venta->id)
+            ->where('estado_pago', 'pendiente')
+            ->count();
+
+        if ($pendientes > 0) {
+            return;
+        }
+
+        $venta->estado_pago = 'pagado';
+        $venta->fecha_pago = isset($data['fecha_pago'])
+            ? \Carbon\Carbon::parse($data['fecha_pago'])->toDateString()
+            : now()->toDateString();
+        $venta->metodo_pago = $metodo;
+        if (! empty($data['referencia_pago'])) {
+            $venta->referencia_pago = $data['referencia_pago'];
+        }
+        $venta->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function sincronizarEstadoGrupoTrasPagoLinea(StockVenta $venta, ?int $participanteId, array $data, string $metodo): void
+    {
+        if ($participanteId !== null) {
+            /** @var StockVentaParticipante|null $participante */
+            $participante = StockVentaParticipante::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('id', $participanteId)
+                ->first();
+
+            if ($participante !== null && $participante->estado_pago !== 'pagado') {
+                $lineasPendientes = (int) StockDetalleVenta::query()
+                    ->where('stock_venta_id', $venta->id)
+                    ->where('stock_venta_participante_id', $participanteId)
+                    ->where('estado_pago', 'pendiente')
+                    ->count();
+
+                if ($lineasPendientes === 0) {
+                    $fechaPago = isset($data['fecha_pago']) ? \Carbon\Carbon::parse($data['fecha_pago']) : now();
+                    $participante->estado_pago = 'pagado';
+                    $participante->metodo_pago = $metodo;
+                    $participante->fecha_pago = $fechaPago->toDateString();
+                    $participante->save();
+                }
+            }
+        }
+
+        $this->cerrarVentaSiParticipantesPagados($venta, $data, $metodo);
+    }
+
     /**
      * @param  array<string, mixed>  $ventaData
      * @param  array<int, array{stock_producto_id: int, cantidad: int}>  $lineas
@@ -432,6 +549,10 @@ class StockVentaService
                 throw new \RuntimeException('Línea no encontrada.');
             }
 
+            if ($detalle->estado_pago === 'pagado') {
+                throw new \RuntimeException('No se puede dividir un producto que ya fue cobrado.');
+            }
+
             $cantidadParticipantes = count($participantesIds);
 
             $participantes = StockVentaParticipante::query()
@@ -512,6 +633,10 @@ class StockVentaService
                 throw new \RuntimeException('Línea no encontrada.');
             }
 
+            if ($detalle->estado_pago === 'pagado') {
+                throw new \RuntimeException('No se puede quitar una línea que ya fue cobrada.');
+            }
+
             if ($detalle->stock_venta_participante_id !== null) {
                 /** @var StockVentaParticipante|null $part */
                 $part = StockVentaParticipante::query()
@@ -573,6 +698,10 @@ class StockVentaService
                 throw new \RuntimeException('No se puede cancelar: ya hay jugadores que pagaron.');
             }
 
+            if (StockDetalleVenta::query()->where('stock_venta_id', $venta->id)->where('estado_pago', 'pagado')->exists()) {
+                throw new \RuntimeException('No se puede cancelar: ya hay productos cobrados en este ticket.');
+            }
+
             $user = self::responsable();
             $detalles = StockDetalleVenta::query()
                 ->where('stock_venta_id', $venta->id)
@@ -629,11 +758,6 @@ class StockVentaService
                 throw new \RuntimeException('Este jugador ya figura como pagado.');
             }
 
-            $subtotal = (float) StockDetalleVenta::query()
-                ->where('stock_venta_id', $venta->id)
-                ->where('stock_venta_participante_id', $participante->id)
-                ->sum('subtotal');
-
             $metodo = $data['metodo_pago'] ?? $venta->metodo_pago;
             if (! in_array($metodo, ['efectivo', 'transferencia'], true)) {
                 $metodo = 'efectivo';
@@ -641,18 +765,15 @@ class StockVentaService
 
             $fechaPago = isset($data['fecha_pago']) ? \Carbon\Carbon::parse($data['fecha_pago']) : now();
 
-            if ($subtotal > 0) {
-                StockHistorialPago::query()->create([
-                    'stock_venta_id' => $venta->id,
-                    'stock_venta_participante_id' => $participante->id,
-                    'monto_pagado' => round($subtotal, 2),
-                    'metodo_pago' => $metodo,
-                    'fecha_pago' => $fechaPago,
-                    'referencia_pago' => $data['referencia_pago'] ?? null,
-                    'usuario_responsable' => self::responsable(),
-                    'notas' => $data['notas'] ?? null,
-                    'created_at' => now(),
-                ]);
+            $detallesPendientes = StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('stock_venta_participante_id', $participante->id)
+                ->where('estado_pago', 'pendiente')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($detallesPendientes as $detalle) {
+                $this->registrarPagoDetalleInterno($venta, $detalle, $metodo, $fechaPago, $data);
             }
 
             $participante->estado_pago = 'pagado';
@@ -679,6 +800,64 @@ class StockVentaService
         });
     }
 
+    public function registrarPagoLinea(StockVenta $venta, int $detalleId, array $data): StockVenta
+    {
+        return DB::transaction(function () use ($venta, $detalleId, $data) {
+            $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
+            if ($venta->estado_pago === 'pagado') {
+                throw new \RuntimeException('La venta ya está cerrada.');
+            }
+
+            /** @var StockDetalleVenta|null $detalle */
+            $detalle = StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('id', $detalleId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $detalle) {
+                throw new \RuntimeException('Línea no encontrada.');
+            }
+            if ($detalle->estado_pago === 'pagado') {
+                throw new \RuntimeException('Este producto ya fue cobrado.');
+            }
+
+            if ($detalle->stock_venta_participante_id !== null) {
+                /** @var StockVentaParticipante|null $partLinea */
+                $partLinea = StockVentaParticipante::query()
+                    ->where('id', $detalle->stock_venta_participante_id)
+                    ->lockForUpdate()
+                    ->first();
+                if ($partLinea !== null && $partLinea->estado_pago === 'pagado') {
+                    throw new \RuntimeException('Este jugador ya figura como pagado.');
+                }
+            }
+
+            $metodo = $data['metodo_pago'] ?? $venta->metodo_pago;
+            if (! in_array($metodo, ['efectivo', 'transferencia'], true)) {
+                $metodo = 'efectivo';
+            }
+
+            $fechaPago = isset($data['fecha_pago']) ? \Carbon\Carbon::parse($data['fecha_pago']) : now();
+
+            $this->registrarPagoDetalleInterno($venta, $detalle, $metodo, $fechaPago, $data);
+
+            $esGrupo = StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists();
+            if ($esGrupo) {
+                $this->sincronizarEstadoGrupoTrasPagoLinea(
+                    $venta,
+                    $detalle->stock_venta_participante_id !== null ? (int) $detalle->stock_venta_participante_id : null,
+                    $data,
+                    $metodo
+                );
+            } else {
+                $this->cerrarVentaSiSaldoCero($venta, $data, $metodo);
+            }
+
+            return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);
+        });
+    }
+
     public function registrarPago(StockVenta $venta, array $data): void
     {
         DB::transaction(function () use ($venta, $data) {
@@ -689,28 +868,36 @@ class StockVentaService
             if (StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists()) {
                 throw new \RuntimeException('Esta venta se cobra por jugador (efectivo / transferencia en cada uno).');
             }
-            if ((float) $venta->precio_total <= 0) {
-                throw new \RuntimeException('Agregá al menos un producto antes de cobrar.');
+
+            $saldo = self::saldoPendienteVenta($venta);
+            if ($saldo <= 0) {
+                throw new \RuntimeException('No hay saldo pendiente para cobrar.');
+            }
+
+            $metodo = $data['metodo_pago'] ?? $venta->metodo_pago;
+            if (! in_array($metodo, ['efectivo', 'transferencia'], true)) {
+                $metodo = 'efectivo';
+            }
+
+            $fechaPago = isset($data['fecha_pago']) ? \Carbon\Carbon::parse($data['fecha_pago']) : now();
+
+            $detallesPendientes = StockDetalleVenta::query()
+                ->where('stock_venta_id', $venta->id)
+                ->where('estado_pago', 'pendiente')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($detallesPendientes as $detalle) {
+                $this->registrarPagoDetalleInterno($venta, $detalle, $metodo, $fechaPago, $data);
             }
 
             $venta->estado_pago = 'pagado';
-            $venta->fecha_pago = $data['fecha_pago'] ?? now()->toDateString();
-            $venta->metodo_pago = $data['metodo_pago'] ?? $venta->metodo_pago;
+            $venta->fecha_pago = $fechaPago->toDateString();
+            $venta->metodo_pago = $metodo;
             if (! empty($data['referencia_pago'])) {
                 $venta->referencia_pago = $data['referencia_pago'];
             }
             $venta->save();
-
-            StockHistorialPago::query()->create([
-                'stock_venta_id' => $venta->id,
-                'monto_pagado' => $venta->precio_total,
-                'metodo_pago' => $venta->metodo_pago,
-                'fecha_pago' => isset($data['fecha_pago']) ? \Carbon\Carbon::parse($data['fecha_pago']) : now(),
-                'referencia_pago' => $venta->referencia_pago,
-                'usuario_responsable' => self::responsable(),
-                'notas' => $data['notas'] ?? null,
-                'created_at' => now(),
-            ]);
         });
     }
 }
