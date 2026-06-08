@@ -2200,4 +2200,7 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
     }
 })();
 </script>
+
+@include('bahia_padel.admin.caja._caja_apertura_control')
+@include('bahia_padel.admin.caja._font_size_control')
 @endsection

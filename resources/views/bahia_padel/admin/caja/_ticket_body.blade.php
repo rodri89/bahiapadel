@@ -1,5 +1,7 @@
 @php
+    use App\Services\StockVentaService;
     $vid = $venta->id;
+    $saldoPendiente = StockVentaService::saldoPendienteVenta($venta);
 @endphp
 @if($venta->es_torneo)
     @include('bahia_padel.admin.caja._ticket_body_torneo', ['venta' => $venta, 'fmtMoney' => $fmtMoney, 'categoriasVenta' => $categoriasVenta, 'productosVenta' => $productosVenta])
@@ -37,11 +39,17 @@
     </div>
     <div class="table-responsive mb-2">
         <table class="table table-sm table-bordered mb-0">
-            <thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center">Estado</th><th class="text-center p-1" style="width:100px"></th></tr></thead>
+            <thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th><th class="text-center">Estado</th><th class="text-center p-1" style="min-width:100px">Acciones</th></tr></thead>
             <tbody class="ticket-lines-tbody">
                 @foreach($venta->detalles as $d)
-                    <tr>
-                        <td>{{ $d->producto?->nombre }}</td>
+                    @php $lineaPagada = ($d->estado_pago ?? 'pendiente') === 'pagado'; @endphp
+                    <tr data-detalle-id="{{ $d->id }}" data-estado-pago="{{ $d->estado_pago ?? 'pendiente' }}">
+                        <td>
+                            {{ $d->producto?->nombre }}
+                            @if($lineaPagada)
+                                <span class="badge badge-success ml-1">Pagado</span>
+                            @endif
+                        </td>
                         <td class="text-center">{{ $d->cantidad }}</td>
                         <td class="text-right">{{ $fmtMoney($d->subtotal) }}</td>
                         <td class="text-center">
@@ -51,13 +59,13 @@
                                 <span class="badge badge-warning">Pendiente</span>
                             @endif
                         </td>
-                        <td class="text-center p-1 align-middle">
-                            @if($d->estado_pago === 'pendiente')
+                        <td class="text-center p-1 align-middle text-nowrap">
+                            @if($lineaPagada)
+                                <span class="text-muted small">—</span>
+                            @else
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="{{ $d->id }}" title="Quitar línea">−</button>
                                 <button type="button" class="btn btn-sm btn-outline-success btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="{{ $d->id }}" data-metodo="efectivo" title="Pagar en efectivo">$E</button>
                                 <button type="button" class="btn btn-sm btn-outline-primary btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="{{ $d->id }}" data-metodo="transferencia" title="Pagar por transferencia">$T</button>
-                            @else
-                                <span class="text-muted small">—</span>
                             @endif
                         </td>
                     </tr>
@@ -99,20 +107,24 @@
         <span class="caja-label mr-2">Total:</span>
         <span class="h5 mb-0 text-primary ticket-total">{{ $fmtMoney($venta->precio_total) }}</span>
     </div>
+    <div class="d-flex flex-wrap align-items-center mb-2">
+        <span class="font-weight-bold mr-2">Saldo pendiente:</span>
+        <span class="h5 mb-0 text-danger ticket-saldo-pendiente">{{ $fmtMoney($saldoPendiente) }}</span>
+    </div>
     <div class="d-flex flex-wrap">
         <form method="post" action="{{ route('admincaja.venta.pago', $venta) }}" class="mr-2 mb-2 form-ticket-pago" data-venta-id="{{ $vid }}">
             @csrf
             <input type="hidden" name="metodo_pago" value="efectivo">
-            <button type="submit" class="btn btn-success btn-ticket-pay" @if((float)$venta->precio_total <= 0) disabled @endif>Efectivo</button>
+            <button type="submit" class="btn btn-success btn-ticket-pay" @if((float)$saldoPendiente <= 0) disabled @endif>Cobrar resto (Efectivo)</button>
         </form>
         <form method="post" action="{{ route('admincaja.venta.pago', $venta) }}" class="mr-2 mb-2 form-ticket-pago" data-venta-id="{{ $vid }}">
             @csrf
             <input type="hidden" name="metodo_pago" value="transferencia">
-            <button type="submit" class="btn btn-info btn-ticket-pay" @if((float)$venta->precio_total <= 0) disabled @endif>Transferencia</button>
+            <button type="submit" class="btn btn-info btn-ticket-pay" @if((float)$saldoPendiente <= 0) disabled @endif>Cobrar resto (Transferencia)</button>
         </form>
         <button type="button" class="btn btn-secondary mb-2 btn-ticket-guardar">Guardar</button>
         <button type="button" class="btn btn-outline-danger mb-2 ml-md-2 btn-ticket-cancelar" title="Anular ticket y devolver stock">Cancelar ticket</button>
     </div>
-    <small class="caja-texto-small d-block">Cada clic en <strong>+</strong> agrega 1 unidad del producto elegido. Podés quitar una línea con <strong>−</strong>. <strong>Cancelar ticket</strong> elimina la venta y devuelve el stock. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
+    <small class="caja-texto-small d-block">Cada clic en <strong>+</strong> agrega 1 unidad. Cobrá producto por producto con <strong>$E</strong> / <strong>$T</strong> o el saldo restante con los botones de abajo. <strong>Cancelar ticket</strong> solo si no hay productos cobrados. El nombre se guarda con <strong>Guardar</strong> o al salir del campo cliente.</small>
 </div>
 @endif
