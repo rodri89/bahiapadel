@@ -248,6 +248,28 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
     </div>
 </div>
 
+{{-- Modal dividir línea --}}
+<div class="modal fade" id="modal-torneo-dividir" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="modal-torneo-dividir-titulo">Dividir producto</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="small text-muted">Seleccioná con quién querés dividir este producto. El costo se repartirá en partes iguales.</p>
+                <div id="torneo-dividir-opciones"></div>
+                <input type="hidden" id="torneo-dividir-detalle-id">
+                <input type="hidden" id="torneo-dividir-participante-id">
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-primary" id="btn-torneo-confirmar-dividir">Confirmar división</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Modal pago mixto --}}
 <div class="modal fade" id="modal-torneo-pago" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -330,6 +352,7 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
     function lineaUrl(vid) { return adminCajaBasePath() + '/venta/' + vid + '/linea'; }
     function lineaDestroyUrl(vid, did) { return adminCajaBasePath() + '/venta/' + vid + '/linea/' + did; }
     function lineaPagoUrl(vid, did) { return adminCajaBasePath() + '/venta/' + vid + '/linea/' + did + '/pago'; }
+    function dividirLineaUrl(vid, did) { return adminCajaBasePath() + '/venta/' + vid + '/linea/' + did + '/dividir'; }
     function participanteStoreUrl(vid) { return adminCajaBasePath() + '/venta/' + vid + '/participante'; }
     function participantePatchUrl(vid, pid) { return adminCajaBasePath() + '/venta/' + vid + '/participante/' + pid; }
     function participantePagoUrl(vid, pid) { return adminCajaBasePath() + '/venta/' + vid + '/participante/' + pid + '/pago'; }
@@ -523,6 +546,7 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
 
     // Datos precargados del servidor
     var VENTA_DETALLES = @json($ventaDetallesJson);
+    var TORNEO_PARTICIPANTES = @json($parts->map(function($p) { return ['id' => $p->id, 'nombre' => $p->nombre, 'slot' => $p->slot]; })->values());
 
     function abrirDetalleParticipante(participanteId, nombre) {
         modalParticipanteId = participanteId;
@@ -542,6 +566,7 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
                 if (d.estado_pago === 'pendiente') {
                     tienePendientes = true;
                     accionesHtml = '<button type="button" class="btn btn-sm btn-outline-danger btn-torneo-quitar-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar"><i class="fas fa-trash-alt"></i></button>'
+                        + '<button type="button" class="btn btn-sm btn-outline-secondary btn-torneo-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + d.participante_id + '" title="Dividir"><i class="fas fa-divide"></i></button>'
                         + '<button type="button" class="btn btn-sm btn-outline-success btn-torneo-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="efectivo" title="Pagar efectivo"><i class="fas fa-dollar-sign"></i></button>'
                         + '<button type="button" class="btn btn-sm btn-outline-info btn-torneo-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="transferencia" title="Pagar transferencia"><i class="fas fa-university"></i></button>';
                 } else {
@@ -609,6 +634,69 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
                     window.location.reload();
                 }).catch(function(e) { btnRemove.disabled = false; alert('Error de red'); });
             }
+        });
+    }
+
+    // ── Dividir línea ──
+    var modalDividir = document.getElementById('modal-torneo-dividir');
+    var dividirOpciones = document.getElementById('torneo-dividir-opciones');
+    var dividirDetalleIdInput = document.getElementById('torneo-dividir-detalle-id');
+    var dividirParticipanteIdInput = document.getElementById('torneo-dividir-participante-id');
+    var btnConfirmarDividir = document.getElementById('btn-torneo-confirmar-dividir');
+
+    function abrirModalDividir(detalleId, dueñoParticipanteId) {
+        if (!dividirDetalleIdInput || !dividirParticipanteIdInput || !dividirOpciones) return;
+        dividirDetalleIdInput.value = detalleId;
+        dividirParticipanteIdInput.value = dueñoParticipanteId;
+        dividirOpciones.innerHTML = '';
+        if (TORNEO_PARTICIPANTES && TORNEO_PARTICIPANTES.length) {
+            TORNEO_PARTICIPANTES.forEach(function(p) {
+                var checked = String(p.id) === String(dueñoParticipanteId) ? 'checked disabled' : '';
+                var div = document.createElement('div');
+                div.className = 'form-check';
+                div.innerHTML = '<input class="form-check-input" type="checkbox" value="' + p.id + '" id="dividir-chk-' + p.id + '" ' + checked + '>'
+                    + '<label class="form-check-label" for="dividir-chk-' + p.id + '">' + escapeHtml(p.slot + ' — ' + p.nombre) + '</label>';
+                dividirOpciones.appendChild(div);
+            });
+        }
+        if (window.jQuery) window.jQuery(modalDividir).modal('show');
+    }
+
+    if (detalleTbody) {
+        detalleTbody.addEventListener('click', function(e) {
+            var btnDividir = e.target.closest('.btn-torneo-dividir-linea');
+            if (btnDividir) {
+                var did = btnDividir.getAttribute('data-detalle-id');
+                var pid = btnDividir.getAttribute('data-participante-id');
+                if (did && pid) abrirModalDividir(did, pid);
+            }
+        });
+    }
+
+    if (btnConfirmarDividir) {
+        btnConfirmarDividir.addEventListener('click', function() {
+            var did = dividirDetalleIdInput ? dividirDetalleIdInput.value : '';
+            var dueñoPid = dividirParticipanteIdInput ? dividirParticipanteIdInput.value : '';
+            if (!did) return;
+            var checks = document.querySelectorAll('#torneo-dividir-opciones input[type="checkbox"]:checked');
+            if (!checks.length) { alert('Seleccioná al menos un jugador para dividir.'); return; }
+            var pids = [];
+            checks.forEach(function(c) { pids.push(parseInt(c.value, 10)); });
+            // Asegurar que el dueño esté incluido
+            if (dueñoPid) {
+                var dueñoId = parseInt(dueñoPid, 10);
+                if (pids.indexOf(dueñoId) < 0) pids.push(dueñoId);
+            }
+            btnConfirmarDividir.disabled = true;
+            fetch(dividirLineaUrl(ventaId, did), {
+                method: 'POST',
+                headers: jsonHeaders(),
+                body: JSON.stringify({ _token: csrfToken, participantes_ids: pids })
+            }).then(parseFetchResponse).then(function(x) {
+                btnConfirmarDividir.disabled = false;
+                if (!x.ok) { alert((x.j && x.j.message) || 'Error'); return; }
+                window.location.reload();
+            }).catch(function(e) { btnConfirmarDividir.disabled = false; alert('Error de red'); });
         });
     }
 
