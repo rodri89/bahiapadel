@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CajaAdminController;
 use App\Http\Controllers\Admin\MenuItemController;
 use App\Http\Controllers\Admin\StockAdminController;
+use App\Http\Controllers\Admin\TurnosFijosAdminController;
 use App\Http\Controllers\CartaController;
 
 Route::get('/index_new', function () {	
@@ -118,6 +119,12 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_caja/jugadores', [CajaAdminController::class, 'jugadoresCajaJson'])->name('admincaja.jugadores');
 	Route::patch('admin_caja/venta/{venta}/participante/{participante}', [CajaAdminController::class, 'updateParticipante'])->name('admincaja.venta.participante.update');
 	Route::post('admin_caja/venta/{venta}/participante/{participante}/pago', [CajaAdminController::class, 'pagoParticipante'])->name('admincaja.venta.participante.pago');
+	Route::post('admin_caja/venta/{venta}/participante/{participante}/pago-mixto', [CajaAdminController::class, 'pagoMixtoParticipante'])->name('admincaja.venta.participante.pago-mixto');
+	Route::post('admin_caja/apertura', [CajaAdminController::class, 'abrirCaja'])->name('admincaja.apertura');
+	Route::post('admin_caja/cierre', [CajaAdminController::class, 'cerrarCaja'])->name('admincaja.cierre');
+	Route::post('admin_caja/venta/{venta}/linea/{detalle}/pago', [CajaAdminController::class, 'pagoLinea'])->name('admincaja.venta.linea.pago');
+	Route::post('admin_caja/venta/{venta}/participante', [CajaAdminController::class, 'storeParticipanteTorneo'])->name('admincaja.venta.participante.store');
+	Route::post('admin_caja/venta/{venta}/inscripcion-todos', [CajaAdminController::class, 'inscripcionTodosTorneo'])->name('admincaja.venta.inscripcion.todos');
 	Route::post('admin_caja/venta/{venta}/linea', [CajaAdminController::class, 'storeLinea'])->name('admincaja.venta.linea');
 	Route::post('admin_caja/venta/{venta}/linea/{detalle}/dividir', [CajaAdminController::class, 'dividirLinea'])->name('admincaja.venta.linea.dividir');
 	Route::delete('admin_caja/venta/{venta}/linea/{detalle}', [CajaAdminController::class, 'destroyLinea'])->name('admincaja.venta.linea.destroy');
@@ -125,7 +132,14 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::patch('admin_caja/venta/{venta}', [CajaAdminController::class, 'updateBorrador'])->name('admincaja.venta.update');
 	Route::get('admin_caja/venta/{venta}/ticket-modal', [CajaAdminController::class, 'ventaTicketModal'])->name('admincaja.venta.ticket-modal');
 	Route::get('admin_caja/venta/{venta}', [CajaAdminController::class, 'showVenta'])->name('admincaja.venta.show');
+	Route::get('admin_caja/torneo/{venta}', [CajaAdminController::class, 'showTorneo'])->name('admincaja.torneo.show');
 	Route::post('admin_caja/venta/{venta}/pago', [CajaAdminController::class, 'registrarPago'])->name('admincaja.venta.pago');
+
+	Route::get('admin_turnos_fijos', [TurnosFijosAdminController::class, 'index'])->name('adminturnosfijos');
+	Route::post('admin_turnos_fijos', [TurnosFijosAdminController::class, 'store'])->name('adminturnosfijos.store');
+	Route::put('admin_turnos_fijos/{turno}', [TurnosFijosAdminController::class, 'update'])->name('adminturnosfijos.update');
+	Route::delete('admin_turnos_fijos/{turno}', [TurnosFijosAdminController::class, 'destroy'])->name('adminturnosfijos.destroy');
+
 	Route::get('admin_torneos','HomeController@adminTorneos')->name('admintorneos');
 	Route::get('admin_cargar_resultados','HomeController@adminCargarResultados')->name('admincargarresultados');
 	Route::get('admin_fotos','HomeController@adminFotos')->name('adminfotos');

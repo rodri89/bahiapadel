@@ -12,7 +12,7 @@ class StockHistorialPago extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'stock_venta_id', 'stock_venta_participante_id', 'monto_pagado', 'metodo_pago', 'fecha_pago',
+        'stock_venta_id', 'stock_venta_participante_id', 'stock_detalle_venta_id', 'monto_pagado', 'metodo_pago', 'fecha_pago',
         'referencia_pago', 'usuario_responsable', 'notas', 'created_at',
     ];
 

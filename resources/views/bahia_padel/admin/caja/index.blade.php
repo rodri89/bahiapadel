@@ -4,17 +4,60 @@
 
 @section('contenedor')
 <style>
-.ticket-cat-btn { border-width: 2px; transition: transform .12s ease, box-shadow .12s ease; }
+/* Accesibilidad / legibilidad caja */
+.caja-stat-label { font-size: 0.95rem; letter-spacing: 0.03em; }
+.caja-stat-valor { font-size: 1.25rem; font-weight: 700; }
+.caja-stat-hint { font-size: 0.9rem; color: #555; }
+.caja-label { font-size: 1rem; font-weight: 700; }
+.caja-texto { font-size: 1rem; }
+.caja-texto-small { font-size: 0.9rem; color: #555; }
+.ticket-cat-btn { border-width: 2px; transition: transform .12s ease, box-shadow .12s ease; width: 44px; height: 44px; font-size: 0.85rem !important; }
 .ticket-cat-btn:hover { transform: scale(1.06); box-shadow: 0 2px 6px rgba(78,115,223,.25); }
 .ticket-cat-btn.active { border-color: #4e73df; }
 .ticket-card-panel { display: none; }
 .ticket-card-panel.is-open { display: block; }
 .caja-stat-trigger { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
 .caja-stat-trigger:hover { transform: translateY(-1px); box-shadow: 0 0.35rem 0.75rem rgba(0,0,0,.12) !important; }
-.badge-caja-jugador { font-size: 0.85rem; padding: 0.35em 0.55em; min-width: 3.8em; display: inline-block; text-align: center; }
-.ticket-grupo-tabs .btn { padding: 0.45rem 0.65rem; font-size: 0.95rem; }
+.badge-caja-jugador { font-size: 0.95rem; padding: 0.35em 0.55em; min-width: 3.8em; display: inline-block; text-align: center; }
+.ticket-grupo-tabs .btn { padding: 0.5rem 0.75rem; font-size: 1rem; }
 .ticket-producto-dropdown .px-3:hover { background-color: #f8f9fa; }
 .ticket-producto-autocomplete input[disabled] { background-color: #e9ecef; }
+.ticket-producto-dropdown { background-color: #fff; }
+.ticket-card .card-body { color: #212529; }
+/* Dark mode complementos */
+body.dark-mode .caja-texto-small { color: #b0b0b0; }
+body.dark-mode .caja-stat-hint { color: #b0b0b0; }
+body.dark-mode .ticket-producto-dropdown { background-color: #2d2d2d !important; color: #e0e0e0 !important; border-color: #3d3d3d !important; }
+body.dark-mode .ticket-producto-dropdown .px-3:hover { background-color: #3d3d3d; }
+body.dark-mode .ticket-card .card-body { color: #e0e0e0; }
+body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
+
+/* Grilla de turnos */
+.turno-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.turno-cancha-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.turno-cancha-title { font-weight: 700; font-size: 1.1rem; text-align: center; color: #4e73df; margin-bottom: 0.25rem; }
+.turno-celda { border: 1px solid #dee2e6; border-radius: 0.5rem; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; transition: box-shadow .15s ease; }
+.turno-celda:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.turno-celda.libre { background: #f8f9fa; }
+.turno-celda.fijo { background: #e8f0fe; border-color: #aecbfb; }
+.turno-celda.vendido { background: #fff3cd; border-color: #ffdf7e; }
+.turno-celda.pagado { background: #d4edda; border-color: #a3d9b1; }
+.turno-hora { font-weight: 700; font-size: 1.05rem; color: #212529; }
+.turno-nombre { font-size: 0.95rem; color: #495057; }
+.turno-badge { align-self: flex-start; font-size: 0.8rem; }
+.btn-turno-accion { align-self: stretch; font-size: 0.9rem; padding: 0.3rem 0.5rem; }
+@media (max-width: 768px) {
+  .turno-grid { grid-template-columns: 1fr; }
+}
+
+/* Tamaño base cómodo para toda la sección */
+#form-caja-fecha, .ticket-card, #caja-resumen-detalle, #panel-nuevo-ticket { font-size: 1.05rem; }
+.ticket-card .form-control, .ticket-card .input-group-text, .ticket-card select { font-size: 1rem; min-height: 38px; }
+.ticket-card table th, .ticket-card table td { font-size: 1rem; padding: 0.5rem 0.6rem; }
+.ticket-card .btn { font-size: 1rem; }
+.ticket-card .btn-sm { font-size: 0.95rem; padding: 0.35rem 0.65rem; }
+.ticket-card .h5, .ticket-card h5 { font-size: 1.35rem; }
+.ticket-total { font-size: 1.4rem !important; }
 </style>
 @php
     $fmtMoney = fn ($n) => '$' . number_format((float) $n, 2, ',', '.');
@@ -37,7 +80,7 @@
     <div class="row mb-3 align-items-end">
         <div class="col-lg-8 col-md-7 mb-2 mb-md-0">
             <form method="get" action="{{ route('admincaja') }}" class="form-inline flex-wrap align-items-center" id="form-caja-fecha">
-                <label for="caja-fecha-consulta" class="mb-0 mr-2 font-weight-bold text-gray-800">Caja del día</label>
+                <label for="caja-fecha-consulta" class="mb-0 mr-2 font-weight-bold text-gray-800" style="font-size:1.05rem;">Caja del día</label>
                 <input type="date"
                     name="fecha"
                     id="caja-fecha-consulta"
@@ -48,65 +91,149 @@
                 <button type="submit" class="btn btn-primary ml-2">Ver</button>
                 @if(!$fechaCajaEsHoy)
                     <a href="{{ route('admincaja') }}" class="btn btn-outline-secondary ml-2">Volver a hoy</a>
-                    <span class="small text-muted ml-2">Consulta: {{ $fechaCajaLabel }} (solo lectura: no podés abrir tickets nuevos).</span>
+                    <span class="caja-texto-small ml-2">Consulta: {{ $fechaCajaLabel }} (solo lectura: no podés abrir tickets nuevos).</span>
                 @else
-                    <span class="small text-muted ml-2 d-none d-md-inline">{{ $fechaCajaLabel }}</span>
+                    <span class="caja-texto-small ml-2 d-none d-md-inline">{{ $fechaCajaLabel }}</span>
                 @endif
             </form>
         </div>
     </div>
+
+    {{-- Estado de la caja --}}
+    <div class="row mb-3">
+        <div class="col-12">
+            @if(!$cajaDelDia)
+                @if($fechaCajaEsHoy)
+                <div class="card shadow border-left-warning">
+                    <div class="card-body d-flex flex-wrap align-items-center justify-content-between py-3">
+                        <div class="mb-2 mb-md-0">
+                            <div class="font-weight-bold text-warning" style="font-size:1.1rem;">Caja no abierta</div>
+                            <div class="small text-muted">Para empezar a operar, abrí la caja ingresando el fondo inicial.</div>
+                        </div>
+                        <form method="post" action="{{ route('admincaja.apertura') }}" class="form-inline">
+                            @csrf
+                            <input type="hidden" name="fecha" value="{{ $fechaCaja }}">
+                            <div class="input-group mr-2">
+                                <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                                <input type="number" name="fondo_inicial" class="form-control" placeholder="Fondo inicial" min="0" step="0.01" required style="max-width:140px;">
+                            </div>
+                            <button type="submit" class="btn btn-warning font-weight-bold">Abrir caja</button>
+                        </form>
+                    </div>
+                </div>
+                @else
+                <div class="alert alert-light border mb-0">
+                    <span class="text-muted small">No hay registro de caja para el {{ $fechaCajaLabel }}.</span>
+                </div>
+                @endif
+            @elseif($cajaDelDia->estado === 'abierta')
+                <div class="card shadow border-left-success">
+                    <div class="card-body d-flex flex-wrap align-items-center justify-content-between py-3">
+                        <div class="d-flex flex-wrap align-items-center mb-2 mb-md-0">
+                            <div class="mr-4">
+                                <div class="small text-muted">Fondo inicial</div>
+                                <div class="font-weight-bold text-success" style="font-size:1.2rem;">{{ $fmtMoney($cajaDelDia->fondo_inicial) }}</div>
+                            </div>
+                            <div class="mr-4">
+                                <div class="small text-muted">Efectivo esperado</div>
+                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;">{{ $fmtMoney($efectivoEsperadoCaja) }}</div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Transferencia</div>
+                                <div class="font-weight-bold text-info" style="font-size:1.2rem;">{{ $fmtMoney($statsHoy['transferencia']) }}</div>
+                            </div>
+                        </div>
+                        @if($fechaCajaEsHoy)
+                        <button type="button" class="btn btn-outline-danger font-weight-bold" data-toggle="modal" data-target="#modal-cierre-caja">Cerrar caja</button>
+                        @endif
+                    </div>
+                </div>
+            @else
+                <div class="card shadow border-left-secondary">
+                    <div class="card-body d-flex flex-wrap align-items-center justify-content-between py-3">
+                        <div class="d-flex flex-wrap align-items-center mb-2 mb-md-0">
+                            <div class="mr-4">
+                                <div class="small text-muted">Fondo inicial</div>
+                                <div class="font-weight-bold text-success" style="font-size:1.2rem;">{{ $fmtMoney($cajaDelDia->fondo_inicial) }}</div>
+                            </div>
+                            <div class="mr-4">
+                                <div class="small text-muted">Efectivo esperado</div>
+                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;">{{ $fmtMoney($efectivoEsperadoCaja) }}</div>
+                            </div>
+                            <div class="mr-4">
+                                <div class="small text-muted">Efectivo real</div>
+                                <div class="font-weight-bold" style="font-size:1.2rem;">{{ $fmtMoney($cajaDelDia->efectivo_real) }}</div>
+                            </div>
+                            <div>
+                                <div class="small text-muted">Diferencia</div>
+                                @if((float)$cajaDelDia->diferencia === 0.0)
+                                    <div class="font-weight-bold text-success" style="font-size:1.2rem;">$0,00</div>
+                                @elseif((float)$cajaDelDia->diferencia > 0)
+                                    <div class="font-weight-bold text-success" style="font-size:1.2rem;">Sobrante {{ $fmtMoney($cajaDelDia->diferencia) }}</div>
+                                @else
+                                    <div class="font-weight-bold text-danger" style="font-size:1.2rem;">Faltante {{ $fmtMoney(abs((float)$cajaDelDia->diferencia)) }}</div>
+                                @endif
+                            </div>
+                        </div>
+                        <span class="badge badge-secondary">Caja cerrada</span>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+
     <div class="row mb-2">
         <div class="col-md-2 col-sm-6 mb-2">
             <div class="card border-left-primary shadow h-100 py-2 caja-stat-trigger" data-resumen="ventas-hoy" data-titulo="Ventas del {{ $fechaCajaLabel }} (detalle)">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Ventas del día</div>
-                    <div class="h5 mb-0" id="caja-stat-transacciones">{{ $statsHoy['transacciones'] }} mov.</div>
-                    <span class="small text-muted">Tocá para listado</span>
+                    <div class="caja-stat-label font-weight-bold text-primary text-uppercase mb-1">Ventas del día</div>
+                    <div class="caja-stat-valor mb-0" id="caja-stat-transacciones">{{ $statsHoy['transacciones'] }} mov.</div>
+                    <span class="caja-stat-hint">Tocá para listado</span>
                 </div>
             </div>
         </div>
         <div class="col-md-2 col-sm-6 mb-2">
             <div class="card border-left-success shadow h-100 py-2 caja-stat-trigger" data-resumen="total-hoy" data-titulo="Total facturado el {{ $fechaCajaLabel }} (todas las ventas del día)">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total del día</div>
-                    <div class="h5 mb-0" id="caja-stat-monto-total">{{ $fmtMoney($statsHoy['monto_total']) }}</div>
-                    <span class="small text-muted">Tocá para listado</span>
+                    <div class="caja-stat-label font-weight-bold text-success text-uppercase mb-1">Total del día</div>
+                    <div class="caja-stat-valor mb-0" id="caja-stat-monto-total">{{ $fmtMoney($statsHoy['monto_total']) }}</div>
+                    <span class="caja-stat-hint">Tocá para listado</span>
                 </div>
             </div>
         </div>
         <div class="col-md-2 col-sm-6 mb-2">
             <div class="card border-left-info shadow h-100 py-2 caja-stat-trigger" data-resumen="efectivo-hoy" data-titulo="Ventas en efectivo ({{ $fechaCajaLabel }})">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Efectivo</div>
-                    <div class="h5 mb-0" id="caja-stat-efectivo">{{ $fmtMoney($statsHoy['efectivo']) }}</div>
-                    <span class="small text-muted">Tocá para listado</span>
+                    <div class="caja-stat-label font-weight-bold text-info text-uppercase mb-1">Efectivo</div>
+                    <div class="caja-stat-valor mb-0" id="caja-stat-efectivo">{{ $fmtMoney($statsHoy['efectivo']) }}</div>
+                    <span class="caja-stat-hint">Tocá para listado</span>
                 </div>
             </div>
         </div>
         <div class="col-md-2 col-sm-6 mb-2">
             <div class="card border-left-secondary shadow h-100 py-2 caja-stat-trigger" data-resumen="transfer-hoy" data-titulo="Ventas por transferencia ({{ $fechaCajaLabel }})">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Transfer.</div>
-                    <div class="h5 mb-0" id="caja-stat-transferencia">{{ $fmtMoney($statsHoy['transferencia']) }}</div>
-                    <span class="small text-muted">Tocá para listado</span>
+                    <div class="caja-stat-label font-weight-bold text-secondary text-uppercase mb-1">Transfer.</div>
+                    <div class="caja-stat-valor mb-0" id="caja-stat-transferencia">{{ $fmtMoney($statsHoy['transferencia']) }}</div>
+                    <span class="caja-stat-hint">Tocá para listado</span>
                 </div>
             </div>
         </div>
         <div class="col-md-2 col-sm-6 mb-2">
             <div class="card border-left-success shadow h-100 py-2 caja-stat-trigger" data-resumen="cobrado-hoy" data-titulo="Cobrado el {{ $fechaCajaLabel }} (ventas pagadas)">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Cobrado</div>
-                    <div class="h5 mb-0" id="caja-stat-pagado">{{ $fmtMoney($statsHoy['pagado']) }}</div>
-                    <span class="small text-muted">Tocá para listado</span>
+                    <div class="caja-stat-label font-weight-bold text-success text-uppercase mb-1">Cobrado</div>
+                    <div class="caja-stat-valor mb-0" id="caja-stat-pagado">{{ $fmtMoney($statsHoy['pagado']) }}</div>
+                    <span class="caja-stat-hint">Tocá para listado</span>
                 </div>
             </div>
         </div>
         <div class="col-md-2 col-sm-6 mb-2">
             <div class="card border-left-warning shadow h-100 py-2 caja-stat-trigger" data-resumen="pendientes-dia" data-titulo="Pendientes con fecha de venta {{ $fechaCajaLabel }}">
                 <div class="card-body">
-                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pendiente (día)</div>
-                    <div class="h5 mb-0" id="caja-stat-pendiente-dia">{{ $fmtMoney($statsHoy['pendiente']) }}</div>
-                    <span class="small text-muted">Tocá para listado</span>
+                    <div class="caja-stat-label font-weight-bold text-warning text-uppercase mb-1">Pendiente (día)</div>
+                    <div class="caja-stat-valor mb-0" id="caja-stat-pendiente-dia">{{ $fmtMoney($statsHoy['pendiente']) }}</div>
+                    <span class="caja-stat-hint">Tocá para listado</span>
                 </div>
             </div>
         </div>
@@ -116,8 +243,8 @@
             <div class="card border-left-danger shadow h-100 py-2 caja-stat-trigger" data-resumen="pendientes-saldo" data-titulo="Ventas pendientes de cobro (con saldo, todas las fechas)">
                 <div class="card-body py-2 d-flex flex-wrap align-items-center justify-content-between">
                     <div>
-                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Pendientes de cobro (saldo)</div>
-                        <div class="small mb-0 text-muted">Incluye deudas de días anteriores. Tocá para ver el listado y Ver / Cobrar.</div>
+                        <div class="caja-stat-label font-weight-bold text-danger text-uppercase mb-1">Pendientes de cobro (saldo)</div>
+                        <div class="caja-texto-small mb-0">Incluye deudas de días anteriores. Tocá para ver el listado y Ver / Cobrar.</div>
                     </div>
                     <div class="h5 mb-0 text-danger font-weight-bold" id="caja-stat-pendientes-saldo">{{ $pendientes->count() }} venta(s)</div>
                 </div>
@@ -130,7 +257,7 @@
             <div class="card shadow">
                 <div class="card-header d-flex justify-content-between align-items-center py-2 bg-white border-bottom">
                     <span class="font-weight-bold text-primary m-0" id="caja-resumen-titulo"></span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="caja-resumen-cerrar">Cerrar</button>
+                    <button type="button" class="btn btn-outline-secondary" id="caja-resumen-cerrar">Cerrar</button>
                 </div>
                 <div class="card-body p-0">
                     <div class="resumen-tabla d-none" id="resumen-data-ventas-hoy">
@@ -167,6 +294,9 @@
                         {{ $etiq }}
                     </button>
                 @endforeach
+                <button type="button" class="btn btn-outline-dark btn-cancha-caja btn-torneo-caja px-4 py-2" style="min-width:140px;" data-es-torneo="1">
+                    Torneo / Americano
+                </button>
             </div>
         </div>
     </div>
@@ -179,14 +309,14 @@
                     @if($productosVenta->isEmpty())
                         <p class="text-warning mb-0">No hay productos con stock. Cargá en <a href="{{ route('adminstock') }}">Stock</a> para poder vender.</p>
                     @else
-                    <p class="small text-muted mb-2">Escribí el nombre del cliente (podés incluir horario u otra referencia en el mismo campo) y tocá <strong>Abrir ticket</strong>.</p>
+                    <p class="caja-texto-small mb-2" id="nuevo-ticket-ayuda">Escribí el nombre del cliente (podés incluir horario u otra referencia en el mismo campo) y tocá <strong>Abrir ticket</strong>.</p>
                     <div class="form-row align-items-end">
                         <div class="form-group col-md-6 mb-2">
-                            <label class="small font-weight-bold mb-1">Cliente</label>
+                            <label class="caja-label mb-1" id="nuevo-ticket-label-nombre">Cliente</label>
                             <input type="text" id="nuevo-nombre-cliente" class="form-control" placeholder="Ej. Rodri · Cancha 1 17:00" autocomplete="off" disabled>
                         </div>
                         <div class="form-group col-md-6 mb-2">
-                            <label class="small text-muted mb-1">Cancha elegida</label>
+                            <label class="caja-texto-small mb-1">Cancha elegida</label>
                             <input type="text" id="nuevo-cancha-label" class="form-control bg-light" readonly placeholder="Tocá Cancha 1–3 o Particular" value="">
                         </div>
                     </div>
@@ -199,14 +329,97 @@
     </div>
     @endif
 
+    @if(!empty($turnosDelDia) && $fechaCajaEsHoy)
+    <div class="row mb-4" id="turnos-grid-container">
+        <div class="col-12">
+            <h5 class="font-weight-bold text-gray-800 mb-3">Turnos del día — {{ $fechaCajaLabel }}</h5>
+            <div class="turno-grid">
+                @foreach($turnosDelDia as $canchaNombre => $turnosCancha)
+                <div class="turno-cancha-col">
+                    <div class="turno-cancha-title">{{ $canchaNombre }}</div>
+                    @foreach($horariosTurno as $hora)
+                        @php
+                            $t = $turnosCancha[$hora] ?? ['tipo'=>'libre','nombre'=>null,'venta_id'=>null,'cancha_id'=>null];
+                        @endphp
+                        <div class="turno-celda {{ $t['tipo'] }}"
+                             data-cancha-id="{{ $t['cancha_id'] }}"
+                             data-hora="{{ $hora }}"
+                             data-tipo="{{ $t['tipo'] }}"
+                             data-nombre="{{ $t['nombre'] ?? '' }}"
+                             data-venta-id="{{ $t['venta_id'] ?? '' }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="turno-hora">{{ $hora }}</span>
+                                @if($t['tipo'] === 'libre')
+                                    <span class="badge badge-light turno-badge">Libre</span>
+                                @elseif($t['tipo'] === 'fijo')
+                                    <span class="badge badge-primary turno-badge">Fijo</span>
+                                @elseif($t['tipo'] === 'vendido')
+                                    <span class="badge badge-warning turno-badge">Pendiente</span>
+                                @elseif($t['tipo'] === 'pagado')
+                                    <span class="badge badge-success turno-badge">Pagado</span>
+                                @endif
+                            </div>
+                            @if($t['nombre'])
+                                <div class="turno-nombre">{{ $t['nombre'] }}</div>
+                            @else
+                                <div class="turno-nombre text-muted">—</div>
+                            @endif
+                            @if($fechaCajaEsHoy)
+                                @if($t['tipo'] === 'libre')
+                                    <button type="button" class="btn btn-outline-primary btn-turno-accion btn-turno-vender">Vender turno</button>
+                                @elseif($t['tipo'] === 'fijo')
+                                    <button type="button" class="btn btn-primary btn-turno-accion btn-turno-vender">Cobrar / Abrir</button>
+                                @elseif(($t['tipo'] === 'vendido' || $t['tipo'] === 'pagado') && $t['venta_id'])
+                                    <button type="button" class="btn btn-outline-secondary btn-turno-accion btn-turno-ver" data-venta-id="{{ $t['venta_id'] }}">Ver ticket</button>
+                                @endif
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    @if($torneosAbiertos->isNotEmpty())
+    <div class="row mb-3">
+        <div class="col-12">
+            <h5 class="font-weight-bold text-gray-800 mb-2">Torneos / Americanos en curso</h5>
+            @foreach($torneosAbiertos as $venta)
+            <div class="col-12 mb-3 px-0">
+                <div class="card shadow border-left-dark">
+                    <div class="card-body d-flex flex-wrap align-items-center justify-content-between py-3">
+                        <div class="d-flex align-items-center mb-2 mb-md-0">
+                            <i class="fas fa-trophy text-dark mr-3" style="font-size:1.5rem;"></i>
+                            <div>
+                                <div class="font-weight-bold text-dark" style="font-size:1.1rem;">{{ $venta->nombre_cliente }}</div>
+                                <div class="small text-muted">Torneo / Americano — {{ $venta->participantes->count() }} jugador(es) — Creado {{ \Carbon\Carbon::parse($venta->fecha_venta)->format('d/m/Y') }}</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge badge-primary mr-3" style="font-size:1rem;">{{ $fmtMoney($venta->precio_total) }}</span>
+                            <a href="{{ route('admincaja.torneo.show', $venta) }}" class="btn btn-primary">Gestionar torneo</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <div class="row">
         <div class="col-12">
             <div class="d-flex flex-wrap align-items-baseline justify-content-between mb-2">
-                <h6 class="font-weight-bold text-gray-800 mb-0">Tickets en curso — {{ $fechaCajaLabel }}</h6>
-                <button type="button" class="btn btn-link btn-sm p-0 text-primary shadow-none" id="btn-toggle-lista-tickets" aria-expanded="false">Desplegar todos</button>
+                <h5 class="font-weight-bold text-gray-800 mb-0">Tickets en curso — {{ $fechaCajaLabel }}</h5>
+                <button type="button" class="btn btn-link p-0 text-primary shadow-none" id="btn-toggle-lista-tickets" aria-expanded="false">Desplegar todos</button>
             </div>
             <div class="row" id="lista-tickets-abiertos">
                 @foreach($ticketsAbiertos as $venta)
+                @if($venta->es_torneo)
+                {{-- Obsoleto: los torneos ahora van en su propia sección arriba --}}
+                @else
                 <div class="col-lg-4 col-md-6 mb-3 d-flex">
                 <div class="card mb-0 ticket-card shadow flex-fill w-100" data-venta-id="{{ $venta->id }}">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center ticket-card-header-toggle" style="cursor:pointer">
@@ -219,31 +432,66 @@
                         </div>
                         <div>
                             <span class="badge badge-primary ticket-card-total">{{ $fmtMoney($venta->precio_total) }}</span>
-                            <span class="small text-muted ml-1">#{{ $venta->id }}</span>
+                            <span class="caja-texto-small ml-1">#{{ $venta->id }}</span>
                         </div>
                     </div>
                     <div id="ticket-collapse-{{ $venta->id }}" class="ticket-card-panel">
-                        <div class="card-body text-dark pt-3">
-                            @include('bahia_padel.admin.caja._ticket_body', ['venta' => $venta, 'categoriasVenta' => $categoriasVenta, 'fmtMoney' => $fmtMoney])
+                        <div class="card-body pt-3">
+                            @include('bahia_padel.admin.caja._ticket_body', ['venta' => $venta, 'categoriasVenta' => $categoriasVenta, 'fmtMoney' => $fmtMoney, 'productosVenta' => $productosVenta])
                         </div>
                     </div>
                 </div>
                 </div>
+                @endif
                 @endforeach
             </div>
         </div>
     </div>
 </div>
 
+@if($cajaDelDia && $cajaDelDia->estado === 'abierta' && $fechaCajaEsHoy)
+<div class="modal fade" id="modal-cierre-caja" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title">Cierre de caja — {{ $fechaCajaLabel }}</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form method="post" action="{{ route('admincaja.cierre') }}">
+                @csrf
+                <input type="hidden" name="fecha" value="{{ $fechaCaja }}">
+                <div class="modal-body py-3">
+                    <div class="alert alert-info small mb-3">
+                        Efectivo esperado: <strong>{{ $fmtMoney($efectivoEsperadoCaja) }}</strong> (fondo inicial + pagos en efectivo del día)
+                    </div>
+                    <div class="form-group mb-2">
+                        <label class="font-weight-bold">Efectivo real en caja ($)</label>
+                        <input type="number" name="efectivo_real" class="form-control" min="0" step="0.01" required autofocus>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold">Observaciones</label>
+                        <textarea name="observaciones" class="form-control" rows="2" placeholder="Opcional…"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="submit" class="btn btn-danger font-weight-bold">Confirmar cierre</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="modal fade" id="modal-buscar-jugador-caja" tabindex="-1" role="dialog" aria-labelledby="modal-buscar-jugador-caja-titulo" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header py-2">
-                <h6 class="modal-title" id="modal-buscar-jugador-caja-titulo">Buscar jugador del club</h6>
+                <h5 class="modal-title" id="modal-buscar-jugador-caja-titulo">Buscar jugador del club</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body py-2">
-                <input type="text" id="caja-jugador-buscar-input" class="form-control form-control-sm mb-2" placeholder="Filtrar por nombre o apellido…" autocomplete="off">
+                <input type="text" id="caja-jugador-buscar-input" class="form-control mb-2" placeholder="Filtrar por nombre o apellido…" autocomplete="off">
                 <div id="caja-jugador-lista" class="list-group list-group-flush" style="max-height:50vh;overflow:auto;"></div>
             </div>
         </div>
@@ -254,15 +502,15 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header py-2">
-                <h6 class="modal-title text-primary" id="modal-caja-ver-ticket-titulo">Ticket</h6>
+                <h5 class="modal-title text-primary" id="modal-caja-ver-ticket-titulo">Ticket</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body py-3" id="modal-caja-ver-ticket-body">
                 <p class="text-muted small mb-0">Cargando…</p>
             </div>
             <div class="modal-footer py-2">
-                <a href="#" id="modal-caja-ver-ticket-link-completo" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">Abrir página completa</a>
-                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cerrar</button>
+                <a href="#" id="modal-caja-ver-ticket-link-completo" class="btn btn-outline-primary" target="_blank" rel="noopener">Abrir página completa</a>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -272,19 +520,19 @@
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header py-2">
-                <h6 class="modal-title" id="modal-dividir-linea-titulo">Dividir producto</h6>
+                <h5 class="modal-title" id="modal-dividir-linea-titulo">Dividir producto</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body py-3">
-                <p class="small text-muted">Seleccioná con quién querés dividir este producto. El costo se repartirá en partes iguales.</p>
+                <p class="caja-texto-small">Seleccioná con quién querés dividir este producto. El costo se repartirá en partes iguales.</p>
                 <div id="dividir-linea-opciones"></div>
                 <input type="hidden" id="dividir-linea-detalle-id">
                 <input type="hidden" id="dividir-linea-venta-id">
                 <input type="hidden" id="dividir-linea-card-id">
             </div>
             <div class="modal-footer py-2">
-                <button type="button" class="btn btn-sm btn-primary" id="btn-confirmar-dividir">Confirmar división</button>
-                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-confirmar-dividir">Confirmar división</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
             </div>
         </div>
     </div>
@@ -336,6 +584,15 @@
     }
     function pagoUrl(ventaId) {
         return adminCajaBasePath() + '/venta/' + ventaId + '/pago';
+    }
+    function lineaPagoUrl(ventaId, detalleId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/linea/' + detalleId + '/pago';
+    }
+    function participanteStoreUrl(ventaId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/participante';
+    }
+    function inscripcionTodosUrl(ventaId) {
+        return adminCajaBasePath() + '/venta/' + ventaId + '/inscripcion-todos';
     }
     function ventaDestroyUrl(ventaId) {
         return adminCajaBasePath() + '/venta/' + ventaId;
@@ -412,7 +669,7 @@
         }
         productos.forEach(function(p) {
             var div = document.createElement('div');
-            div.className = 'px-3 py-2 cursor-pointer small text-dark hover-bg-light';
+            div.className = 'px-3 py-2 cursor-pointer caja-texto hover-bg-light';
             div.style.cursor = 'pointer';
             div.textContent = p.label;
             div.addEventListener('click', function() {
@@ -451,7 +708,7 @@
         var h = '';
         (window.CAJA_CATEGORIAS || []).forEach(function(c) {
             h += '<button type="button" class="btn btn-sm btn-outline-secondary ticket-cat-btn rounded-circle p-0 d-inline-flex align-items-center justify-content-center text-nowrap" '
-                + 'style="width:34px;height:34px;font-size:0.68rem;font-weight:700;letter-spacing:-0.02em;" '
+                + 'style="width:44px;height:44px;font-size:0.85rem;font-weight:700;letter-spacing:-0.02em;" '
                 + 'data-categoria-id="' + c.id + '" title="' + escapeHtml(c.nombre) + '">'
                 + escapeHtml(c.abbr) + '</button>';
         });
@@ -527,6 +784,32 @@
         return body;
     }
 
+    function htmlLineaEstado(d) {
+        if (d.estado_pago === 'pagado') {
+            return '<span class="badge badge-success">✓ Pagado</span>';
+        }
+        return '<span class="badge badge-warning">Pendiente</span>';
+    }
+
+    function htmlLineaAccionesSimple(d) {
+        if (d.estado_pago === 'pagado') {
+            return '<span class="text-muted small">—</span>';
+        }
+        return '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-success btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="efectivo" title="Pagar en efectivo">$E</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="transferencia" title="Pagar por transferencia">$T</button>';
+    }
+
+    function htmlLineaAccionesGrupo(d) {
+        if (d.estado_pago === 'pagado') {
+            return '<span class="text-muted small">—</span>';
+        }
+        return '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-success btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="efectivo" title="Pagar en efectivo">$E</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary btn-linea-pago px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-metodo="transferencia" title="Pagar por transferencia">$T</button>';
+    }
+
     function refreshLinesTbody(tbody, detalles) {
         tbody.innerHTML = '';
         detalles.forEach(function(d) {
@@ -534,9 +817,8 @@
             tr.innerHTML = '<td>' + escapeHtml(d.producto_nombre || '') + '</td>'
                 + '<td class="text-center">' + d.cantidad + '</td>'
                 + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
-                + '<td class="text-center p-1 align-middle">'
-                + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
-                + '</td>';
+                + '<td class="text-center">' + htmlLineaEstado(d) + '</td>'
+                + '<td class="text-center p-1 align-middle">' + htmlLineaAccionesSimple(d) + '</td>';
             tbody.appendChild(tr);
         });
     }
@@ -593,12 +875,13 @@
             return '<span class="badge badge-success">Pagado' + (p.metodo_pago ? ' (' + escapeHtml(p.metodo_pago) + ')' : '') + '</span>';
         }
         var h = '';
-        if (p.subtotal <= 0) {
-            h += '<button type="button" class="btn btn-sm btn-outline-secondary btn-participante-sin-consumo mr-1" data-participante-id="' + p.id + '">Sin consumo</button>';
+        var subPendiente = p.subtotal_pendiente !== undefined ? p.subtotal_pendiente : p.subtotal;
+        if (subPendiente <= 0) {
+            h += '<button type="button" class="btn btn-outline-secondary btn-participante-sin-consumo mr-1" data-participante-id="' + p.id + '">Sin consumo</button>';
+        } else {
+            h += '<button type="button" class="btn btn-success btn-participante-pago mr-1" data-participante-id="' + p.id + '" data-metodo="efectivo">Pagar todo (' + escapeHtml(p.subtotal_pendiente_fmt || p.subtotal_fmt) + ')</button>';
+            h += '<button type="button" class="btn btn-info btn-participante-pago" data-participante-id="' + p.id + '" data-metodo="transferencia">Pagar todo (' + escapeHtml(p.subtotal_pendiente_fmt || p.subtotal_fmt) + ')</button>';
         }
-        var disPay = (p.subtotal <= 0) ? ' disabled' : '';
-        h += '<button type="button" class="btn btn-sm btn-success btn-participante-pago mr-1" data-participante-id="' + p.id + '" data-metodo="efectivo"' + disPay + '>Efectivo</button>';
-        h += '<button type="button" class="btn btn-sm btn-info btn-participante-pago" data-participante-id="' + p.id + '" data-metodo="transferencia"' + disPay + '>Transferencia</button>';
         return h;
     }
 
@@ -726,10 +1009,8 @@
                 tr.innerHTML = '<td>' + escapeHtml(d.producto_nombre || '') + '</td>'
                     + '<td class="text-center">' + d.cantidad + '</td>'
                     + '<td class="text-right">' + escapeHtml(d.subtotal_fmt) + '</td>'
-                    + '<td class="text-center p-1 align-middle">'
-                    + '<button type="button" class="btn btn-sm btn-outline-danger btn-ticket-remove-linea px-2 py-0 font-weight-bold" data-detalle-id="' + d.id + '" title="Quitar línea">−</button>'
-                    + '<button type="button" class="btn btn-sm btn-outline-info btn-ticket-dividir-linea px-2 py-0 font-weight-bold ml-1" data-detalle-id="' + d.id + '" data-participante-id="' + (d.stock_venta_participante_id || '') + '" title="Dividir con otros jugadores">÷</button>'
-                    + '</td>';
+                    + '<td class="text-center">' + htmlLineaEstado(d) + '</td>'
+                    + '<td class="text-center p-1 align-middle">' + htmlLineaAccionesGrupo(d) + '</td>';
                 tbody.appendChild(tr);
             });
         }
@@ -746,6 +1027,35 @@
             applyVentaJsonGrupo(cardRoot, venta);
         } else {
             applyVentaJsonSimple(cardRoot, venta);
+        }
+    }
+
+    function marcarTurnoGridPagado(ventaId) {
+        if (!ventaId) return;
+        var celda = document.querySelector('.turno-celda[data-venta-id="' + ventaId + '"]');
+        if (!celda) return;
+        celda.setAttribute('data-tipo', 'pagado');
+        celda.classList.remove('vendido', 'fijo', 'libre');
+        celda.classList.add('pagado');
+        var badge = celda.querySelector('.turno-badge');
+        if (badge) { badge.className = 'badge badge-success turno-badge'; badge.textContent = 'Pagado'; }
+        var btn = celda.querySelector('.btn-turno-accion');
+        if (btn) {
+            btn.className = 'btn btn-outline-secondary btn-turno-accion btn-turno-ver';
+            btn.textContent = 'Ver ticket';
+            btn.disabled = false;
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var card = document.querySelector('.ticket-card[data-venta-id="' + ventaId + '"]');
+                if (card) {
+                    var panel = card.querySelector('.ticket-card-panel');
+                    if (panel) {
+                        panel.classList.add('is-open');
+                        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        syncTicketsToggleBtn();
+                    }
+                }
+            });
         }
     }
 
@@ -1013,7 +1323,9 @@
                 }
                 if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
                 var col = form.closest('.col-lg-4');
+                var ventaIdForm = form.getAttribute('data-venta-id');
                 if (col) col.remove();
+                if (ventaIdForm) marcarTurnoGridPagado(ventaIdForm);
                 syncTicketsToggleBtn();
             }).catch(function(err) {
                 if (btn) btn.disabled = false;
@@ -1033,6 +1345,106 @@
                 switchTicketGrupoTab(innertab, tabSlot.getAttribute('data-participante-id'));
                 return;
             }
+            var btnAgregarPart = e.target.closest('.btn-torneo-agregar-participante');
+            if (btnAgregarPart && listaTicketsEl.contains(btnAgregarPart)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardAg = btnAgregarPart.closest('.ticket-card');
+                var innerAg = cardAg && cardAg.querySelector('.ticket-body-inner');
+                var vidAg = innerAg && innerAg.getAttribute('data-venta-id');
+                var inputNombre = innerAg && innerAg.querySelector('.torneo-nuevo-participante');
+                var nombre = inputNombre ? inputNombre.value.trim() : '';
+                if (!vidAg || !nombre) return;
+                btnAgregarPart.disabled = true;
+                fetch(participanteStoreUrl(vidAg), {
+                    method: 'POST',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken, nombre: nombre }))
+                }).then(parseFetchResponse).then(function(x) {
+                    btnAgregarPart.disabled = false;
+                    if (!x.ok) {
+                        var msga = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && Object.values(x.j.errors).flat().join(' '));
+                        alert(msga || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    window.location.reload();
+                }).catch(function(erra) {
+                    btnAgregarPart.disabled = false;
+                    alert((erra && erra.message) ? erra.message : 'Error de red');
+                });
+                return;
+            }
+
+            var btnInscTodos = e.target.closest('.btn-torneo-inscripcion-todos');
+            if (btnInscTodos && listaTicketsEl.contains(btnInscTodos)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardIn = btnInscTodos.closest('.ticket-card');
+                var innerIn = cardIn && cardIn.querySelector('.ticket-body-inner');
+                var vidIn = innerIn && innerIn.getAttribute('data-venta-id');
+                var selectProd = innerIn && innerIn.querySelector('.torneo-producto-inscripcion');
+                var prodId = selectProd ? selectProd.value : '';
+                if (!vidIn || !prodId) { alert('Elegí un producto de inscripción.'); return; }
+                btnInscTodos.disabled = true;
+                fetch(inscripcionTodosUrl(vidIn), {
+                    method: 'POST',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken, stock_producto_id: parseInt(prodId, 10) }))
+                }).then(parseFetchResponse).then(function(x) {
+                    btnInscTodos.disabled = false;
+                    if (!x.ok) {
+                        var msgi = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && Object.values(x.j.errors).flat().join(' '));
+                        alert(msgi || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    window.location.reload();
+                }).catch(function(erri) {
+                    btnInscTodos.disabled = false;
+                    alert((erri && erri.message) ? erri.message : 'Error de red');
+                });
+                return;
+            }
+
+            var btnVerDetalle = e.target.closest('.btn-torneo-ver-detalle');
+            if (btnVerDetalle && listaTicketsEl.contains(btnVerDetalle)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardVd = btnVerDetalle.closest('.ticket-card');
+                var innerVd = cardVd && cardVd.querySelector('.ticket-body-inner');
+                var vidVd = innerVd && innerVd.getAttribute('data-venta-id');
+                var pidVd = btnVerDetalle.getAttribute('data-participante-id');
+                var nombreVd = btnVerDetalle.getAttribute('data-participante-nombre');
+                if (!vidVd || !pidVd) return;
+                var modal = document.getElementById('modal-torneo-detalle-' + vidVd);
+                var tbody = modal && modal.querySelector('.torneo-detalle-lines-tbody');
+                var titulo = modal && modal.querySelector('.torneo-detalle-titulo');
+                if (titulo) titulo.textContent = 'Detalle — ' + escapeHtml(nombreVd);
+                if (tbody) {
+                    tbody.innerHTML = '';
+                    var detallesVd = [];
+                    // Buscar detalles del participante en el DOM actual
+                    var rows = innerVd.querySelectorAll('.ticket-line-row');
+                    rows.forEach(function(row) {
+                        if (String(row.getAttribute('data-participante-id')) === String(pidVd)) {
+                            var cells = row.querySelectorAll('td');
+                            if (cells.length >= 4) {
+                                var estado = cells[3].innerHTML;
+                                var acciones = cells[4].innerHTML;
+                                var tr = document.createElement('tr');
+                                tr.innerHTML = '<td>' + cells[0].innerHTML + '</td>'
+                                    + '<td class="text-center">' + cells[1].innerHTML + '</td>'
+                                    + '<td class="text-right">' + cells[2].innerHTML + '</td>'
+                                    + '<td class="text-center">' + estado + '</td>'
+                                    + '<td class="text-center p-1 align-middle">' + acciones + '</td>';
+                                tbody.appendChild(tr);
+                            }
+                        }
+                    });
+                }
+                if (window.jQuery) window.jQuery(modal).modal('show');
+                return;
+            }
+
             var payPar = e.target.closest('.btn-participante-pago');
             if (payPar && listaTicketsEl.contains(payPar)) {
                 e.preventDefault();
@@ -1059,6 +1471,7 @@
                     if (x.j && x.j.ticket_cerrado) {
                         var colp = cardp.closest('.col-lg-4');
                         if (colp) colp.remove();
+                        marcarTurnoGridPagado(vid);
                         syncTicketsToggleBtn();
                         return;
                     }
@@ -1069,6 +1482,44 @@
                 });
                 return;
             }
+            var lineaPay = e.target.closest('.btn-linea-pago');
+            if (lineaPay && listaTicketsEl.contains(lineaPay)) {
+                e.preventDefault();
+                e.stopPropagation();
+                var cardLinea = lineaPay.closest('.ticket-card');
+                var innerLinea = cardLinea && cardLinea.querySelector('.ticket-body-inner');
+                var vidLinea = innerLinea && innerLinea.getAttribute('data-venta-id');
+                var didLinea = lineaPay.getAttribute('data-detalle-id');
+                var metodoLinea = lineaPay.getAttribute('data-metodo');
+                if (!vidLinea || !didLinea) return;
+                lineaPay.disabled = true;
+                fetch(lineaPagoUrl(vidLinea, didLinea), {
+                    method: 'POST',
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(mergeCajaFecha({ _token: csrfToken, metodo_pago: metodoLinea }))
+                }).then(parseFetchResponse).then(function(x) {
+                    lineaPay.disabled = false;
+                    if (!x.ok) {
+                        var msgl = (x.j && x.j.message) || (x.j && x.j.errors && (typeof x.j.errors === 'object') && Object.values(x.j.errors).flat().join(' '));
+                        alert(msgl || ('Error HTTP ' + x.status));
+                        return;
+                    }
+                    if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                    if (x.j && x.j.ticket_cerrado) {
+                        var coll = cardLinea.closest('.col-lg-4');
+                        if (coll) coll.remove();
+                        marcarTurnoGridPagado(vidLinea);
+                        syncTicketsToggleBtn();
+                        return;
+                    }
+                    if (x.j && x.j.venta && cardLinea) applyVentaJson(cardLinea, x.j.venta);
+                }).catch(function(errl) {
+                    lineaPay.disabled = false;
+                    alert((errl && errl.message) ? errl.message : 'Error de red');
+                });
+                return;
+            }
+
             var sinPar = e.target.closest('.btn-participante-sin-consumo');
             if (sinPar && listaTicketsEl.contains(sinPar)) {
                 e.preventDefault();
@@ -1094,6 +1545,7 @@
                     if (x.j && x.j.ticket_cerrado) {
                         var cols = cards.closest('.col-lg-4');
                         if (cols) cols.remove();
+                        marcarTurnoGridPagado(vids);
                         syncTicketsToggleBtn();
                         return;
                     }
@@ -1269,7 +1721,7 @@
         if (!padre) return '';
         var h = '<div class="mb-3 p-2 border rounded bg-light">'
             + '<div class="d-flex justify-content-between align-items-center mb-1">'
-            + '<span class="small font-weight-bold text-muted">Ticket original #' + padre.id + '</span>'
+            + '<span class="caja-texto-small font-weight-bold">Ticket original #' + padre.id + '</span>'
             + '<span class="small text-success font-weight-bold">' + escapeHtml(padre.precio_total_fmt) + ' (pagado)</span></div>'
             + '<table class="table table-sm table-bordered mb-0"><thead class="thead-light"><tr><th>Producto</th><th class="text-center">Cant.</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
         (padre.detalles || []).forEach(function(d) {
@@ -1288,7 +1740,7 @@
             + '<div class="ticket-body-inner" data-venta-id="' + id + '" data-modo-grupo="0">'
             + htmlBloquePadre(venta.padre)
             + '<div class="form-group">'
-            + '<label class="small font-weight-bold mb-1">Cliente</label>'
+            + '<label class="caja-label mb-1">Cliente</label>'
             + '<div class="input-group">'
             + '<input type="text" class="form-control ticket-input-nombre" value="' + escapeHtml(venta.nombre_cliente) + '" autocomplete="off">'
             + '<div class="input-group-append">'
@@ -1310,7 +1762,7 @@
             + '<div class="position-relative ticket-producto-autocomplete">'
             + '<input type="text" class="form-control ticket-producto-search" placeholder="Elegí una categoría…" autocomplete="off" disabled>'
             + '<input type="hidden" class="ticket-producto-id">'
-            + '<div class="ticket-producto-dropdown d-none position-absolute w-100 bg-white border rounded shadow-sm" style="z-index:1050;max-height:220px;overflow:auto;"></div>'
+            + '<div class="ticket-producto-dropdown d-none position-absolute w-100 border rounded shadow-sm" style="z-index:1050;max-height:220px;overflow:auto;"></div>'
             + '</div>'
             + '<input type="hidden" class="ticket-input-cantidad" value="1" aria-hidden="true"></div>'
             + '<div class="form-group col-md-2 mb-0"><label class="small mb-1 d-none d-md-block">&nbsp;</label>'
@@ -1342,9 +1794,9 @@
             + (venta.padre ? '<span class="badge badge-secondary ml-1">continuación #' + venta.padre.id + '</span>' : '')
             + '</div>'
             + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(venta.precio_total_fmt) + '</span> '
-            + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
+            + '<span class="caja-texto-small ml-1">#' + id + '</span></div></div>'
             + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
-            + '<div class="card-body text-dark pt-3">' + body + '</div></div></div></div>';
+            + '<div class="card-body pt-3">' + body + '</div></div></div></div>';
     }
 
     function buildTicketCardHtmlGrupo(venta) {
@@ -1374,14 +1826,14 @@
             var busDis = (p.estado_pago === 'pagado') ? ' disabled' : '';
             var jid = (p.jugador_id != null) ? String(p.jugador_id) : '';
             paneles += '<div class="ticket-jugador-panel ticket-fila-participante border rounded p-2 mb-2' + visible + '" data-participante-id="' + p.id + '" data-slot="' + p.slot + '" data-jugador-id="' + jid + '">';
-            paneles += '<label class="small font-weight-bold mb-1 d-block">' + escapeHtml(lab) + '</label>';
+            paneles += '<label class="caja-label mb-1 d-block">' + escapeHtml(lab) + '</label>';
             paneles += '<div class="input-group input-group-sm">';
             paneles += '<input type="text" class="form-control ' + inpCls + '" value="' + escapeHtml(p.nombre) + '" autocomplete="off" data-participante-id="' + p.id + '"' + readonly + '>';
             paneles += '<div class="input-group-append"><button type="button" class="btn btn-outline-secondary btn-buscar-jugador-caja" data-participante-id="' + p.id + '"' + busDis + '><i class="fas fa-search"></i></button></div>';
             paneles += '</div>';
             paneles += '<div class="mt-2 pt-2 border-top">';
             paneles += '<div class="d-flex flex-wrap align-items-center justify-content-between mb-2">';
-            paneles += '<span class="small text-muted">Consumo este jugador: <strong>' + escapeHtml(p.subtotal_fmt) + '</strong></span></div>';
+            paneles += '<span class="caja-texto-small">Consumo este jugador: <strong>' + escapeHtml(p.subtotal_fmt) + '</strong></span></div>';
             paneles += '<div class="ticket-jugador-pago-acciones d-flex flex-wrap align-items-center justify-content-end">';
             paneles += htmlTicketGrupoPagoAcciones(p);
             paneles += '</div></div></div>';
@@ -1404,7 +1856,7 @@
         var body = ''
             + '<div class="ticket-body-inner" data-venta-id="' + id + '" data-modo-grupo="1">'
             + htmlBloquePadre(venta.padre)
-            + '<div class="mb-2"><span class="small font-weight-bold text-primary">Total del ticket:</span> '
+            + '<div class="mb-2"><span class="caja-label text-primary">Total del ticket:</span> '
             + '<span class="h5 mb-0 text-primary ticket-total ml-2">' + escapeHtml(venta.precio_total_fmt) + '</span></div>'
             + tabs
             + paneles
@@ -1441,27 +1893,32 @@
             + (venta.padre ? '<span class="badge badge-secondary ml-1">continuación #' + venta.padre.id + '</span>' : '')
             + '</div>'
             + '<div><span class="badge badge-primary ticket-card-total">' + escapeHtml(venta.precio_total_fmt) + '</span> '
-            + '<span class="small text-muted ml-1">#' + id + '</span></div></div>'
+            + '<span class="caja-texto-small ml-1">#' + id + '</span></div></div>'
             + '<div id="' + collapseId + '" class="ticket-card-panel is-open">'
-            + '<div class="card-body text-dark pt-3">' + body + '</div></div></div></div>';
+            + '<div class="card-body pt-3">' + body + '</div></div></div></div>';
     }
 
     function buildTicketCardHtml(venta) {
+        if (venta.es_torneo) {
+            window.location.reload();
+            return '';
+        }
         if (venta.modo_grupo) return buildTicketCardHtmlGrupo(venta);
         return buildTicketCardHtmlSimple(venta);
     }
 
     var selectedCanchaId = '';
     var selectedLabel = '';
+    var esTorneoSeleccionado = false;
     var nuevoNombre = document.getElementById('nuevo-nombre-cliente');
     var nuevoCanchaLabel = document.getElementById('nuevo-cancha-label');
     var nuevoStockCanchaId = document.getElementById('nuevo-stock-cancha-id');
     var btnAbrir = document.getElementById('btn-abrir-ticket');
 
     function syncNuevoPanel() {
-        var ok = selectedCanchaId && nuevoNombre && nuevoNombre.value.trim().length > 0;
+        var ok = (selectedCanchaId || esTorneoSeleccionado) && nuevoNombre && nuevoNombre.value.trim().length > 0;
         if (btnAbrir) btnAbrir.disabled = !ok;
-        if (nuevoNombre) nuevoNombre.disabled = !selectedCanchaId;
+        if (nuevoNombre) nuevoNombre.disabled = !(selectedCanchaId || esTorneoSeleccionado);
     }
 
     document.querySelectorAll('.btn-cancha-caja').forEach(function(btn) {
@@ -1473,11 +1930,33 @@
             }
             document.querySelectorAll('.btn-cancha-caja').forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
-            selectedCanchaId = btn.getAttribute('data-cancha-id') || '';
+            esTorneoSeleccionado = btn.getAttribute('data-es-torneo') === '1';
+            selectedCanchaId = esTorneoSeleccionado ? '' : (btn.getAttribute('data-cancha-id') || '');
             selectedLabel = btn.textContent.trim();
             if (nuevoStockCanchaId) nuevoStockCanchaId.value = selectedCanchaId;
             if (nuevoCanchaLabel) nuevoCanchaLabel.value = selectedLabel;
             syncNuevoPanel();
+            // Cambiar label/placeholder según selección
+            var labelNombre = document.getElementById('nuevo-ticket-label-nombre');
+            var ayuda = document.getElementById('nuevo-ticket-ayuda');
+            if (esTorneoSeleccionado) {
+                if (labelNombre) labelNombre.textContent = 'Nombre del torneo / americano';
+                if (nuevoNombre) nuevoNombre.placeholder = 'Ej. Americano Viernes 20:00';
+                if (ayuda) ayuda.innerHTML = 'Escribí el nombre del torneo o americano y tocá <strong>Abrir ticket</strong>.';
+            } else {
+                if (labelNombre) labelNombre.textContent = 'Cliente';
+                if (nuevoNombre) nuevoNombre.placeholder = 'Ej. Rodri · Cancha 1 17:00';
+                if (ayuda) ayuda.innerHTML = 'Escribí el nombre del cliente (podés incluir horario u otra referencia en el mismo campo) y tocá <strong>Abrir ticket</strong>.';
+            }
+            // Ocultar/mostrar grilla de turnos
+            var turnosGrid = document.getElementById('turnos-grid-container');
+            if (turnosGrid) {
+                if (esTorneoSeleccionado) {
+                    turnosGrid.classList.add('d-none');
+                } else {
+                    turnosGrid.classList.remove('d-none');
+                }
+            }
             if (nuevoNombre) nuevoNombre.focus();
         });
     });
@@ -1488,18 +1967,85 @@
 
     if (btnAbrir) {
         btnAbrir.addEventListener('click', function() {
-            if (!selectedCanchaId || !nuevoNombre || !nuevoNombre.value.trim()) return;
+            if ((!selectedCanchaId && !esTorneoSeleccionado) || !nuevoNombre || !nuevoNombre.value.trim()) return;
             btnAbrir.disabled = true;
+            var body = {
+                _token: csrfToken,
+                nombre_cliente: nuevoNombre.value.trim()
+            };
+            if (esTorneoSeleccionado) {
+                body.es_torneo = true;
+            } else {
+                body.stock_cancha_id = parseInt(selectedCanchaId, 10);
+            }
+            fetch(borradorUrl(), {
+                method: 'POST',
+                headers: jsonHeaders(),
+                body: JSON.stringify(mergeCajaFecha(body))
+            }).then(parseFetchResponse).then(function(x) {
+                btnAbrir.disabled = false;
+                if (!x.ok) {
+                    var msg = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors).flat().join(' '));
+                    alert(msg || 'No se pudo abrir el ticket');
+                    return;
+                }
+                if (!x.j.venta) {
+                    alert('Respuesta inválida');
+                    return;
+                }
+                var v = x.j.venta;
+                if (v.es_torneo) {
+                    window.location.href = adminCajaBasePath() + '/torneo/' + v.id;
+                    return;
+                }
+                var list = document.getElementById('lista-tickets-abiertos');
+                list.insertAdjacentHTML('afterbegin', buildTicketCardHtml(v));
+                var newCard = list.querySelector('.ticket-card[data-venta-id="' + v.id + '"]');
+                if (newCard) {
+                    wireTicketCard(newCard);
+                    applyVentaJson(newCard, v);
+                }
+                if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
+                nuevoNombre.value = '';
+                document.querySelectorAll('.btn-cancha-caja').forEach(function(b) { b.classList.remove('active'); });
+                selectedCanchaId = '';
+                esTorneoSeleccionado = false;
+                if (nuevoStockCanchaId) nuevoStockCanchaId.value = '';
+                if (nuevoCanchaLabel) nuevoCanchaLabel.value = '';
+                syncNuevoPanel();
+                var rowPanelNuevo = document.getElementById('row-panel-nuevo-ticket');
+                if (rowPanelNuevo) rowPanelNuevo.classList.add('d-none');
+                syncTicketsToggleBtn();
+            }).catch(function(e) {
+                btnAbrir.disabled = false;
+                alert((e && e.message) ? e.message : 'Error de red');
+            });
+        });
+    }
+
+    // Turnos grid handlers
+    document.querySelectorAll('.btn-turno-vender').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var celda = btn.closest('.turno-celda');
+            if (!celda) return;
+            var canchaId = celda.getAttribute('data-cancha-id');
+            var hora = celda.getAttribute('data-hora');
+            var tipo = celda.getAttribute('data-tipo');
+            var nombre = celda.getAttribute('data-nombre');
+            var nombreCliente = tipo === 'fijo' && nombre ? nombre : ('Turno ' + hora);
+            btn.disabled = true;
             fetch(borradorUrl(), {
                 method: 'POST',
                 headers: jsonHeaders(),
                 body: JSON.stringify(mergeCajaFecha({
                     _token: csrfToken,
-                    nombre_cliente: nuevoNombre.value.trim(),
-                    stock_cancha_id: parseInt(selectedCanchaId, 10)
+                    nombre_cliente: nombreCliente,
+                    stock_cancha_id: parseInt(canchaId, 10),
+                    nombre_turno: hora
                 }))
             }).then(parseFetchResponse).then(function(x) {
-                btnAbrir.disabled = false;
+                btn.disabled = false;
                 if (!x.ok) {
                     var msg = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors).flat().join(' '));
                     alert(msg || 'No se pudo abrir el ticket');
@@ -1518,21 +2064,57 @@
                     applyVentaJson(newCard, v);
                 }
                 if (x.j && x.j.resumen) applyCajaResumen(x.j.resumen);
-                nuevoNombre.value = '';
-                document.querySelectorAll('.btn-cancha-caja').forEach(function(b) { b.classList.remove('active'); });
-                selectedCanchaId = '';
-                if (nuevoStockCanchaId) nuevoStockCanchaId.value = '';
-                if (nuevoCanchaLabel) nuevoCanchaLabel.value = '';
-                syncNuevoPanel();
-                var rowPanelNuevo = document.getElementById('row-panel-nuevo-ticket');
-                if (rowPanelNuevo) rowPanelNuevo.classList.add('d-none');
+                // Actualizar celda a vendido
+                celda.setAttribute('data-tipo', 'vendido');
+                celda.setAttribute('data-nombre', v.nombre_cliente);
+                celda.setAttribute('data-venta-id', v.id);
+                celda.classList.remove('libre', 'fijo');
+                celda.classList.add('vendido');
+                var badge = celda.querySelector('.turno-badge');
+                if (badge) { badge.className = 'badge badge-warning turno-badge'; badge.textContent = 'Pendiente'; }
+                var nombreDiv = celda.querySelector('.turno-nombre');
+                if (nombreDiv) { nombreDiv.textContent = v.nombre_cliente; nombreDiv.classList.remove('text-muted'); }
+                btn.outerHTML = '<button type="button" class="btn btn-outline-warning btn-turno-accion btn-turno-ver" data-venta-id="' + v.id + '">Ver ticket</button>';
+                // Re-wire nuevo botón
+                var nuevoBtn = celda.querySelector('.btn-turno-ver');
+                if (nuevoBtn) {
+                    nuevoBtn.addEventListener('click', function(ev) {
+                        ev.stopPropagation();
+                        var vid = nuevoBtn.getAttribute('data-venta-id');
+                        var card = document.querySelector('.ticket-card[data-venta-id="' + vid + '"]');
+                        if (card) {
+                            var panel = card.querySelector('.ticket-card-panel');
+                            if (panel) {
+                                panel.classList.add('is-open');
+                                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                syncTicketsToggleBtn();
+                            }
+                        }
+                    });
+                }
                 syncTicketsToggleBtn();
             }).catch(function(e) {
-                btnAbrir.disabled = false;
+                btn.disabled = false;
                 alert((e && e.message) ? e.message : 'Error de red');
             });
         });
-    }
+    });
+
+    document.querySelectorAll('.btn-turno-ver').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var vid = btn.getAttribute('data-venta-id');
+            var card = document.querySelector('.ticket-card[data-venta-id="' + vid + '"]');
+            if (card) {
+                var panel = card.querySelector('.ticket-card-panel');
+                if (panel) {
+                    panel.classList.add('is-open');
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    syncTicketsToggleBtn();
+                }
+            }
+        });
+    });
 
     var listaJugModalEl = document.getElementById('caja-jugador-lista');
     if (listaJugModalEl) {
