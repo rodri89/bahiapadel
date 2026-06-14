@@ -133,6 +133,7 @@
 
 @include('bahia_padel.modal.jugadores')
 
+@push('scripts')
 <script type="text/javascript">
     let parejasLista = []; // Lista de parejas seleccionadas: [{jugador1: id, jugador2: id, nombre1: str, nombre2: str, foto1: str, foto2: str}, ...]
     let gruposCreados = [];
@@ -956,4 +957,5 @@
         }
     };
 </script>
+@endpush
 @endsection

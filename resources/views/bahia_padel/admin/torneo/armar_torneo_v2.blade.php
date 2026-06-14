@@ -151,6 +151,7 @@
   </div>
 </div>
 
+@push('scripts')
 <script>
     // Variables globales para manejar zonas
     let zonas = ['A']; // Array de zonas (A, B, C, etc.)
@@ -1533,5 +1534,6 @@
         }
     });
 </script>
+@endpush
 
 @endsection
