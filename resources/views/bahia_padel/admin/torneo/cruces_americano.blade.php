@@ -448,6 +448,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script type="text/javascript">
     // Función para mostrar snackbar
     function mostrarSnackbar(mensaje) {
@@ -1688,4 +1689,5 @@
         cargarResultadosGuardados();
     });
 </script>
+@endpush
 @endsection

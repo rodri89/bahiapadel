@@ -290,6 +290,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script type="text/javascript">
     let zonas = @json($zonas ?? []);
     let zonaIndex = 0;
@@ -604,5 +605,6 @@
         }, 500);
     });
 </script>
+@endpush
 @endsection
 

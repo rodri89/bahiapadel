@@ -975,6 +975,7 @@
 <!-- Snackbar -->
 <div id="snackbar" class="snackbar">Resultado guardado correctamente</div>
 
+@push('scripts')
 <script type="text/javascript">
     console.log('Script cargado. Verificando jQuery...');
     console.log('jQuery disponible:', typeof jQuery !== 'undefined');
@@ -1407,5 +1408,4 @@
         }, 500);
     });
 </script>
-
-@endsection
+@endpush

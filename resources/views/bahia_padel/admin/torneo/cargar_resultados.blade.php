@@ -254,6 +254,7 @@
 </div>
 
 @if($torneo && $partidos->isNotEmpty())
+@push('scripts')
 <script>
 $(function() {
     var modoEditar = {{ ($modoEditar ?? false) ? 'true' : 'false' }};
@@ -325,5 +326,6 @@ $(function() {
     });
 });
 </script>
+@endpush
 @endif
 @endsection

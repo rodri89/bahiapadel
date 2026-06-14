@@ -615,6 +615,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Actualizar preview de clasificación
@@ -1125,5 +1126,6 @@ $(document).ready(function() {
     @endif
 });
 </script>
+@endpush
 
 @endsection

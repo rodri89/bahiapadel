@@ -442,6 +442,7 @@
   </div>
 </div>
 
+@push('scripts')
 <script>
 $(document).ready(function() {
     var cruces = @json($cruces);
@@ -1061,6 +1062,7 @@ $(document).ready(function() {
     });
 });
 </script>
+@endpush
 
 @endsection
 

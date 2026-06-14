@@ -355,6 +355,8 @@
     }
 </style>
 
+@if(count($crucesPropuestos) > 0)
+@push('scripts')
 <script>
 $(document).ready(function() {
     var posiciones = @json($posicionesJS);
@@ -935,7 +937,9 @@ $(document).ready(function() {
     // window.procesarGruposJSON(gruposJSON);
 });
 </script>
+@endpush
 @else
+@push('scripts')
 <script>
 $(document).ready(function() {
     var posiciones = @json($posicionesJS);
@@ -1186,6 +1190,7 @@ $(document).ready(function() {
     });
 });
 </script>
+@endpush
 @endif
 
 @endsection

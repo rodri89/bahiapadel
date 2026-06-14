@@ -366,6 +366,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 var CSRF_TOKEN = '{{ csrf_token() }}';
 var URL_CREAR_ENTRADA    = '{{ route("adminrankingentradacrear") }}';
@@ -692,5 +693,6 @@ function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
+@endpush
 
 @endsection

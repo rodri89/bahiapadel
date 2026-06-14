@@ -231,6 +231,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Letras para las zonas (A, B, C, D, etc.)
@@ -583,6 +584,7 @@ $(document).ready(function() {
     }
 });
 </script>
+@endpush
 
 @endsection
 

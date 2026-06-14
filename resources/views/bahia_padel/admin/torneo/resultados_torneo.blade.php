@@ -570,6 +570,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Navegación de zonas
@@ -1422,6 +1423,7 @@ $(document).ready(function() {
     }
 });
 </script>
+@endpush
 
 @endsection
 

@@ -200,6 +200,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
 function escHtml(s) {
     if (s === null || s === undefined) return '';
@@ -309,4 +310,6 @@ $('#form-calendario').on('submit', function(e) {
 document.getElementById('card-form').style.display = 'block';
 @endif
 </script>
+@endpush
+
 @endsection

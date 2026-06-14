@@ -341,6 +341,7 @@
 </div>
 
     <!-- Aquí puedes incluir secciones dinámicas según la acción seleccionada -->
+@push('scripts')
 <script>
     function formatearRangoFechas(fechaInicio, fechaFin) {
         const meses = [
@@ -2528,4 +2529,6 @@
         });
     });
 </script>
+@endpush
+
 @endsection

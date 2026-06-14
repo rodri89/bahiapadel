@@ -153,6 +153,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script type="text/javascript">
     let todosJugadores = [];
 
@@ -393,4 +394,5 @@
         });
     });
 </script>
+@endpush
 @endsection

@@ -726,6 +726,7 @@
     @endif
 </div>
 
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Guardar resultado de cruce (similar a resultados_torneo.blade.php)
@@ -864,6 +865,7 @@ $(document).ready(function() {
     });
 });
 </script>
+@endpush
 
 @endsection
 
