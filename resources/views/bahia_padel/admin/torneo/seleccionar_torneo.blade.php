@@ -26,6 +26,7 @@
     </div>
 </div>
 
+@push('scripts')
 <script type="text/javascript">
 
     let torneos = [];
@@ -188,3 +189,4 @@
     }
 
 </script>
+@endpush
