@@ -10,6 +10,7 @@ use App\StockCancha;
 use App\StockVentaParticipante;
 use App\StockVenta;
 use App\StockCajaDiaria;
+use App\StockCajaSalida;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -1106,7 +1107,12 @@ class StockVentaService
             ->where('metodo_pago', 'efectivo')
             ->sum('monto_pagado');
 
-        $efectivoEsperado = round((float) $caja->fondo_inicial + $efectivoDelDia, 2);
+        $salidasEfectivoDelDia = (float) StockCajaSalida::query()
+            ->where('fecha', $fecha)
+            ->where('metodo', 'efectivo')
+            ->sum('monto');
+
+        $efectivoEsperado = round((float) $caja->fondo_inicial + $efectivoDelDia - $salidasEfectivoDelDia, 2);
         $diferencia = round($efectivoReal - $efectivoEsperado, 2);
 
         $caja->update([

@@ -136,7 +136,7 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
                             </div>
                             <div class="mr-4">
                                 <div class="small text-muted">Efectivo esperado</div>
-                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;">{{ $fmtMoney($efectivoEsperadoCaja) }}</div>
+                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;" id="caja-efectivo-esperado">{{ $fmtMoney($efectivoEsperadoCaja) }}</div>
                             </div>
                             <div>
                                 <div class="small text-muted">Transferencia</div>
@@ -144,6 +144,21 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
                             </div>
                         </div>
                         @if($fechaCajaEsHoy)
+                        <div class="d-flex flex-wrap align-items-center mb-2 mb-md-0 mr-3 pl-3 border-left">
+                            <div class="mr-4">
+                                <div class="small text-muted">Salidas total</div>
+                                <div class="font-weight-bold text-danger" style="font-size:1.2rem;" id="caja-salidas-total">{{ $fmtMoney($salidasTotalHoy ?? 0) }}</div>
+                            </div>
+                            <div class="mr-4">
+                                <div class="small text-muted">Efectivo</div>
+                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;" id="caja-salidas-efectivo">{{ $fmtMoney($salidasEfectivoHoy ?? 0) }}</div>
+                            </div>
+                            <div class="mr-4">
+                                <div class="small text-muted">Transferencia</div>
+                                <div class="font-weight-bold text-info" style="font-size:1.2rem;" id="caja-salidas-transferencia">{{ $fmtMoney($salidasTransferenciaHoy ?? 0) }}</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary font-weight-bold mr-2" data-toggle="modal" data-target="#modal-salidas-caja">Salidas</button>
                         <button type="button" class="btn btn-outline-danger font-weight-bold" data-toggle="modal" data-target="#modal-cierre-caja">Cerrar caja</button>
                         @endif
                     </div>
@@ -158,7 +173,7 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
                             </div>
                             <div class="mr-4">
                                 <div class="small text-muted">Efectivo esperado</div>
-                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;">{{ $fmtMoney($efectivoEsperadoCaja) }}</div>
+                                <div class="font-weight-bold text-primary" style="font-size:1.2rem;" id="caja-efectivo-esperado">{{ $fmtMoney($efectivoEsperadoCaja) }}</div>
                             </div>
                             <div class="mr-4">
                                 <div class="small text-muted">Efectivo real</div>
@@ -462,7 +477,7 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
                 <input type="hidden" name="fecha" value="{{ $fechaCaja }}">
                 <div class="modal-body py-3">
                     <div class="alert alert-info small mb-3">
-                        Efectivo esperado: <strong>{{ $fmtMoney($efectivoEsperadoCaja) }}</strong> (fondo inicial + pagos en efectivo del día)
+                        Efectivo esperado: <strong>{{ $fmtMoney($efectivoEsperadoCaja) }}</strong> (fondo inicial + pagos en efectivo del día - salidas en efectivo del día)
                     </div>
                     <div class="form-group mb-2">
                         <label class="font-weight-bold">Efectivo real en caja ($)</label>
@@ -478,6 +493,61 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if($cajaDelDia && $cajaDelDia->estado === 'abierta' && $fechaCajaEsHoy)
+<div class="modal fade" id="modal-salidas-caja" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title text-primary">Salidas de dinero — {{ $fechaCajaLabel }}</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body py-2">
+                <div class="d-flex flex-wrap align-items-end mb-2">
+                    <div class="form-group mr-2 mb-2">
+                        <label class="caja-texto-small mb-1" for="salidas-fecha">Fecha</label>
+                        <input type="date" id="salidas-fecha" class="form-control" value="{{ $fechaCaja }}" readonly>
+                    </div>
+                    <div class="form-group mr-2 mb-2">
+                        <label class="caja-texto-small mb-1" for="salidas-monto">Monto ($)</label>
+                        <input type="number" id="salidas-monto" class="form-control" min="0" step="0.01" placeholder="0,00" required style="max-width:160px;">
+                    </div>
+                    <div class="form-group mr-2 mb-2">
+                        <label class="caja-texto-small mb-1" for="salidas-metodo">Método</label>
+                        <select id="salidas-metodo" class="form-control" style="max-width:190px;">
+                            <option value="efectivo" selected>Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label class="caja-texto-small mb-1" for="salidas-descripcion">Descripción</label>
+                    <input type="text" id="salidas-descripcion" class="form-control" maxlength="500" placeholder="Ej: Pago a proveedor..." required>
+                </div>
+
+                <input type="hidden" id="salidas-edit-id" value="">
+                <div class="d-flex justify-content-end mb-3">
+                    <button type="button" class="btn btn-primary font-weight-bold" id="btn-guardar-salida">Agregar</button>
+                </div>
+
+                <div class="border-top pt-2">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="font-weight-bold text-muted small">Registradas</div>
+                        <div class="caja-texto-small">Usá $ para egresos</div>
+                    </div>
+                    <div id="salidas-lista" class="list-group" style="min-height:80px;max-height:40vh;overflow:auto;">
+                        <div class="px-3 py-2 text-muted small">Abrí el modal para ver el listado.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -611,6 +681,12 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
     }
     function resumenCajaUrl() {
         return adminCajaBasePath() + '/resumen';
+    }
+    function salidasCajaUrl() {
+        return adminCajaBasePath() + '/salidas';
+    }
+    function salidaUpdateUrl(salidaId) {
+        return adminCajaBasePath() + '/salidas/' + salidaId;
     }
     /** Refresca números y HTML de todas las tablas del panel (misma fecha que el datepicker). */
     function fetchCajaResumenAplicar() {
@@ -1076,6 +1152,14 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
         if (el) el.textContent = res.pendiente_dia_fmt;
         el = document.getElementById('caja-stat-pendientes-saldo');
         if (el) el.textContent = res.pendientes_saldo_count + ' venta(s)';
+        el = document.getElementById('caja-efectivo-esperado');
+        if (el && res.efectivo_esperado_fmt) el.textContent = res.efectivo_esperado_fmt;
+        el = document.getElementById('caja-salidas-total');
+        if (el && res.salidas_total_fmt) el.textContent = res.salidas_total_fmt;
+        el = document.getElementById('caja-salidas-efectivo');
+        if (el && res.salidas_efectivo_fmt) el.textContent = res.salidas_efectivo_fmt;
+        el = document.getElementById('caja-salidas-transferencia');
+        if (el && res.salidas_transferencia_fmt) el.textContent = res.salidas_transferencia_fmt;
         var tablasResumen = [
             ['ventas-hoy', 'html_ventas_hoy'],
             ['total-hoy', 'html_total_hoy'],
@@ -2187,6 +2271,198 @@ body.dark-mode .ticket-card .text-muted { color: #b0b0b0 !important; }
             }).catch(function(err) {
                 btnConfirmarDividir.disabled = false;
                 alert((err && err.message) ? err.message : 'Error de red');
+            });
+        });
+    }
+
+    // Salidas de caja (modal compacto)
+    var modalSalidasEl = document.getElementById('modal-salidas-caja');
+    if (modalSalidasEl) {
+        var fechaSalidasEl = document.getElementById('salidas-fecha');
+        var montoSalidasEl = document.getElementById('salidas-monto');
+        var metodoSalidasEl = document.getElementById('salidas-metodo');
+        var descSalidasEl = document.getElementById('salidas-descripcion');
+        var editIdEl = document.getElementById('salidas-edit-id');
+        var saveSalidaBtn = document.getElementById('btn-guardar-salida');
+        var listaSalidasEl = document.getElementById('salidas-lista');
+
+        var salidasCache = [];
+
+        function getFechaSalidasFromScreen() {
+            var fechaEl = document.getElementById('caja-fecha-consulta');
+            if (fechaEl && fechaEl.value) return fechaEl.value;
+            return fechaSalidasEl && fechaSalidasEl.value ? fechaSalidasEl.value : '';
+        }
+
+        function resetSalidasForm() {
+            if (editIdEl) editIdEl.value = '';
+            if (saveSalidaBtn) saveSalidaBtn.textContent = 'Agregar';
+            if (montoSalidasEl) montoSalidasEl.value = '';
+            if (metodoSalidasEl) metodoSalidasEl.value = 'efectivo';
+            if (descSalidasEl) descSalidasEl.value = '';
+        }
+
+        function renderSalidasLista(list) {
+            if (!listaSalidasEl) return;
+            salidasCache = Array.isArray(list) ? list : [];
+            if (!salidasCache.length) {
+                listaSalidasEl.innerHTML = '<div class="px-3 py-2 text-muted small">Sin salidas registradas</div>';
+                return;
+            }
+
+            listaSalidasEl.innerHTML = '';
+            salidasCache.forEach(function(s) {
+                var metodoLabel = s.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia';
+                var row = document.createElement('div');
+                row.className = 'list-group-item px-2 py-2';
+                row.innerHTML = ''
+                    + '<div class="d-flex justify-content-between align-items-start">'
+                    + '  <div>'
+                    + '    <div class="font-weight-bold">' + escapeHtml(s.descripcion || '') + '</div>'
+                    + '    <div class="text-muted small mb-1">Método: ' + escapeHtml(metodoLabel) + '</div>'
+                    + '  </div>'
+                    + '  <div class="text-right">'
+                    + '    <div class="font-weight-bold">' + escapeHtml(s.monto_fmt || '') + '</div>'
+                    + '  </div>'
+                    + '</div>'
+                    + '<div class="mt-2 d-flex justify-content-end">'
+                    + '  <button type="button" class="btn btn-sm btn-outline-primary mr-1" data-action="edit" data-salida-id="' + (s.id || '') + '">Editar</button>'
+                    + '  <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-salida-id="' + (s.id || '') + '">Eliminar</button>'
+                    + '</div>';
+                listaSalidasEl.appendChild(row);
+            });
+        }
+
+        function fetchSalidasCaja() {
+            if (!listaSalidasEl) return;
+            var fecha = getFechaSalidasFromScreen();
+            if (!fecha) {
+                listaSalidasEl.innerHTML = '<div class="px-3 py-2 text-danger small">No se pudo determinar la fecha de caja.</div>';
+                return;
+            }
+            if (fechaSalidasEl) fechaSalidasEl.value = fecha;
+            listaSalidasEl.innerHTML = '<div class="px-3 py-2 text-muted small">Cargando salidas…</div>';
+
+            fetch(salidasCajaUrl() + '?fecha=' + encodeURIComponent(fecha), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(parseFetchResponse).then(function(x) {
+                if (!x.ok || !x.j) {
+                    var msg = (x.j && x.j.message) || ('Error al cargar salidas (HTTP ' + (x.status || '?') + ')');
+                    listaSalidasEl.innerHTML = '<div class="px-3 py-2 text-danger small">' + escapeHtml(msg) + '</div>';
+                    return;
+                }
+                renderSalidasLista(x.j.salidas || []);
+            }).catch(function(err) {
+                listaSalidasEl.innerHTML = '<div class="px-3 py-2 text-danger small">' + escapeHtml((err && err.message) ? err.message : 'Error de red al cargar salidas') + '</div>';
+            });
+        }
+
+        if (saveSalidaBtn && !saveSalidaBtn._wiredSalidas) {
+            saveSalidaBtn._wiredSalidas = true;
+            saveSalidaBtn.addEventListener('click', function() {
+                var fecha = getFechaSalidasFromScreen();
+                var montoStr = montoSalidasEl ? String(montoSalidasEl.value || '').replace(',', '.') : '';
+                var monto = parseFloat(montoStr);
+                var metodo = metodoSalidasEl ? metodoSalidasEl.value : 'efectivo';
+                var descripcion = descSalidasEl ? (descSalidasEl.value || '').trim() : '';
+                var editId = editIdEl ? parseInt(editIdEl.value, 10) : 0;
+
+                if (!fecha) { alert('La fecha es inválida.'); return; }
+                if (!monto || monto <= 0) { alert('Ingresá un monto mayor a 0.'); return; }
+                if (!descripcion) { alert('Ingresá una descripción.'); return; }
+
+                if (saveSalidaBtn) saveSalidaBtn.disabled = true;
+                var url = editId ? salidaUpdateUrl(editId) : salidasCajaUrl();
+                var method = editId ? 'PATCH' : 'POST';
+                var payload = { _token: csrfToken, fecha: fecha, monto: monto, metodo: metodo, descripcion: descripcion };
+
+                fetch(url, {
+                    method: method,
+                    headers: jsonHeaders(),
+                    body: JSON.stringify(payload)
+                }).then(parseFetchResponse).then(function(x) {
+                    if (saveSalidaBtn) saveSalidaBtn.disabled = false;
+                    if (!x.ok) {
+                        var msg = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors).flat().join(' '));
+                        alert(msg || ('Error HTTP ' + x.status));
+                        return;
+                    }
+
+                    resetSalidasForm();
+                    fetchSalidasCaja();
+                    fetchCajaResumenAplicar();
+                }).catch(function(err) {
+                    if (saveSalidaBtn) saveSalidaBtn.disabled = false;
+                    alert((err && err.message) ? err.message : 'Error de red');
+                });
+            });
+        }
+
+        if (listaSalidasEl) {
+            listaSalidasEl.addEventListener('click', function(e) {
+                var btn = e.target.closest('button[data-action]');
+                if (!btn || !listaSalidasEl.contains(btn)) return;
+                var action = btn.getAttribute('data-action');
+                var idStr = btn.getAttribute('data-salida-id');
+                var id = parseInt(idStr, 10);
+                if (!id) return;
+
+                if (action === 'edit') {
+                    var item = (salidasCache || []).find(function(s) { return String(s.id) === String(id); });
+                    if (!item) return;
+
+                    if (editIdEl) editIdEl.value = String(item.id);
+                    if (montoSalidasEl) montoSalidasEl.value = item.monto;
+                    if (metodoSalidasEl) metodoSalidasEl.value = item.metodo;
+                    if (descSalidasEl) descSalidasEl.value = item.descripcion || '';
+                    if (saveSalidaBtn) saveSalidaBtn.textContent = 'Actualizar';
+                    if (montoSalidasEl) montoSalidasEl.focus();
+                    return;
+                }
+
+                if (action === 'delete') {
+                    if (!confirm('¿Eliminar esta salida?')) return;
+                    var fecha = getFechaSalidasFromScreen();
+                    btn.disabled = true;
+                    fetch(salidaUpdateUrl(id), {
+                        method: 'DELETE',
+                        headers: jsonHeaders(),
+                        body: JSON.stringify({ _token: csrfToken, fecha: fecha })
+                    }).then(parseFetchResponse).then(function(x) {
+                        btn.disabled = false;
+                        if (!x.ok) {
+                            var msg = (x.j && x.j.message) || (x.j && x.j.errors && Object.values(x.j.errors).flat().join(' '));
+                            alert(msg || ('Error HTTP ' + x.status));
+                            return;
+                        }
+                        resetSalidasForm();
+                        fetchSalidasCaja();
+                        fetchCajaResumenAplicar();
+                    }).catch(function(err) {
+                        btn.disabled = false;
+                        alert((err && err.message) ? err.message : 'Error de red');
+                    });
+                }
+            });
+        }
+
+        function onModalSalidasAbierto() {
+            resetSalidasForm();
+            fetchSalidasCaja();
+        }
+
+        // Bootstrap 4 dispara eventos de modal vía jQuery; el listener nativo no siempre corre.
+        if (window.jQuery) {
+            window.jQuery(modalSalidasEl).on('shown.bs.modal', onModalSalidasAbierto);
+        } else {
+            modalSalidasEl.addEventListener('shown.bs.modal', onModalSalidasAbierto);
+        }
+
+        document.querySelectorAll('[data-target="#modal-salidas-caja"]').forEach(function(btn) {
+            if (btn._wiredSalidasOpen) return;
+            btn._wiredSalidasOpen = true;
+            btn.addEventListener('click', function() {
+                setTimeout(onModalSalidasAbierto, 0);
             });
         });
     }

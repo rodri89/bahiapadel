@@ -114,6 +114,10 @@ Route::group(['middleware' => ['auth', 'usuarioAdminPadel']], function () {
 	Route::get('admin_caja', [CajaAdminController::class, 'index'])->name('admincaja');
 	Route::post('admin_caja/apertura-json', [CajaAdminController::class, 'storeApertura'])->name('admincaja.apertura.store');
 	Route::get('admin_caja/resumen', [CajaAdminController::class, 'resumenJson'])->name('admincaja.resumen');
+	Route::get('admin_caja/salidas', [CajaAdminController::class, 'salidasIndex'])->name('admincaja.salidas.index');
+	Route::post('admin_caja/salidas', [CajaAdminController::class, 'salidasStore'])->name('admincaja.salidas.store');
+	Route::patch('admin_caja/salidas/{salida}', [CajaAdminController::class, 'salidasUpdate'])->name('admincaja.salidas.update');
+	Route::delete('admin_caja/salidas/{salida}', [CajaAdminController::class, 'salidasDestroy'])->name('admincaja.salidas.destroy');
 	Route::post('admin_caja/venta', [CajaAdminController::class, 'storeVenta'])->name('admincaja.venta.store');
 	Route::post('admin_caja/venta/borrador', [CajaAdminController::class, 'storeBorrador'])->name('admincaja.venta.borrador');
 	Route::post('admin_caja/venta/{venta}/continuar', [CajaAdminController::class, 'continuarVenta'])->name('admincaja.venta.continuar');

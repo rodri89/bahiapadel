@@ -13,6 +13,7 @@ use App\StockTurnoFijo;
 use App\StockVenta;
 use App\StockVentaParticipante;
 use App\StockCajaDiaria;
+use App\StockCajaSalida;
 use App\Jugadore;
 use Illuminate\Http\Request;
 
@@ -143,14 +144,27 @@ class CajaAdminController extends Controller
                 return $saldoPendiente > 0;
             });
 
-        $cajaDelDia = StockCajaDiaria::query()->where('fecha', $fechaCaja)->first();
+        $salidasTotalHoy = (float) StockCajaSalida::query()
+            ->where('fecha', $dia)
+            ->sum('monto');
+        $salidasEfectivoHoy = (float) StockCajaSalida::query()
+            ->where('fecha', $dia)
+            ->where('metodo', 'efectivo')
+            ->sum('monto');
+        $salidasTransferenciaHoy = (float) StockCajaSalida::query()
+            ->where('fecha', $dia)
+            ->where('metodo', 'transferencia')
+            ->sum('monto');
+
+        $cajaDelDia = StockCajaDiaria::query()->where('fecha', $dia)->first();
         $efectivoEsperadoCaja = 0.0;
         if ($cajaDelDia !== null) {
             $efectivoPagosHoy = (float) StockHistorialPago::query()
-                ->whereDate('fecha_pago', $fechaCaja)
+                ->whereDate('fecha_pago', $dia)
                 ->where('metodo_pago', 'efectivo')
                 ->sum('monto_pagado');
-            $efectivoEsperadoCaja = round((float) $cajaDelDia->fondo_inicial + $efectivoPagosHoy, 2);
+
+            $efectivoEsperadoCaja = round((float) $cajaDelDia->fondo_inicial + $efectivoPagosHoy - $salidasEfectivoHoy, 2);
         }
 
         $baseListasQuery = fn () => StockVenta::query()->with('cancha')->where('fecha_venta', $dia);
@@ -171,6 +185,10 @@ class CajaAdminController extends Controller
             'pagado_fmt' => $fmtMoney($statsHoy['pagado']),
             'pendiente_dia_fmt' => $fmtMoney($statsHoy['pendiente']),
             'pendientes_saldo_count' => $pendientes->count(),
+            'efectivo_esperado_fmt' => $fmtMoney($efectivoEsperadoCaja),
+            'salidas_total_fmt' => $fmtMoney($salidasTotalHoy),
+            'salidas_efectivo_fmt' => $fmtMoney($salidasEfectivoHoy),
+            'salidas_transferencia_fmt' => $fmtMoney($salidasTransferenciaHoy),
             'html_ventas_hoy' => $htmlVentas,
             'html_total_hoy' => $htmlVentas,
             'html_efectivo_hoy' => $this->htmlTablaListadoVentas($listaEfectivoHoy, $fmtMoney),
@@ -557,6 +575,18 @@ class CajaAdminController extends Controller
             ->orderBy('fecha_venta')
             ->get();
 
+        $salidasTotalHoy = (float) StockCajaSalida::query()
+            ->where('fecha', $fechaCaja)
+            ->sum('monto');
+        $salidasEfectivoHoy = (float) StockCajaSalida::query()
+            ->where('fecha', $fechaCaja)
+            ->where('metodo', 'efectivo')
+            ->sum('monto');
+        $salidasTransferenciaHoy = (float) StockCajaSalida::query()
+            ->where('fecha', $fechaCaja)
+            ->where('metodo', 'transferencia')
+            ->sum('monto');
+
         $cajaDelDia = StockCajaDiaria::query()->where('fecha', $fechaCaja)->first();
         $efectivoEsperadoCaja = 0.0;
         if ($cajaDelDia !== null) {
@@ -564,7 +594,8 @@ class CajaAdminController extends Controller
                 ->whereDate('fecha_pago', $fechaCaja)
                 ->where('metodo_pago', 'efectivo')
                 ->sum('monto_pagado');
-            $efectivoEsperadoCaja = round((float) $cajaDelDia->fondo_inicial + $efectivoPagosHoy, 2);
+
+            $efectivoEsperadoCaja = round((float) $cajaDelDia->fondo_inicial + $efectivoPagosHoy - $salidasEfectivoHoy, 2);
         }
 
         $statsHoy = $this->statsCajaDelDia($fechaCaja);
@@ -659,6 +690,9 @@ class CajaAdminController extends Controller
             'torneosAbiertos',
             'cajaDelDia',
             'efectivoEsperadoCaja',
+            'salidasTotalHoy',
+            'salidasEfectivoHoy',
+            'salidasTransferenciaHoy',
             'fechaCaja',
             'fechaCajaEsHoy',
             'fechaCajaLabel',
@@ -1057,6 +1091,111 @@ class CajaAdminController extends Controller
             'html' => view('bahia_padel.admin.caja._ticket_modal_body', compact('venta', 'fmtMoney'))->render(),
             'url_ver_completo' => route('admincaja.venta.show', $venta),
         ]);
+    }
+
+    public function salidasIndex(Request $request)
+    {
+        $fecha = $this->normalizarFechaCaja($request->query('fecha'));
+        $fmtMoney = fn ($n) => '$'.number_format((float) $n, 2, ',', '.');
+
+        $salidas = StockCajaSalida::query()
+            ->where('fecha', $fecha)
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'ok' => true,
+            'fecha' => $fecha,
+            'salidas' => $salidas->map(function ($s) use ($fmtMoney, $fecha) {
+                return [
+                    'id' => (int) $s->id,
+                    'fecha' => $s->fecha ? $s->fecha->toDateString() : $fecha,
+                    'monto' => (float) $s->monto,
+                    'monto_fmt' => $fmtMoney($s->monto),
+                    'metodo' => (string) $s->metodo,
+                    'descripcion' => (string) $s->descripcion,
+                ];
+            })->values(),
+        ]);
+    }
+
+    public function salidasStore(Request $request)
+    {
+        $data = $request->validate([
+            'fecha' => 'required|date_format:Y-m-d|before_or_equal:today',
+            'monto' => 'required|numeric|min:0.01',
+            'metodo' => 'required|in:efectivo,transferencia',
+            'descripcion' => 'required|string|max:500',
+        ]);
+
+        $fecha = $this->normalizarFechaCaja($data['fecha']);
+
+        $cajaDelDia = StockCajaDiaria::query()->where('fecha', $fecha)->first();
+        if ($cajaDelDia === null || $cajaDelDia->estado !== 'abierta') {
+            return response()->json(['message' => 'La caja no está abierta para registrar salidas en esa fecha.'], 409);
+        }
+
+        $salida = StockCajaSalida::query()->create([
+            'fecha' => $fecha,
+            'monto' => round((float) $data['monto'], 2),
+            'metodo' => (string) $data['metodo'],
+            'descripcion' => (string) $data['descripcion'],
+        ]);
+
+        return response()->json(['ok' => true, 'id' => (int) $salida->id]);
+    }
+
+    public function salidasUpdate(Request $request, StockCajaSalida $salida)
+    {
+        $data = $request->validate([
+            'fecha' => 'required|date_format:Y-m-d|before_or_equal:today',
+            'monto' => 'required|numeric|min:0.01',
+            'metodo' => 'required|in:efectivo,transferencia',
+            'descripcion' => 'required|string|max:500',
+        ]);
+
+        $fecha = $this->normalizarFechaCaja($data['fecha']);
+
+        $fechaSalida = $salida->fecha ? $salida->fecha->toDateString() : null;
+        if ($fechaSalida !== null && $fechaSalida !== $fecha) {
+            return response()->json(['message' => 'No se permite cambiar la fecha de una salida existente.'], 422);
+        }
+
+        $cajaDelDia = StockCajaDiaria::query()->where('fecha', $fecha)->first();
+        if ($cajaDelDia === null || $cajaDelDia->estado !== 'abierta') {
+            return response()->json(['message' => 'La caja no está abierta para modificar salidas en esa fecha.'], 409);
+        }
+
+        $salida->update([
+            'monto' => round((float) $data['monto'], 2),
+            'metodo' => (string) $data['metodo'],
+            'descripcion' => (string) $data['descripcion'],
+        ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function salidasDestroy(Request $request, StockCajaSalida $salida)
+    {
+        $data = $request->validate([
+            'fecha' => 'required|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
+        $fecha = $this->normalizarFechaCaja($data['fecha']);
+
+        $fechaSalida = $salida->fecha ? $salida->fecha->toDateString() : null;
+        if ($fechaSalida !== null && $fechaSalida !== $fecha) {
+            return response()->json(['message' => 'Fecha inválida para eliminar esta salida.'], 422);
+        }
+
+        $cajaDelDia = StockCajaDiaria::query()->where('fecha', $fecha)->first();
+        if ($cajaDelDia === null || $cajaDelDia->estado !== 'abierta') {
+            return response()->json(['message' => 'La caja no está abierta para eliminar salidas en esa fecha.'], 409);
+        }
+
+        $salida->delete();
+
+        return response()->json(['ok' => true]);
     }
 
     public function registrarPago(Request $request, StockVenta $venta, StockVentaService $ventaService)
