@@ -54,7 +54,7 @@
     <ul class="navbar-nav lumen_color sidebar sidebar-dark accordion fondoNav toggled" id="accordionSidebar">
 
       <!-- Sidebar - Brand -->
-      <a class="sidebar-brand d-flex align-items-center justify-content-center" href="index.html">                
+      <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('index') }}">
         <img class="icono_header" style="width: 120px; height: 60px" src="{{ asset('bahiapadel/iconos/bahia_padel_ic.png') }}" >        
       </a>
 
@@ -63,7 +63,7 @@
 
       <!-- Nav Item - Dashboard -->
       <li hidden class="nav-item active">
-        <a class="nav-link" href="index">
+        <a class="nav-link" href="{{ route('index') }}">
           <i class="fas fa-fw fa-tachometer-alt"></i>
           <span>Mi Panel</span></a>
       </li>
@@ -76,7 +76,7 @@
       </div>
 
       <li class="nav-item">
-        <a class="nav-link" href="admin_torneos">
+        <a class="nav-link" href="{{ route('admintorneos') }}">
           <i class="fas fa-fw fa-folder-open"></i>
           <span>Torneos</span></a>
       </li>
@@ -88,7 +88,7 @@
       </li>
        
       <li class="nav-item">
-          <a class="nav-link" href="admin_jugadores">
+          <a class="nav-link" href="{{ route('adminjugadores') }}">
             <i class="fas fa-fw fa-address-card"></i>
             <span>Jugadores</span></a>
       </li>  
@@ -161,7 +161,7 @@
         
         <!-- Nav Item - Charts -->
         <li hidden class="nav-item">
-          <a class="nav-link" href="buscar_producto">
+          <a class="nav-link" href="/buscar_producto">
             <i class="fas fa-fw fa-address-card"></i>
             <span >Buscar</span></a>
         </li>
