@@ -458,11 +458,14 @@ class StockVentaService
 
         return DB::transaction(function () use ($venta, $productoId, $cantidad, $stockVentaParticipanteId) {
             $venta = StockVenta::query()->lockForUpdate()->findOrFail($venta->id);
-            if ($venta->estado_pago !== 'pendiente') {
+            $esGrupo = StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists();
+
+            // En ventas grupales (torneo) se puede seguir cargando productos aunque
+            // ya esté todo pagado: lo pagado queda pagado y lo nuevo entra pendiente.
+            if (! $esGrupo && $venta->estado_pago !== 'pendiente') {
                 throw new \RuntimeException('La venta ya no admite productos.');
             }
 
-            $esGrupo = StockVentaParticipante::query()->where('stock_venta_id', $venta->id)->exists();
             $participanteFk = null;
 
             if ($esGrupo) {
@@ -480,10 +483,12 @@ class StockVentaService
                 if ($participante === null) {
                     throw new \RuntimeException('Participante inválido.');
                 }
-                if ($participante->estado_pago !== 'pendiente') {
-                    throw new \RuntimeException('Ese jugador ya pagó; no se pueden agregar productos.');
-                }
                 $participanteFk = $participante->id;
+
+                if ($participante->estado_pago === 'pagado') {
+                    $participante->estado_pago = 'pendiente';
+                    $participante->save();
+                }
             } elseif ($stockVentaParticipanteId !== null) {
                 throw new \RuntimeException('Este ticket no usa reparto por jugador.');
             }
@@ -530,6 +535,9 @@ class StockVentaService
             ]);
 
             $venta->precio_total = round((float) $venta->precio_total + $subtotal, 2);
+            if ($esGrupo && $venta->estado_pago === 'pagado') {
+                $venta->estado_pago = 'pendiente';
+            }
             $venta->save();
 
             return $venta->fresh(['detalles.producto', 'cancha', 'participantes']);

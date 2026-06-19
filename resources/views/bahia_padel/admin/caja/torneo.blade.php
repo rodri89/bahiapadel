@@ -154,8 +154,8 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
                     <label class="font-weight-bold mb-1">Jugador</label>
                     <select class="form-control" id="torneo-jugador-activo">
                         <option value="">Elegir jugador…</option>
-                        @foreach($parts->where('estado_pago', 'pendiente') as $p)
-                            <option value="{{ $p->id }}">{{ $p->slot }} — {{ $p->nombre }}</option>
+                        @foreach($parts as $p)
+                            <option value="{{ $p->id }}">{{ $p->slot }} — {{ $p->nombre }}{{ $p->estado_pago === 'pagado' ? ' (pagado)' : '' }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -716,9 +716,7 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
                 btnPayTodo.disabled = false;
                 if (!x.ok) { alert((x.j && x.j.message) || 'Error'); return; }
                 if (x.j && x.j.ticket_cerrado) {
-                    alert('Ticket cerrado: todos los jugadores pagaron.');
-                    window.location.href = '{{ route('admincaja', ['fecha' => $venta->fecha_venta]) }}';
-                    return;
+                    alert('Todos los jugadores pagaron. Podés seguir cargando productos para quien quieras.');
                 }
                 window.location.reload();
             }).catch(function(e) { btnPayTodo.disabled = false; alert('Error de red'); });
@@ -738,9 +736,7 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
                 btnPayModal.disabled = false;
                 if (!x.ok) { alert((x.j && x.j.message) || 'Error'); return; }
                 if (x.j && x.j.ticket_cerrado) {
-                    alert('Ticket cerrado: todos los jugadores pagaron.');
-                    window.location.href = '{{ route('admincaja', ['fecha' => $venta->fecha_venta]) }}';
-                    return;
+                    alert('Todos los jugadores pagaron. Podés seguir cargando productos para quien quieras.');
                 }
                 window.location.reload();
             }).catch(function(e) { btnPayModal.disabled = false; alert('Error de red'); });
@@ -819,9 +815,7 @@ body.dark-mode .torneo-producto-dropdown .px-3:hover { background-color: #3d3d3d
                 btnConfirmarPago.disabled = false;
                 if (!x.ok) { alert((x.j && x.j.message) || 'Error'); return; }
                 if (x.j && x.j.ticket_cerrado) {
-                    alert('Ticket cerrado: todos los jugadores pagaron.');
-                    window.location.href = '{{ route('admincaja', ['fecha' => $venta->fecha_venta]) }}';
-                    return;
+                    alert('Todos los jugadores pagaron. Podés seguir cargando productos para quien quieras.');
                 }
                 window.location.reload();
             }).catch(function(e) { btnConfirmarPago.disabled = false; alert('Error de red'); });
